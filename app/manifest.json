@@ -1,0 +1,22 @@
+{
+  "name": "ChecklyTool - Быстрая Проверка Работ Школьников",
+  "short_name": "ChecklyTool",
+  "description": "Приложение проверит, подсчитает баллы и оценит работу за тебя. Экономь до 3 часов в день.",
+  "start_url": "/",
+  "display": "standalone",
+  "theme_color": "#096ff5",
+  "background_color": "#ffffff",
+  "lang": "ru",
+  "icons": [
+    {
+      "src": "/images/brand-logo.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/images/brand-logo.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
