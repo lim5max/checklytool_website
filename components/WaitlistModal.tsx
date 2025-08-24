@@ -94,7 +94,7 @@ export default function WaitlistModal({ isOpen, onClose }: WaitlistModalProps) {
                 Скоро запуск!
               </h2>
               <p className="text-slate-600 leading-relaxed">
-                Мы активно работаем над ChecklyTool. Подписка будет стоить от 200 ₽ в месяц.
+                Мы активно работаем над ChecklyTool. Подписка будет стоить от 199 ₽ в месяц.
                 Оставьте заявку и получите специальное предложение для первых пользователей!
               </p>
             </div>
