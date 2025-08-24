@@ -1,0 +1,10 @@
+{
+  "registry-mirrors": [
+    "https://mirror.gcr.io",
+    "https://daocloud.io",
+    "https://c.163.com"
+  ],
+  "dns": ["8.8.8.8", "1.1.1.1"],
+  "max-concurrent-downloads": 3,
+  "max-concurrent-uploads": 3
+}

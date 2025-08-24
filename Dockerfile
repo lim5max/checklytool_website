@@ -1,12 +1,15 @@
 FROM node:18-alpine AS deps
-# Используем другие зеркала Alpine для ускорения
-RUN echo "https://dl-cdn.alpinelinux.org/alpine/v3.18/main" > /etc/apk/repositories && \
-    echo "https://dl-cdn.alpinelinux.org/alpine/v3.18/community" >> /etc/apk/repositories && \
+# Используем российские зеркала для Alpine Linux
+RUN echo "https://mirror.yandex.ru/mirrors/alpine/v3.18/main" > /etc/apk/repositories && \
+    echo "https://mirror.yandex.ru/mirrors/alpine/v3.18/community" >> /etc/apk/repositories && \
     apk update && apk add --no-cache libc6-compat
 WORKDIR /app
 
 COPY package.json package-lock.json ./
-RUN npm ci --only=production --prefer-offline
+# Используем российские npm зеркала
+RUN npm config set registry https://registry.npmjs.org/ && \
+    npm config set cache /tmp/.npm && \
+    npm ci --only=production --prefer-offline
 
 FROM node:18-alpine AS builder
 WORKDIR /app
