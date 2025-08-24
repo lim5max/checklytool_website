@@ -101,9 +101,6 @@ export default function WaitlistModal({ isOpen, onClose }: WaitlistModalProps) {
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label htmlFor="email" className="block text-sm font-medium text-slate-700 mb-1">
-                  Email адрес
-                </label>
                 <div>
                   <input
                     type="email"
