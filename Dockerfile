@@ -1,9 +1,12 @@
 FROM node:18-alpine AS deps
-RUN apk add --no-cache libc6-compat
+# Используем другие зеркала Alpine для ускорения
+RUN echo "https://dl-cdn.alpinelinux.org/alpine/v3.18/main" > /etc/apk/repositories && \
+    echo "https://dl-cdn.alpinelinux.org/alpine/v3.18/community" >> /etc/apk/repositories && \
+    apk update && apk add --no-cache libc6-compat
 WORKDIR /app
 
 COPY package.json package-lock.json ./
-RUN npm ci --only=production
+RUN npm ci --only=production --prefer-offline
 
 FROM node:18-alpine AS builder
 WORKDIR /app
