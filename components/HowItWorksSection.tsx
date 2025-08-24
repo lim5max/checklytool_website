@@ -65,72 +65,129 @@ const HowItWorksStep = ({
 export default function HowItWorksSection() {
   const [activeStep, setActiveStep] = useState(1);
   const sectionRef = useRef<HTMLElement>(null);
+  const debounceRef = useRef<number | null>(null);
+  const activeStepRef = useRef<number>(1);
+  const DEBOUNCE_MS = 150;
+  useEffect(() => {
+    activeStepRef.current = activeStep;
+  }, [activeStep]);
   const currentStep = steps.find(step => step.id === activeStep)!;
 
   useEffect(() => {
     const handleScroll = () => {
-      if (!sectionRef.current) return;
-      
       const section = sectionRef.current;
-      const sectionTop = section.offsetTop;
-      const sectionHeight = section.offsetHeight;
-      const scrollY = window.scrollY + window.innerHeight / 2;
-      
-      // Проверяем, находится ли пользователь в пределах секции
-      if (scrollY >= sectionTop && scrollY <= sectionTop + sectionHeight) {
-        const progress = (scrollY - sectionTop) / sectionHeight;
-        
-        // Разделяем прогресс на 3 равные части для каждого шага
-        if (progress < 0.33) {
-          setActiveStep(1);
-        } else if (progress < 0.66) {
-          setActiveStep(2);
-        } else {
-          setActiveStep(3);
-        }
+      if (!section) return;
+
+      const start = section.offsetTop;
+      const end = start + section.offsetHeight - window.innerHeight;
+      const y = window.scrollY;
+
+      if (y < start || y > end) {
+        return;
       }
+
+      const progress = Math.min(1, Math.max(0, (y - start) / (end - start)));
+      const segment = 1 / steps.length;
+      const candidateStep = Math.min(steps.length, Math.floor(progress / segment) + 1);
+
+      const current = activeStepRef.current;
+      if (candidateStep === current) {
+        return;
+      }
+
+      const diff = candidateStep - current;
+
+      if (Math.abs(diff) > 1) {
+        // Prevent skipping the intermediate step on very fast scroll.
+        if (debounceRef.current) {
+          window.clearTimeout(debounceRef.current);
+          debounceRef.current = null;
+        }
+        const stepTowards = current + Math.sign(diff);
+        setActiveStep(stepTowards);
+        activeStepRef.current = stepTowards;
+        return;
+      }
+
+      // diff is exactly ±1: use a short debounce for smoothness.
+      if (debounceRef.current) {
+        window.clearTimeout(debounceRef.current);
+      }
+      debounceRef.current = window.setTimeout(() => {
+        setActiveStep(candidateStep);
+        debounceRef.current = null;
+      }, DEBOUNCE_MS);
     };
 
     window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
+    // Sync once on mount in case we're already within the section
+    handleScroll();
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      if (debounceRef.current) {
+        window.clearTimeout(debounceRef.current);
+        debounceRef.current = null;
+      }
+    };
   }, []);
 
+  const scrollToStep = (stepId: number) => {
+    const section = sectionRef.current;
+    if (!section) return;
+
+    const start = section.offsetTop;
+    const totalScrollable = section.offsetHeight - window.innerHeight;
+    if (totalScrollable <= 0) return;
+
+    const segment = 1 / steps.length;
+    const targetProgress = ((stepId - 1) + 0.5) * segment;
+    const targetY = start + targetProgress * totalScrollable;
+
+    if (debounceRef.current) {
+      window.clearTimeout(debounceRef.current);
+      debounceRef.current = null;
+    }
+
+    window.scrollTo({ top: targetY, behavior: "smooth" });
+  };
+
   return (
-    <section ref={sectionRef} className="flex flex-col gap-16 items-start justify-start w-full">
-      
-      
-      <div className="flex flex-col lg:flex-row gap-16 lg:gap-8 items-start justify-between w-full">
-      
-        <div className="flex flex-col gap-8 w-full lg:w-3/5">
+    <section ref={sectionRef} className="relative h-[300vh] w-full">
+      <div className="sticky top-0 min-h-screen flex flex-col justify-center">
+        <div className="flex flex-col lg:flex-row gap-16 lg:gap-8 items-start justify-between w-full">
         
+          <div className="flex flex-col gap-8 w-full lg:w-3/5">
+          
 <h2 className="font-nunito font-black text-4xl sm:text-5xl text-left text-slate-900 tracking-tight">
         Как это работает
       </h2>
-        
-          <div className="flex flex-col gap-6">
-          {steps.map((step) => (
-            <HowItWorksStep 
-              key={step.id}
-              step={step.id} 
-              title={step.title} 
-              description={step.description} 
-              isActive={activeStep === step.id}
-              onClick={() => setActiveStep(step.id)}
-            />
-          ))}
+          
+            <div className="flex flex-col gap-6">
+            {steps.map((step) => (
+              <HowItWorksStep
+                key={step.id}
+                step={step.id}
+                title={step.title}
+                description={step.description}
+                isActive={activeStep === step.id}
+                onClick={() => scrollToStep(step.id)}
+              />
+            ))}
+            </div>
           </div>
-        </div>
-        
-        <div className="w-full lg:w-3/5">
-          <div className="relative">
-            <Image 
-              src={currentStep.image}
-              alt={`Step ${activeStep} illustration`} 
-              width={529} 
-              height={424}
-              className="object-cover rounded-lg w-full h-auto transition-opacity duration-500"
-              key={activeStep} // Force re-render for smooth transition
-            />
+          
+          <div className="w-full lg:w-3/5">
+            <div className="relative">
+              <Image
+                src={currentStep.image}
+                alt={`Step ${activeStep} illustration`}
+                width={529}
+                height={424}
+                className="object-cover rounded-lg w-full h-auto transition-opacity duration-300 ease-in-out"
+                key={activeStep} // Force re-render for smooth transition
+              />
+            </div>
           </div>
         </div>
       </div>
