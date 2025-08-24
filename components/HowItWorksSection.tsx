@@ -74,6 +74,12 @@ export default function HowItWorksSection() {
   const currentStep = steps.find(step => step.id === activeStep)!;
 
   useEffect(() => {
+    const isDesktop = window.matchMedia('(min-width: 768px)').matches;
+    if (!isDesktop) {
+      // Disable scroll-driven switching on mobile (< md)
+      return;
+    }
+
     const handleScroll = () => {
       const section = sectionRef.current;
       if (!section) return;
@@ -153,9 +159,37 @@ export default function HowItWorksSection() {
   };
 
   return (
-    <section ref={sectionRef} className="relative h-[300vh] w-full">
-      <div className="sticky top-0 min-h-screen flex flex-col justify-center">
-        <div className="flex flex-col lg:flex-row gap-16 lg:gap-8 items-start justify-between w-full">
+    <section ref={sectionRef} className="relative h-auto md:h-[300vh] w-full">
+      <div className="md:sticky md:top-0 md:min-h-screen flex flex-col justify-center">
+        {/* Mobile-only static stacked list */}
+        <div className="block md:hidden px-4 space-y-6">
+          <h2 className="font-nunito font-black text-4xl sm:text-5xl text-left text-slate-900 tracking-tight">
+            Как это работает
+          </h2>
+          {steps.map((step) => (
+            <div key={step.id} className="bg-[#F7FAFF] border border-[#E6EEF8] p-4 sm:p-5 rounded-3xl">
+              <div className="flex items-start gap-3">
+                <div className="font-nunito font-black text-2xl md:text-[30px] leading-[1.2] text-slate-900">{step.id}</div>
+                <div className="flex-1">
+                  <h3 className="text-[18px] sm:text-lg md:text-[20px] font-semibold text-[#0F2137] leading-tight">
+                    {step.description ? `${step.title} ${step.description}` : step.title}
+                  </h3>
+                </div>
+              </div>
+              <div className="mt-3">
+                <Image
+                  src={step.image}
+                  alt={`Step ${step.id} illustration`}
+                  width={529}
+                  height={424}
+                  className="object-cover rounded-lg w-full h-auto"
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+        {/* Desktop/Tablet interactive container */}
+        <div className="hidden md:flex flex-col lg:flex-row gap-16 lg:gap-8 items-start justify-between w-full">
         
           <div className="flex flex-col gap-8 w-full lg:w-3/5">
           

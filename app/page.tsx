@@ -57,7 +57,9 @@ export default function Home() {
                   </p>
                 </div>
               </div>
-              <TeachersRepetitorsBlock />
+              <div className="-mx-4 md:mx-0 w-full">
+                <TeachersRepetitorsBlock />
+              </div>
             </section>
 
             <HowItWorksSection />
@@ -76,7 +78,7 @@ export default function Home() {
             </section>
 
             <section className="flex flex-col md:flex-row gap-16 items-center justify-center w-full">
-              <div className="w-full max-w-[464px] aspect-square rounded-[48px] bg-slate-50">
+              <div className="hidden md:block w-full max-w-[464px] aspect-square rounded-[48px] bg-slate-50">
                 <Image 
                   src="/images/cta-illustration.png" 
                   alt="CTA illustration" 
@@ -85,14 +87,14 @@ export default function Home() {
                   className="object-cover w-full h-auto"
                 />
               </div>
-              <div className="flex flex-col gap-8  items-start w-full ">
+              <div className="flex flex-col gap-8 items-center md:items-start w-full text-center md:text-left">
                 <div className="flex flex-col gap-4">
                   <h2 className="font-nunito font-black leading-tight text-4xl sm:text-5xl text-slate-900 tracking-tight">
                     <span className="block">Cокращай время</span>
                     <span className="block">проверки в <span className="text-[#096ff5]">5 раз</span></span>
                   </h2>
                   <p className="font-inter text-xl  text-slate-800  leading-relaxed">
-                    Оформи подписку на сервис за 200 ₽ в месяц, <br></br>пока мы запускаемся. Потом станет дороже)
+                    Оформи подписку на сервис за 200 ₽ в месяц, <br className="hidden md:inline" />пока мы запускаемся. Потом станет дороже)
                   </p>
                 </div>
                 <button className="bg-[#096ff5] hover:bg-blue-600 transition-colors w-full text-white font-inter font-medium text-2xl px-5 py-8 rounded-full shadow-lg h-[172px]">

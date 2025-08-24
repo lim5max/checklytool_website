@@ -25,11 +25,20 @@ export const metadata: Metadata = {
     siteName: "ChecklyTool",
     locale: "ru_RU",
     type: "website",
+    images: [
+      {
+        url: "/social.jpg",
+        width: 1200,
+        height: 630,
+        alt: "ChecklyTool - Быстрая Проверка Работ Школьников",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: "ChecklyTool - Быстрая Проверка Работ Школьников",
     description: "Приложение проверит, подсчитает баллы и оценит работу за тебя. Экономь до 3 часов в день.",
+    images: ["/social.jpg"],
   },
   robots: {
     index: true,
