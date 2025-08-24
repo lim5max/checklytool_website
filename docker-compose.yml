@@ -9,6 +9,10 @@ services:
       - "3000:3000"
     environment:
       - NODE_ENV=production
+      - RESEND_API_KEY=${RESEND_API_KEY}
+      - RESEND_AUDIENCE_ID=${RESEND_AUDIENCE_ID}
+    env_file:
+      - .env
     networks:
       - web
 
@@ -24,6 +28,29 @@ services:
       - ./ssl:/etc/nginx/ssl
     depends_on:
       - checklytool
+    networks:
+      - web
+
+  webhook:
+    image: node:18-alpine
+    container_name: checklytool_webhook
+    restart: always
+    # Убираем внешний порт - доступ только через nginx
+    expose:
+      - "${WEBHOOK_PORT:-9000}"
+    volumes:
+      - ./webhook-server.js:/app/webhook-server.js
+      - ./deploy.sh:/app/deploy.sh
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./:/app/project
+    working_dir: /app
+    command: node webhook-server.js
+    environment:
+      - NODE_ENV=production
+      - WEBHOOK_PORT=${WEBHOOK_PORT:-9000}
+      - WEBHOOK_SECRET=${WEBHOOK_SECRET}
+    env_file:
+      - .env
     networks:
       - web
 

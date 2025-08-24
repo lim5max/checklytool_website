@@ -1,12 +1,21 @@
+'use client';
+
+import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import StructuredData from "../components/StructuredData";
 import TeachersRepetitorsBlock from "../components/TeachersRepetitorsBlock";
 import HowItWorksSection from "../components/HowItWorksSection";
+import WaitlistModal from "../components/WaitlistModal";
 
 
 
 export default function Home() {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const openModal = () => setIsModalOpen(true);
+  const closeModal = () => setIsModalOpen(false);
+
   return (
     <>
       <StructuredData />
@@ -16,21 +25,17 @@ export default function Home() {
           <header className="flex items-center justify-between relative w-full">
             <Link href="/" className="flex gap-0.5 items-center justify-start relative">
               <Image 
-                src="/images/brand-logo.png" 
-                alt="Brand Logo" 
-                width={28} 
-                height={28}
-                className="object-cover"
-              />
-              <Image 
-                src="/images/logo-text.svg" 
-                alt="Проверено" 
-                width={109} 
-                height={14}
-                className="block"
+                src="/images/logo.png" 
+                alt="Checkly" 
+                width={120} 
+                height={40}
+                className="object-contain"
               />
             </Link>
-            <button className="bg-slate-900 hover:bg-slate-800 transition-colors text-white font-inter font-medium text-base px-5 py-3 rounded-full shadow-md">
+            <button 
+              onClick={openModal}
+              className="bg-slate-900 hover:bg-slate-800 transition-colors text-white font-inter font-medium text-base px-5 py-3 rounded-full shadow-md"
+            >
               Попробовать
             </button>
           </header>
@@ -49,7 +54,10 @@ export default function Home() {
                   </p>
                 </div>
                 <div className="flex flex-col gap-2 items-center">
-                  <button className="bg-[#096ff5] hover:bg-blue-600 transition-colors text-white font-inter font-medium text-base px-6 py-3.5 rounded-full shadow-lg">
+                  <button 
+                    onClick={openModal}
+                    className="bg-[#096ff5] hover:bg-blue-600 transition-colors text-white font-inter font-medium text-base px-6 py-3.5 rounded-full shadow-lg"
+                  >
                     Загрузить работы
                   </button>
                   <p className="font-inter font-medium text-xs text-slate-900">
@@ -97,15 +105,33 @@ export default function Home() {
                     Оформи подписку на сервис за 200 ₽ в месяц, <br className="hidden md:inline" />пока мы запускаемся. Потом станет дороже)
                   </p>
                 </div>
-                <button className="bg-[#096ff5] hover:bg-blue-600 transition-colors w-full text-white font-inter font-medium text-2xl px-5 py-8 rounded-full shadow-lg h-[172px]">
+                <button 
+                  onClick={openModal}
+                  className="bg-[#096ff5] hover:bg-blue-600 transition-colors w-full text-white font-inter font-medium text-2xl px-5 py-8 rounded-full shadow-lg h-[172px]"
+                >
                   Оставить заявку
                 </button>
               </div>
             </section>
 
           </main>
+
+          <footer className="flex flex-col sm:flex-row items-center justify-between gap-4 w-full pt-8 mt-16 border-t border-slate-200 text-sm text-slate-600">
+            <p>©2025 ChecklyTool. Все права защищены.</p>
+            <Link 
+              href="https://www.rusprofile.ru/ip/321508100625381" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="hover:text-slate-900 transition-colors"
+            >
+              ИП Митусов Б.С.
+            </Link>
+          </footer>
+
         </div>
       </div>
+
+      <WaitlistModal isOpen={isModalOpen} onClose={closeModal} />
     </>
   );
 }
