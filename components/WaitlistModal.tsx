@@ -107,7 +107,7 @@ export default function WaitlistModal({ isOpen, onClose }: WaitlistModalProps) {
                     id="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="example@mail.ru"
+                    placeholder="your@email.com"
                     className={`w-full px-4 py-3 rounded-full outline-none transition-colors
                       ${error ? 'border border-red-500 focus:ring-2 focus:ring-red-500 focus:border-red-500' : 'border border-slate-300 hover:border-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500'}
                     `}
