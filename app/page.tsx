@@ -101,7 +101,7 @@ export default function Home() {
                     <span className="block">Cокращай время</span>
                     <span className="block">проверки в <span className="text-[#096ff5]">5 раз</span></span>
                   </h2>
-                  <p className="font-inter text-xl  text-slate-800  leading-relaxed">
+                  <p className="font-inter text-lg md:max-w-full max-w-sm md:text-xl  text-slate-800  leading-relaxed">
                     Оформи подписку на сервис за 200 ₽ в месяц, <br className="hidden md:inline" />пока мы запускаемся. Потом станет дороже)
                   </p>
                 </div>

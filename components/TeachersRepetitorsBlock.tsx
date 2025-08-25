@@ -2,7 +2,7 @@ import Image from "next/image";
 
 export default function TeachersRepetitorsBlock() {
   return (
-    <div className="-mx-4 md:mx-0">
+    <div className=" md:mx-0">
       <div className="flex flex-col gap-4 md:flex-row md:flex-wrap md:gap-5 items-center justify-center">
         {/* Card 1: Учителям */}
         <div className="bg-slate-50 h-[424px] w-full sm:w-[356px] rounded-3xl overflow-hidden relative p-0">
@@ -18,9 +18,8 @@ export default function TeachersRepetitorsBlock() {
             <Image
               src="/images/teacher.png"
               alt="Illustration for teachers"
-              layout="fill"
-              objectFit="contain"
-              objectPosition="bottom"
+              fill
+              className="object-contain object-bottom"
             />
           </div>
         </div>
@@ -39,9 +38,8 @@ export default function TeachersRepetitorsBlock() {
             <Image
               src="/images/learning-illustration.png"
               alt="Illustration for repetitors"
-              layout="fill"
-              objectFit="contain"
-              objectPosition="bottom"
+              fill
+              className="object-contain object-bottom"
             />
           </div>
         </div>

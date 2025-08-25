@@ -162,16 +162,15 @@ export default function HowItWorksSection() {
     <section ref={sectionRef} className="relative h-auto md:h-[300vh] w-full">
       <div className="md:sticky md:top-0 md:min-h-screen flex flex-col justify-center">
         {/* Mobile-only static stacked list */}
-        <div className="block md:hidden px-4 space-y-6">
-          <h2 className="font-nunito font-black text-4xl sm:text-5xl text-left text-slate-900 tracking-tight">
+        <div className="block md:hidden md:px-4 space-y-6">
+          <h2 className="font-nunito font-black text-4xl sm:text-5xl md:text-left text-center  text-slate-900 tracking-tight">
             Как это работает
           </h2>
           {steps.map((step) => (
-            <div key={step.id} className="bg-[#F7FAFF] border border-[#E6EEF8] p-4 sm:p-5 rounded-3xl">
+            <div key={step.id} className="bg-[#F7FAFF]   p-6 sm:p-5 rounded-4xl">
               <div className="flex items-start gap-3">
-                <div className="font-nunito font-black text-2xl md:text-[30px] leading-[1.2] text-slate-900">{step.id}</div>
                 <div className="flex-1">
-                  <h3 className="text-[18px] sm:text-lg md:text-[20px] font-semibold text-[#0F2137] leading-tight">
+                  <h3 className="font-nunito text-2xl md:text-[20px] font-black text-slate-700 leading-tight">
                     {step.description ? `${step.title} ${step.description}` : step.title}
                   </h3>
                 </div>
