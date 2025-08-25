@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter, Nunito } from "next/font/google";
+import YandexMetrika from "../components/YandexMetrika";
 import "./globals.css";
 
 const inter = Inter({
@@ -63,6 +64,7 @@ export default function RootLayout({
         className={`${inter.variable} ${nunito.variable} antialiased`}
       >
         {children}
+        <YandexMetrika />
       </body>
     </html>
   );
