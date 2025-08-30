@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { motion } from "framer-motion";
@@ -35,17 +35,9 @@ const teamMembers = [
 
 export default function About() {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
 
   const openModal = () => setIsModalOpen(true);
   const closeModal = () => setIsModalOpen(false);
-
-  useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth < 768);
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
 
   return (
     <>
@@ -88,20 +80,23 @@ export default function About() {
             <div className="flex flex-col gap-6">
             <motion.section 
               className="flex flex-col lg:flex-row gap-2 lg:gap-2 items-center justify-between w-full"
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
+              initial={{ opacity: 0, y: 40 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
               transition={{ duration: 0.8 }}
             >
               <motion.div 
                 className="flex flex-col gap-6 items-center lg:items-start text-left"
-                initial={{ opacity: 0, x: isMobile ? 0 : -30, y: isMobile ? 30 : 0 }}
-                animate={{ opacity: 1, x: 0, y: 0 }}
+                initial={{ opacity: 0, y: 50 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
                 transition={{ duration: 0.8, delay: 0.2 }}
               >
                 <motion.h1 
                   className="font-nunito font-black leading-tight text-4xl sm:text-5xl lg:text-6xl text-slate-900 tracking-tight w-full"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
+                  initial={{ opacity: 0, y: 30 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
                   transition={{ duration: 0.8, delay: 0.4 }}
                 >
                   Упрощаем повседневную жизнь преподавателей
@@ -109,8 +104,9 @@ export default function About() {
               </motion.div>
               <motion.div 
                 className="flex-shrink-0 hidden lg:block"
-                initial={{ opacity: 0, x: isMobile ? 0 : 30, y: isMobile ? 30 : 0 }}
-                animate={{ opacity: 1, x: 0, y: 0 }}
+                initial={{ opacity: 0, y: 40 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
                 transition={{ duration: 0.8, delay: 0.6 }}
               >
                 <div className="w-32 h-32 lg:w-48 lg:h-48">

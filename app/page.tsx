@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { motion } from "framer-motion";
@@ -14,17 +14,9 @@ import MobileNavigation from "../components/MobileNavigation";
 
 export default function Home() {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
 
   const openModal = () => setIsModalOpen(true);
   const closeModal = () => setIsModalOpen(false);
-
-  useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth < 768);
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
 
   return (
     <>
@@ -67,21 +59,24 @@ export default function Home() {
             
             <motion.section 
               className="flex flex-col gap-16 items-center justify-start text-center w-full"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6 }}
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.8 }}
             >
               <motion.div 
                 className="flex flex-col gap-6 items-center justify-start"
-                initial={{ opacity: 0, y: 30 }}
-                animate={{ opacity: 1, y: 0 }}
+                initial={{ opacity: 0, y: 40 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
                 transition={{ duration: 0.8, delay: 0.2 }}
               >
                 <div className="flex flex-col gap-2.5 items-center">
                   <motion.h1 
                     className="font-nunito font-black leading-tight text-4xl sm:text-5xl lg:text-6xl text-slate-900 tracking-tight"
-                    initial={{ opacity: 0, y: 40 }}
-                    animate={{ opacity: 1, y: 0 }}
+                    initial={{ opacity: 0, y: 50 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
                     transition={{ duration: 0.8, delay: 0.4 }}
                   >
                     <span className="block">Быстрая Проверка</span>
@@ -89,8 +84,9 @@ export default function Home() {
                   </motion.h1>
                   <motion.p 
                     className="font-inter text-lg text-slate-800 max-w-md leading-relaxed"
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
+                    initial={{ opacity: 0, y: 30 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
                     transition={{ duration: 0.6, delay: 0.6 }}
                   >
                     Приложение проверит, подсчитает баллы и оценит работу за тебя. Пока ты пьешь чай :)
@@ -98,8 +94,9 @@ export default function Home() {
                 </div>
                 <motion.div 
                   className="flex flex-col gap-2 items-center"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
+                  initial={{ opacity: 0, y: 30 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
                   transition={{ duration: 0.6, delay: 0.8 }}
                 >
                   <motion.button 
@@ -118,9 +115,10 @@ export default function Home() {
               </motion.div>
               <motion.div 
                 className="-mx-4 md:mx-0 w-full"
-                initial={{ opacity: 0, y: 40 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.8, delay: 1.0 }}
+                initial={{ opacity: 0, y: 50 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.8, delay: 0.2 }}
               >
                 <TeachersRepetitorsBlock />
               </motion.div>
@@ -174,8 +172,8 @@ export default function Home() {
             >
               <motion.div 
                 className="hidden md:block w-full max-w-[464px] aspect-square rounded-[48px] bg-slate-50"
-                initial={{ opacity: 0, x: isMobile ? 0 : -50, y: isMobile ? 30 : 0 }}
-                whileInView={{ opacity: 1, x: 0, y: 0 }}
+                initial={{ opacity: 0, y: 40 }}
+                whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.8, delay: 0.2 }}
               >
@@ -191,8 +189,8 @@ export default function Home() {
               </motion.div>
               <motion.div 
                 className="flex flex-col gap-8 items-center md:items-start w-full text-center md:text-left"
-                initial={{ opacity: 0, x: isMobile ? 0 : 50, y: isMobile ? 40 : 0 }}
-                whileInView={{ opacity: 1, x: 0, y: 0 }}
+                initial={{ opacity: 0, y: 50 }}
+                whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.8, delay: 0.4 }}
               >
