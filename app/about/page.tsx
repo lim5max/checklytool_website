@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { motion } from "framer-motion";
 import StructuredData from "../../components/StructuredData";
 import WaitlistModal from "../../components/WaitlistModal";
 import MobileNavigation from "../../components/MobileNavigation";
@@ -77,13 +78,33 @@ export default function About() {
 
           <main className="flex flex-col gap-16 items-center justify-start relative w-full">
             <div className="flex flex-col gap-6">
-            <section className="flex flex-col lg:flex-row gap-2 lg:gap-2 items-center justify-between w-full">
-              <div className="flex flex-col gap-6 items-center lg:items-start text-left ">
-                <h1 className="font-nunito font-black leading-tight text-4xl sm:text-5xl lg:text-6xl text-slate-900 tracking-tight w-full">
+            <motion.section 
+              className="flex flex-col lg:flex-row gap-2 lg:gap-2 items-center justify-between w-full"
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8 }}
+            >
+              <motion.div 
+                className="flex flex-col gap-6 items-center lg:items-start text-left"
+                initial={{ opacity: 0, x: -30 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.8, delay: 0.2 }}
+              >
+                <motion.h1 
+                  className="font-nunito font-black leading-tight text-4xl sm:text-5xl lg:text-6xl text-slate-900 tracking-tight w-full"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.8, delay: 0.4 }}
+                >
                   Упрощаем повседневную жизнь преподавателей
-                </h1>
-              </div>
-              <div className="flex-shrink-0 hidden lg:block">
+                </motion.h1>
+              </motion.div>
+              <motion.div 
+                className="flex-shrink-0 hidden lg:block"
+                initial={{ opacity: 0, x: 30 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.8, delay: 0.6 }}
+              >
                 <div className="w-32 h-32 lg:w-48 lg:h-48">
                   <Image
                     src="/images/Face.png"
@@ -95,11 +116,23 @@ export default function About() {
                     className="w-full h-full object-contain"
                   />
                 </div>
-              </div>
-            </section>
+              </motion.div>
+            </motion.section>
 
-            <section className="flex flex-col gap-8 items-center justify-start w-full">
-              <div className="w-full">
+            <motion.section 
+              className="flex flex-col gap-8 items-center justify-start w-full"
+              initial={{ opacity: 0, y: 40 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-100px" }}
+              transition={{ duration: 0.8 }}
+            >
+              <motion.div 
+                className="w-full"
+                initial={{ opacity: 0, scale: 0.95 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.8, delay: 0.2 }}
+              >
                 <Image
                   src="/images/About_preview_desktop.jpg"
                   alt="Checkly values"
@@ -118,12 +151,25 @@ export default function About() {
                   sizes="(max-width: 768px) 100vw, 0px"
                   className="block md:hidden w-full h-auto object-cover rounded-lg"
                 />
-              </div>
-            </section>
+              </motion.div>
+            </motion.section>
 </div> 
-            <section className="flex flex-col gap-12 items-center justify-start w-full">
-              {teamMembers.map((member) => (
-                <div key={member.id} className="flex flex-col lg:flex-row gap-8 items-start lg:items-start w-full max-w-4xl">
+            <motion.section 
+              className="flex flex-col gap-12 items-center justify-start w-full"
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 1 }}
+              viewport={{ once: true, margin: "-100px" }}
+              transition={{ duration: 0.8 }}
+            >
+              {teamMembers.map((member, index) => (
+                <motion.div 
+                  key={member.id} 
+                  className="flex flex-col lg:flex-row gap-8 items-start lg:items-start w-full max-w-4xl"
+                  initial={{ opacity: 0, y: 50 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.8, delay: index * 0.3 }}
+                >
                   <div className="lg:flex-shrink-0 ">
                     <div className="w-full h-80 lg:w-80 lg:h-[26rem] rounded-3xl bg-slate-100 aspect-[320/416]">
                       <Image
@@ -184,9 +230,9 @@ export default function About() {
                       </a>
                     </div>
                   </div>
-                </div>
+                </motion.div>
               ))}
-            </section>
+            </motion.section>
 
           </main>
 

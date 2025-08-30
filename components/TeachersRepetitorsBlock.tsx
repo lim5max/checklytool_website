@@ -1,11 +1,24 @@
 import Image from "next/image";
+import { motion } from "framer-motion";
 
 export default function TeachersRepetitorsBlock() {
   return (
     <div className=" md:mx-0">
-      <div className="flex flex-col gap-4 md:flex-row md:flex-wrap md:gap-5 items-center justify-center">
-        {/* Card 1: Учителям */}
-        <div className="bg-slate-50 h-[424px] w-full sm:w-[356px] rounded-3xl overflow-hidden relative p-0">
+      <motion.div 
+        className="flex flex-col gap-4 md:flex-row md:flex-wrap md:gap-5 items-center justify-center"
+        initial={{ opacity: 0 }}
+        whileInView={{ opacity: 1 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.6 }}
+      >
+        <motion.div 
+          className="bg-slate-50 h-[424px] w-full sm:w-[356px] rounded-3xl overflow-hidden relative p-0"
+          initial={{ opacity: 0, x: -30 }}
+          whileInView={{ opacity: 1, x: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.8, delay: 0.2 }}
+          whileHover={{ y: -5, transition: { duration: 0.2 } }}
+        >
           <div className="absolute top-7 px-[32px] py-1 z-10 text-left">
             <h3 className="font-nunito font-black text-2xl sm:text-[30px] text-[#096ff5] leading-tight">
               Учителям
@@ -26,10 +39,16 @@ export default function TeachersRepetitorsBlock() {
               decoding="async"
             />
           </div>
-        </div>
+        </motion.div>
 
-        {/* Card 2: Репетиторам */}
-        <div className="bg-slate-50 h-[424px] w-full sm:w-[356px] rounded-3xl overflow-hidden relative p-0">
+        <motion.div 
+          className="bg-slate-50 h-[424px] w-full sm:w-[356px] rounded-3xl overflow-hidden relative p-0"
+          initial={{ opacity: 0, x: 30 }}
+          whileInView={{ opacity: 1, x: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.8, delay: 0.4 }}
+          whileHover={{ y: -5, transition: { duration: 0.2 } }}
+        >
           <div className="absolute top-7 px-[32px] py-1 z-10 text-left">
             <h3 className="font-nunito font-black text-2xl sm:text-[30px] text-green-500 leading-tight">
               Репетиторам
@@ -50,8 +69,8 @@ export default function TeachersRepetitorsBlock() {
               decoding="async"
             />
           </div>
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
     </div>
   );
 }
