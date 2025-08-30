@@ -60,12 +60,6 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ru">
-      <head>
-        <link rel="prefetch" href="/images/logo.png" />
-        <link rel="prefetch" href="/images/teacher.png" />
-        <link rel="prefetch" href="/about" />
-        <link rel="dns-prefetch" href="https://mc.yandex.ru" />
-      </head>
       <body
         className={`${inter.variable} ${nunito.variable} antialiased`}
       >

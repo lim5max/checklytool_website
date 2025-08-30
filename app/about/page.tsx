@@ -31,15 +31,6 @@ const teamMembers = [
   }
 ];
 
-const values = [
-  { text: "честный подход", color: "bg-green-500" },
-  { text: "новые технологии", color: "bg-blue-500" },
-  { text: "фокус на людях", color: "bg-pink-500" },
-  { text: "опыт в образовании", color: "bg-yellow-400" },
-  { text: "неяркости", color: "bg-orange-500" },
-  { text: "гибкость", color: "bg-red-500" },
-  { text: "саморазвитие", color: "bg-gray-500" }
-];
 
 export default function About() {
   const [isModalOpen, setIsModalOpen] = useState(false);

@@ -23,7 +23,7 @@ const steps = [
   }
 ];
 
-const HowItWorksStep = memo(({ 
+const HowItWorksStep = memo(function HowItWorksStep({ 
   step, 
   title, 
   description, 
@@ -35,7 +35,8 @@ const HowItWorksStep = memo(({
   description: string; 
   isActive: boolean;
   onClick: () => void;
-}) => (
+}) {
+  return (
   <div 
     className={`flex gap-3 items-start cursor-pointer transition-opacity duration-300 ${!isActive && "opacity-40"}`}
     onClick={onClick}
@@ -60,7 +61,8 @@ const HowItWorksStep = memo(({
       )}
     </div>
   </div>
-));
+  );
+});
 
 export default function HowItWorksSection() {
   const [activeStep, setActiveStep] = useState(1);
