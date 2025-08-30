@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, memo, useCallback } from "react";
 import Image from "next/image";
 
 const steps = [
@@ -23,7 +23,7 @@ const steps = [
   }
 ];
 
-const HowItWorksStep = ({ 
+const HowItWorksStep = memo(({ 
   step, 
   title, 
   description, 
@@ -60,13 +60,14 @@ const HowItWorksStep = ({
       )}
     </div>
   </div>
-);
+));
 
 export default function HowItWorksSection() {
   const [activeStep, setActiveStep] = useState(1);
   const sectionRef = useRef<HTMLElement>(null);
   const debounceRef = useRef<number | null>(null);
   const activeStepRef = useRef<number>(1);
+  const throttleRef = useRef<number | null>(null);
   const DEBOUNCE_MS = 150;
   useEffect(() => {
     activeStepRef.current = activeStep;
@@ -81,8 +82,12 @@ export default function HowItWorksSection() {
     }
 
     const handleScroll = () => {
-      const section = sectionRef.current;
-      if (!section) return;
+      if (throttleRef.current) return;
+      
+      throttleRef.current = requestAnimationFrame(() => {
+        throttleRef.current = null;
+        const section = sectionRef.current;
+        if (!section) return;
 
       const start = section.offsetTop;
       const end = start + section.offsetHeight - window.innerHeight;
@@ -123,6 +128,7 @@ export default function HowItWorksSection() {
         setActiveStep(candidateStep);
         debounceRef.current = null;
       }, DEBOUNCE_MS);
+      });
     };
 
     window.addEventListener('scroll', handleScroll, { passive: true });
@@ -135,10 +141,14 @@ export default function HowItWorksSection() {
         window.clearTimeout(debounceRef.current);
         debounceRef.current = null;
       }
+      if (throttleRef.current) {
+        cancelAnimationFrame(throttleRef.current);
+        throttleRef.current = null;
+      }
     };
   }, []);
 
-  const scrollToStep = (stepId: number) => {
+  const scrollToStep = useCallback((stepId: number) => {
     const section = sectionRef.current;
     if (!section) return;
 
@@ -156,7 +166,7 @@ export default function HowItWorksSection() {
     }
 
     window.scrollTo({ top: targetY, behavior: "smooth" });
-  };
+  }, []);
 
   return (
     <section ref={sectionRef} className="relative h-auto md:h-[300vh] w-full">
@@ -175,13 +185,15 @@ export default function HowItWorksSection() {
                   </h3>
                 </div>
               </div>
-              <div className="mt-3">
+              <div className="mt-3 aspect-[529/424]">
                 <Image
                   src={step.image}
                   alt={`Step ${step.id} illustration`}
                   width={529}
                   height={424}
-                  className="object-cover rounded-lg w-full h-auto"
+                  loading="lazy"
+                  sizes="(max-width: 640px) 100vw, 529px"
+                  className="object-cover rounded-lg w-full h-full"
                 />
               </div>
             </div>
@@ -211,14 +223,16 @@ export default function HowItWorksSection() {
           </div>
           
           <div className="w-full lg:w-3/5">
-            <div className="relative">
+            <div className="relative aspect-[529/424]">
               <Image
                 src={currentStep.image}
                 alt={`Step ${activeStep} illustration`}
                 width={529}
                 height={424}
-                className="object-cover rounded-lg w-full h-auto transition-opacity duration-300 ease-in-out"
-                key={activeStep} // Force re-render for smooth transition
+                loading="lazy"
+                sizes="(max-width: 1024px) 100vw, 529px"
+                className="object-cover rounded-lg w-full h-full transition-opacity duration-300 ease-in-out"
+                key={activeStep}
               />
             </div>
           </div>

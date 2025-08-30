@@ -64,6 +64,7 @@ export default function About() {
                     alt="Checkly" 
                     width={120} 
                     height={40}
+                    priority
                     className="object-contain"
                   />
                 </Link>
@@ -98,6 +99,8 @@ export default function About() {
                     alt="Teacher face"
                     width={192}
                     height={192}
+                    priority
+                    sizes="(max-width: 1024px) 0px, 192px"
                     className="w-full h-full object-contain"
                   />
                 </div>
@@ -111,6 +114,8 @@ export default function About() {
                   alt="Checkly values"
                   width={1000}
                   height={400}
+                  priority
+                  sizes="(max-width: 768px) 0px, (max-width: 1200px) 80vw, 1000px"
                   className="hidden md:block w-full h-auto object-cover rounded-lg"
                 />
                 <Image
@@ -118,6 +123,8 @@ export default function About() {
                   alt="Checkly values"
                   width={400}
                   height={400}
+                  priority
+                  sizes="(max-width: 768px) 100vw, 0px"
                   className="block md:hidden w-full h-auto object-cover rounded-lg"
                 />
               </div>
@@ -127,13 +134,15 @@ export default function About() {
               {teamMembers.map((member) => (
                 <div key={member.id} className="flex flex-col lg:flex-row gap-8 items-start lg:items-start w-full max-w-4xl">
                   <div className="lg:flex-shrink-0 ">
-                    <div className="w-full h-80 lg:w-80 lg:h-[26rem] rounded-3xl  bg-slate-100">
+                    <div className="w-full h-80 lg:w-80 lg:h-[26rem] rounded-3xl bg-slate-100 aspect-[320/416]">
                       <Image
                         src={member.image}
                         alt={member.name}
                         width={320}
                         height={416}
-                        className="w-full h-full object-fit"
+                        loading="lazy"
+                        sizes="(max-width: 1024px) 100vw, 320px"
+                        className="w-full h-full object-cover rounded-3xl"
                       />
                     </div>
                   </div>
@@ -174,6 +183,7 @@ export default function About() {
                             alt={member.socialIcon === 'vk' ? 'VKontakte' : 'Telegram'}
                             width={42}
                             height={42}
+                            loading="lazy"
                             className="w-full h-full object-contain hover:opacity-80 transition-opacity"
                           />
                         </div>

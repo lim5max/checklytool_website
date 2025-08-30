@@ -14,12 +14,16 @@ export default function TeachersRepetitorsBlock() {
               Экономь до 3 часов в день. Загружай фото — и через 15 секунд получай результат
             </p>
           </div>
-          <div className="absolute bottom-0 left-0 w-full h-[239px]">
+          <div className="absolute bottom-0 left-0 w-full h-[239px] aspect-[356/239]">
             <Image
               src="/images/teacher.png"
               alt="Illustration for teachers"
-              fill
-              className="object-contain object-bottom"
+              width={356}
+              height={239}
+              priority
+              sizes="(max-width: 640px) 100vw, 356px"
+              className="object-contain object-bottom w-full h-full"
+              decoding="async"
             />
           </div>
         </div>
@@ -34,12 +38,16 @@ export default function TeachersRepetitorsBlock() {
               Отправляй родителям объективный результат сразу после урока
             </p>
           </div>
-          <div className="absolute bottom-0 left-0 w-full h-[236px]">
+          <div className="absolute bottom-0 left-0 w-full h-[236px] aspect-[356/236]">
             <Image
               src="/images/learning-illustration.png"
               alt="Illustration for repetitors"
-              fill
-              className="object-contain object-bottom"
+              width={356}
+              height={236}
+              loading="lazy"
+              sizes="(max-width: 640px) 100vw, 356px"
+              className="object-contain object-bottom w-full h-full"
+              decoding="async"
             />
           </div>
         </div>

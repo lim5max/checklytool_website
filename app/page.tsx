@@ -34,6 +34,7 @@ export default function Home() {
                     alt="Checkly" 
                     width={120} 
                     height={40}
+                    priority
                     className="object-contain"
                   />
                 </Link>
@@ -94,7 +95,12 @@ export default function Home() {
                 alt="Problems we solve" 
                 width={732} 
                 height={490}
+                loading="lazy"
+                placeholder="blur"
+                blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAAGAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAhEAACAQMDBQAAAAAAAAAAAAABAgMABAUGIWEREiMxUf/EABUBAQEAAAAAAAAAAAAAAAAAAAMF/8QAGhEAAgIDAAAAAAAAAAAAAAAAAAECEgMRkf/aAAwDAQACEQMRAD8AltJagyeH0AthI5xdrLcNM91BF5pX2HaH9bcfaSXWGaRmknyLli+YVvk="
+                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 80vw, 732px"
                 className="object-cover rounded-lg w-full h-auto max-w-3xl"
+                decoding="async"
               />
             </section>
 
@@ -105,6 +111,8 @@ export default function Home() {
                   alt="CTA illustration" 
                   width={464} 
                   height={485}
+                  loading="lazy"
+                  sizes="(max-width: 768px) 0px, 464px"
                   className="object-cover w-full h-auto"
                 />
               </div>
