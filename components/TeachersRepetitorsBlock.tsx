@@ -1,7 +1,17 @@
 import Image from "next/image";
 import { motion } from "framer-motion";
+import { useEffect, useState } from "react";
 
 export default function TeachersRepetitorsBlock() {
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 640);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
   return (
     <div className=" md:mx-0">
       <motion.div 
@@ -13,8 +23,8 @@ export default function TeachersRepetitorsBlock() {
       >
         <motion.div 
           className="bg-slate-50 h-[424px] w-full sm:w-[356px] rounded-3xl overflow-hidden relative p-0"
-          initial={{ opacity: 0, x: -30 }}
-          whileInView={{ opacity: 1, x: 0 }}
+          initial={{ opacity: 0, x: isMobile ? 0 : -30, y: isMobile ? 30 : 0 }}
+          whileInView={{ opacity: 1, x: 0, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.8, delay: 0.2 }}
           whileHover={{ y: -5, transition: { duration: 0.2 } }}
@@ -43,10 +53,10 @@ export default function TeachersRepetitorsBlock() {
 
         <motion.div 
           className="bg-slate-50 h-[424px] w-full sm:w-[356px] rounded-3xl overflow-hidden relative p-0"
-          initial={{ opacity: 0, x: 30 }}
-          whileInView={{ opacity: 1, x: 0 }}
+          initial={{ opacity: 0, x: isMobile ? 0 : 30, y: isMobile ? 30 : 0 }}
+          whileInView={{ opacity: 1, x: 0, y: 0 }}
           viewport={{ once: true }}
-          transition={{ duration: 0.8, delay: 0.4 }}
+          transition={{ duration: 0.8, delay: isMobile ? 0.2 : 0.4 }}
           whileHover={{ y: -5, transition: { duration: 0.2 } }}
         >
           <div className="absolute top-7 px-[32px] py-1 z-10 text-left">
