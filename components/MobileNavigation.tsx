@@ -105,22 +105,23 @@ export default function MobileNavigation({ onOpenModal }: MobileNavigationProps)
                 </motion.div>
               </motion.div>
             </div>
-            <motion.button 
-              onClick={() => {
-                closeMenu();
-                onOpenModal();
-              }}
-              className="bg-[#096ff5] hover:bg-blue-600 transition-colors box-border content-stretch flex gap-2 h-[172px] items-center justify-center overflow-clip px-5 py-3 relative rounded-[1200px] shadow-lg shrink-0 w-full"
+            <motion.div
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4, delay: 0.4 }}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
             >
-              <div className="flex flex-col font-inter font-medium justify-center leading-[0] not-italic relative shrink-0 text-white text-[24px] text-nowrap">
-                <p className="leading-[1.6] whitespace-pre">Оставить заявку</p>
-              </div>
-            </motion.button>
+              <Link 
+                href="/auth/login"
+                onClick={closeMenu}
+                className="bg-[#096ff5] hover:bg-blue-600 transition-colors box-border content-stretch flex gap-2 h-[172px] items-center justify-center overflow-clip px-5 py-3 relative rounded-[1200px] shadow-lg shrink-0 w-full"
+              >
+                <div className="flex flex-col font-inter font-medium justify-center leading-[0] not-italic relative shrink-0 text-white text-[24px] text-nowrap">
+                  <p className="leading-[1.6] whitespace-pre">Войти</p>
+                </div>
+              </Link>
+            </motion.div>
           </div>
         </motion.div>
         )}

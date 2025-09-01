@@ -67,12 +67,12 @@ export default function About() {
                   О проекте
                 </Link>
               </div>
-              <button 
-                onClick={openModal}
-                className="bg-slate-900 hover:bg-slate-800 transition-colors text-white font-inter font-medium text-base px-5 py-3 rounded-full shadow-md"
+              <Link 
+                href="/auth/login"
+                className="bg-slate-900 hover:bg-slate-800 transition-colors text-white font-inter font-medium text-base px-5 py-3 rounded-full shadow-md inline-block"
               >
-                Попробовать
-              </button>
+                Войти
+              </Link>
             </div>
           </header>
 

@@ -46,12 +46,12 @@ export default function Home() {
                   О проекте
                 </Link>
               </div>
-              <button 
-                onClick={openModal}
-                className="bg-slate-900 hover:bg-slate-800 transition-colors text-white font-inter font-medium text-base px-5 py-3 rounded-full shadow-md"
+              <Link 
+                href="/auth/login"
+                className="bg-slate-900 hover:bg-slate-800 transition-colors text-white font-inter font-medium text-base px-5 py-3 rounded-full shadow-md inline-block"
               >
-                Попробовать
-              </button>
+                Войти
+              </Link>
             </div>
           </header>
 
@@ -99,15 +99,18 @@ export default function Home() {
                   viewport={{ once: true }}
                   transition={{ duration: 0.6, delay: 0.8 }}
                 >
-                  <motion.button 
-                    onClick={openModal}
-                    className="bg-[#096ff5] hover:bg-blue-600 transition-colors text-white font-inter font-medium text-base px-6 py-3.5 rounded-full shadow-lg"
+                  <motion.div
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                     transition={{ type: "spring", stiffness: 400, damping: 17 }}
                   >
-                    Загрузить работы
-                  </motion.button>
+                    <Link 
+                      href="/auth/login"
+                      className="bg-[#096ff5] hover:bg-blue-600 transition-colors text-white font-inter font-medium text-base px-6 py-3.5 rounded-full shadow-lg inline-block"
+                    >
+                      Начать работу
+                    </Link>
+                  </motion.div>
                   <p className="font-inter font-medium text-xs text-slate-900">
                     Всего 200 ₽ в мес.
                   </p>
@@ -215,9 +218,7 @@ export default function Home() {
                     Оформи подписку на сервис за 200 ₽ в месяц, <br className="hidden md:inline" />пока мы запускаемся. Потом станет дороже)
                   </motion.p>
                 </div>
-                <motion.button 
-                  onClick={openModal}
-                  className="bg-[#096ff5] hover:bg-blue-600 transition-colors w-full text-white font-inter font-medium text-2xl px-5 py-8 rounded-full shadow-lg h-[172px]"
+                <motion.div 
                   initial={{ opacity: 0, y: 30 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
@@ -225,8 +226,13 @@ export default function Home() {
                   whileHover={{ scale: 1.02, boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)" }}
                   whileTap={{ scale: 0.98 }}
                 >
-                  Оставить заявку
-                </motion.button>
+                  <Link 
+                    href="/auth/login"
+                    className="bg-[#096ff5] hover:bg-blue-600 transition-colors w-full text-white font-inter font-medium text-2xl px-5 py-8 rounded-full shadow-lg h-[172px] flex items-center justify-center"
+                  >
+                    Начать сейчас
+                  </Link>
+                </motion.div>
               </motion.div>
             </motion.section>
 
