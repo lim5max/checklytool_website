@@ -59,6 +59,13 @@ export default function CheckPage({ params }: CheckPageProps) {
     const getParams = async () => {
       const resolvedParams = await params
       setCheckId(resolvedParams.id)
+      
+      // Check for tab parameter in URL
+      const urlParams = new URLSearchParams(window.location.search)
+      const tabParam = urlParams.get('tab')
+      if (tabParam && ['variants', 'submissions', 'settings'].includes(tabParam)) {
+        setActiveTab(tabParam)
+      }
     }
     getParams()
   }, [params])
@@ -80,7 +87,14 @@ export default function CheckPage({ params }: CheckPageProps) {
       }
 
       const data = await response.json()
-      setCheckData(data.check)
+      
+      // Transform check_variants to variants for the component
+      const transformedCheck = {
+        ...data.check,
+        variants: data.check.check_variants || []
+      }
+      
+      setCheckData(transformedCheck)
       
     } catch (error) {
       console.error('Error loading check data:', error)
@@ -232,7 +246,24 @@ export default function CheckPage({ params }: CheckPageProps) {
         </Card>
 
         {/* Быстрые действия */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <Button
+            onClick={() => {
+              setActiveTab('variants')
+              // Scroll to the answers section after a short delay
+              setTimeout(() => {
+                const answersSection = document.querySelector('[data-answers-section]')
+                if (answersSection) {
+                  answersSection.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                }
+              }, 100)
+            }}
+            className="h-20 flex-col gap-2 bg-blue-600 hover:bg-blue-700"
+          >
+            <FileText className="h-6 w-6" />
+            Настроить ответы
+          </Button>
+          
           <Button
             onClick={() => router.push(`/dashboard/checks/${checkData.id}/submit`)}
             className="h-20 flex-col gap-2"

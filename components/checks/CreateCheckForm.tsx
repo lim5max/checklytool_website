@@ -55,6 +55,7 @@ const CLASS_LEVELS = [
 export function CreateCheckForm() {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
+  const [configureAnswers, setConfigureAnswers] = useState(true)
   
   const form = useForm<CreateCheckFormData>({
     resolver: zodResolver(createCheckSchema),
@@ -99,7 +100,13 @@ export function CreateCheckForm() {
       const result = await response.json()
       
       toast.success('Проверочная работа создана успешно!')
-      router.push(`/dashboard/checks/${result.check.id}`)
+      
+      // Navigate to check management or variant setup based on user preference
+      if (configureAnswers) {
+        router.push(`/dashboard/checks/${result.check.id}?tab=variants`)
+      } else {
+        router.push(`/dashboard/checks/${result.check.id}`)
+      }
       
     } catch (error) {
       console.error('Error creating check:', error)
@@ -242,7 +249,11 @@ export function CreateCheckForm() {
                           min="1"
                           max="100"
                           {...field}
-                          onChange={(e) => field.onChange(parseInt(e.target.value))}
+                          value={field.value || ''}
+                          onChange={(e) => {
+                            const value = e.target.value === '' ? '' : parseInt(e.target.value)
+                            field.onChange(isNaN(value as number) ? '' : value)
+                          }}
                         />
                       </FormControl>
                       <FormMessage />
@@ -263,7 +274,11 @@ export function CreateCheckForm() {
                         min="1"
                         max="20"
                         {...field}
-                        onChange={(e) => field.onChange(parseInt(e.target.value))}
+                        value={field.value || ''}
+                        onChange={(e) => {
+                          const value = e.target.value === '' ? '' : parseInt(e.target.value)
+                          field.onChange(isNaN(value as number) ? '' : value)
+                        }}
                       />
                     </FormControl>
                     <FormDescription>
@@ -330,7 +345,11 @@ export function CreateCheckForm() {
                               min="0"
                               max="100"
                               {...field}
-                              onChange={(e) => field.onChange(parseInt(e.target.value))}
+                              value={field.value || ''}
+                              onChange={(e) => {
+                                const value = e.target.value === '' ? '' : parseInt(e.target.value)
+                                field.onChange(isNaN(value as number) ? '' : value)
+                              }}
                             />
                             <span className="text-sm text-gray-500">%</span>
                           </div>
@@ -381,18 +400,37 @@ export function CreateCheckForm() {
           </Card>
 
           {/* Кнопки */}
-          <div className="flex flex-col sm:flex-row gap-4 justify-end">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => router.back()}
-              disabled={isLoading}
-            >
-              Отмена
-            </Button>
-            <Button type="submit" disabled={isLoading} className="min-w-[200px]">
-              {isLoading ? 'Создаём...' : 'Создать проверочную работу'}
-            </Button>
+          <div className="space-y-4">
+            <div className="flex items-center space-x-2 p-4 bg-blue-50 rounded-lg">
+              <input
+                type="checkbox"
+                id="configure-answers"
+                checked={configureAnswers}
+                onChange={(e) => setConfigureAnswers(e.target.checked)}
+                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+              />
+              <label htmlFor="configure-answers" className="text-sm font-medium text-blue-900">
+                Настроить эталонные ответы сразу после создания
+              </label>
+            </div>
+            <div className="text-sm text-gray-600 bg-yellow-50 p-3 rounded-lg border border-yellow-200">
+              ⚠️ <strong>Важно:</strong> После создания обязательно добавьте правильные ответы в разделе <br/>
+              &quot;Варианты и ответы&quot; для работы нейросети.
+            </div>
+            
+            <div className="flex flex-col sm:flex-row gap-4 justify-end">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => router.back()}
+                disabled={isLoading}
+              >
+                Отмена
+              </Button>
+              <Button type="submit" disabled={isLoading} className="min-w-[200px]">
+                {isLoading ? 'Создаём...' : 'Создать проверочную работу'}
+              </Button>
+            </div>
           </div>
         </form>
       </Form>

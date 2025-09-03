@@ -3,6 +3,18 @@
     "figma-dev-mode": {
       "type": "sse",
       "url": "http://127.0.0.1:3845/sse"
+    },
+    "supabase": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@supabase/mcp-server-supabase@latest",
+        "--read-only",
+        "--project-ref=gdcwxvylkbepshoxdlys"
+      ],
+      "env": {
+        "SUPABASE_ACCESS_TOKEN": "sbp_dcf6ef6f12ce4b5231e7c8eb2248e77ad45fa04f"
+      }
     }
   }
 }

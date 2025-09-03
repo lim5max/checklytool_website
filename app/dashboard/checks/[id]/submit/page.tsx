@@ -103,35 +103,6 @@ export default function SubmissionPage({ params }: SubmissionPageProps) {
     setActiveTab('upload') // Переключаемся на вкладку загрузки
   }
 
-  const simulateUpload = async (file: UploadedFile): Promise<void> => {
-    return new Promise((resolve) => {
-      let progress = 0
-      const interval = setInterval(() => {
-        progress += Math.random() * 15
-        if (progress >= 100) {
-          progress = 100
-          clearInterval(interval)
-          
-          // Обновляем статус файла
-          setUploadedFiles(prev => prev.map(f => 
-            f.id === file.id 
-              ? { ...f, status: 'completed', progress: 100, url: `uploaded_${f.id}` }
-              : f
-          ))
-          
-          resolve()
-        } else {
-          // Обновляем прогресс
-          setUploadedFiles(prev => prev.map(f => 
-            f.id === file.id 
-              ? { ...f, status: 'uploading', progress: Math.round(progress) }
-              : f
-          ))
-        }
-      }, 100 + Math.random() * 200)
-    })
-  }
-
   const handleSubmit = async () => {
     if (uploadedFiles.length === 0) {
       toast.error('Загрузите хотя бы одно изображение')
@@ -147,33 +118,24 @@ export default function SubmissionPage({ params }: SubmissionPageProps) {
     setUploadProgress(0)
 
     try {
-      // Сначала загружаем все файлы
-      const pendingFiles = uploadedFiles.filter(f => f.status === 'pending')
-      
-      for (let i = 0; i < pendingFiles.length; i++) {
-        const file = pendingFiles[i]
-        await simulateUpload(file)
-        setUploadProgress(Math.round(((i + 1) / pendingFiles.length) * 80))
-      }
-
-      // Создаем FormData для отправки
+      // Create FormData for submission
       const formData = new FormData()
       formData.append('student_name', studentName)
       formData.append('student_class', studentClass)
       
-      uploadedFiles.forEach((uploadedFile, index) => {
+      uploadedFiles.forEach((uploadedFile) => {
         formData.append('images', uploadedFile.file)
       })
 
-      setUploadProgress(85)
+      setUploadProgress(25)
 
-      // Отправляем на сервер
+      // Send to server
       const response = await fetch(`/api/checks/${checkId}/submissions`, {
         method: 'POST',
         body: formData
       })
 
-      setUploadProgress(95)
+      setUploadProgress(75)
 
       if (!response.ok) {
         const error = await response.json()
@@ -186,7 +148,7 @@ export default function SubmissionPage({ params }: SubmissionPageProps) {
       
       toast.success('Работа успешно загружена!')
       
-      // Запускаем обработку
+      // Start processing
       setTimeout(async () => {
         try {
           const evalResponse = await fetch(`/api/submissions/${result.submission.id}/evaluate`, {

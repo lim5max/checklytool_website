@@ -75,14 +75,65 @@ export function VariantManager({
     }
   }, [variant, form])
 
-  // Если варианты не загружены или пустые, показываем loading или сообщение
+  // Если варианты не загружены или пустые, показываем кнопку для создания
   if (!variants || variants.length === 0) {
     return (
       <Card>
         <CardContent className="flex items-center justify-center h-48">
           <div className="text-center text-gray-500">
             <AlertCircle className="h-8 w-8 mx-auto mb-2" />
-            <p>Варианты не найдены или еще загружаются</p>
+            <p className="mb-4">Варианты не найдены</p>
+            <Button 
+              onClick={async () => {
+                // Create variants automatically
+                try {
+                  setIsLoading(true)
+                  
+                  // First, try to fetch existing variants to see if any already exist
+                  const checkResponse = await fetch(`/api/checks/${checkId}`)
+                  if (checkResponse.ok) {
+                    const checkData = await checkResponse.json()
+                    if (checkData.check.check_variants && checkData.check.check_variants.length > 0) {
+                      // Variants exist, just update the parent component
+                      onVariantUpdate(checkData.check.check_variants)
+                      toast.success('Варианты найдены! Можно добавлять ответы')
+                      return
+                    }
+                  }
+                  
+                  // If no variants found, create a new one
+                  const response = await fetch(`/api/checks/${checkId}/variants`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      variant_number: 1,
+                      reference_answers: {},
+                      reference_image_urls: []
+                    })
+                  })
+                  
+                  if (response.ok) {
+                    const result = await response.json()
+                    onVariantUpdate([result.variant])
+                    toast.success('Вариант создан! Теперь можно добавить ответы')
+                  } else {
+                    const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+                    console.error('API Error:', errorData)
+                    throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`)
+                  }
+                } catch (error) {
+                  console.error('Error creating variant:', error)
+                  const errorMessage = error instanceof Error ? error.message : 'Ошибка при создании варианта'
+                  toast.error(errorMessage)
+                } finally {
+                  setIsLoading(false)
+                }
+              }}
+              disabled={isLoading}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              {isLoading ? 'Создаем...' : 'Создать вариант'}
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -113,6 +164,13 @@ export function VariantManager({
     setIsLoading(true)
     
     try {
+      console.log('[FRONTEND] Saving answers:', {
+        checkId,
+        variantId: variant.id,
+        data,
+        payload: { reference_answers: data.answers }
+      })
+      
       const response = await fetch(`/api/checks/${checkId}/variants/${variant.id}`, {
         method: 'PUT',
         headers: {
@@ -124,9 +182,34 @@ export function VariantManager({
       })
 
       if (!response.ok) {
-        throw new Error('Не удалось сохранить ответы')
+        console.error('[FRONTEND] Response not OK:', {
+          status: response.status,
+          statusText: response.statusText,
+          headers: Object.fromEntries(response.headers.entries()),
+          url: response.url
+        })
+        
+        let errorData
+        try {
+          const text = await response.text()
+          console.error('[FRONTEND] Response body:', text)
+          errorData = text ? JSON.parse(text) : { error: 'No response body' }
+        } catch (parseError) {
+          console.error('[FRONTEND] Failed to parse response:', parseError)
+          errorData = { error: 'Invalid response format' }
+        }
+        
+        console.error('API Error Details:', {
+          status: response.status,
+          statusText: response.statusText,
+          errorData,
+          url: `/api/checks/${checkId}/variants/${variant.id}`
+        })
+        throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`)
       }
 
+      const result = await response.json()
+      
       // Update local state
       const updatedVariants = variants.map(v => 
         v.id === variant.id 
@@ -139,7 +222,7 @@ export function VariantManager({
       
     } catch (error) {
       console.error('Error saving answers:', error)
-      toast.error('Ошибка при сохранении ответов')
+      toast.error(error instanceof Error ? error.message : 'Ошибка при сохранении ответов')
     } finally {
       setIsLoading(false)
     }
@@ -155,7 +238,6 @@ export function VariantManager({
       Array.from(files).forEach(file => {
         formData.append('images', file)
       })
-      formData.append('variant_id', variant.id)
 
       const response = await fetch(`/api/checks/${checkId}/variants/${variant.id}/images`, {
         method: 'POST',
@@ -163,7 +245,8 @@ export function VariantManager({
       })
 
       if (!response.ok) {
-        throw new Error('Не удалось загрузить изображения')
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Не удалось загрузить изображения')
       }
 
       const result = await response.json()
@@ -171,16 +254,16 @@ export function VariantManager({
       // Update local state
       const updatedVariants = variants.map(v => 
         v.id === variant.id 
-          ? { ...v, reference_image_urls: result.image_urls }
+          ? { ...v, reference_image_urls: result.variant.reference_image_urls }
           : v
       )
       onVariantUpdate(updatedVariants)
       
-      toast.success('Изображения загружены')
+      toast.success(result.message || 'Изображения загружены')
       
     } catch (error) {
       console.error('Error uploading images:', error)
-      toast.error('Ошибка при загрузке изображений')
+      toast.error(error instanceof Error ? error.message : 'Ошибка при загрузке изображений')
     } finally {
       setUploadingImages(false)
     }
@@ -197,47 +280,123 @@ export function VariantManager({
       })
 
       if (!response.ok) {
-        throw new Error('Не удалось удалить изображение')
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Не удалось удалить изображение')
       }
+
+      const result = await response.json()
 
       // Update local state
       const updatedVariants = variants.map(v => 
         v.id === variant.id 
-          ? { 
-              ...v, 
-              reference_image_urls: v.reference_image_urls?.filter(url => url !== imageUrl) 
-            }
+          ? { ...v, reference_image_urls: result.variant.reference_image_urls }
           : v
       )
       onVariantUpdate(updatedVariants)
       
-      toast.success('Изображение удалено')
+      toast.success(result.message || 'Изображение удалено')
       
     } catch (error) {
       console.error('Error removing image:', error)
-      toast.error('Ошибка при удалении изображения')
+      toast.error(error instanceof Error ? error.message : 'Ошибка при удалении изображения')
     }
   }
 
   const generateQuestionInputs = () => {
     const inputs = []
+    const hasAnyAnswers = variant?.reference_answers && Object.keys(variant.reference_answers).length > 0
+    
     for (let i = 1; i <= totalQuestions; i++) {
+      const currentAnswer = variant?.reference_answers?.[i.toString()] || ''
+      
       inputs.push(
         <div key={i} className="flex items-center gap-3">
-          <Label className="min-w-[60px] text-right">{i}.</Label>
+          <Label className="min-w-[60px] text-right font-medium">{i}.</Label>
           <Input
-            placeholder="Правильный ответ"
+            placeholder={`Правильный ответ на задание ${i}`}
             {...form.register(`answers.${i}`)}
-            className="flex-1"
+            className={`flex-1 ${!currentAnswer ? 'border-orange-300 bg-orange-50' : 'border-green-300 bg-green-50'}`}
           />
+          {currentAnswer && (
+            <div className="text-green-600 text-sm">✓</div>
+          )}
         </div>
       )
     }
+    
+    // Add status indicator at the top
+    const filledAnswers = Object.keys(variant?.reference_answers || {}).filter(key => 
+      variant?.reference_answers?.[key]?.trim()
+    ).length
+    
+    if (!hasAnyAnswers) {
+      inputs.unshift(
+        <div key="status" className="p-3 bg-orange-100 border border-orange-300 rounded-lg mb-4">
+          <div className="flex items-center gap-2 text-orange-800">
+            <AlertCircle className="h-4 w-4" />
+            <span className="font-medium">Ответы ещё не заполнены</span>
+          </div>
+          <p className="text-sm text-orange-700 mt-1">
+            Введите правильные ответы на все {totalQuestions} заданий и нажмите &quot;Сохранить&quot;
+          </p>
+        </div>
+      )
+    } else if (filledAnswers < totalQuestions) {
+      inputs.unshift(
+        <div key="status" className="p-3 bg-yellow-100 border border-yellow-300 rounded-lg mb-4">
+          <div className="flex items-center gap-2 text-yellow-800">
+            <AlertCircle className="h-4 w-4" />
+            <span className="font-medium">Заполнено {filledAnswers} из {totalQuestions} ответов</span>
+          </div>
+          <p className="text-sm text-yellow-700 mt-1">
+            Добавьте остальные ответы для полной настройки автоматической проверки
+          </p>
+        </div>
+      )
+    } else {
+      inputs.unshift(
+        <div key="status" className="p-3 bg-green-100 border border-green-300 rounded-lg mb-4">
+          <div className="flex items-center gap-2 text-green-800">
+            <div className="text-green-600">✅</div>
+            <span className="font-medium">Все ответы заполнены!</span>
+          </div>
+          <p className="text-sm text-green-700 mt-1">
+            Автоматическая проверка AI готова к использованию
+          </p>
+        </div>
+      )
+    }
+    
     return inputs
   }
 
   return (
     <div className="space-y-6">
+      {/* Основная инструкция */}
+      <Card className="border-blue-200 bg-blue-50">
+        <CardContent className="p-4">
+          <div className="flex items-start gap-3">
+            <div className="flex-shrink-0">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 text-white text-sm font-bold">
+                ℹ️
+              </div>
+            </div>
+            <div className="flex-1">
+              <h3 className="font-semibold text-blue-900 mb-1">
+                Настройка эталонных ответов
+              </h3>
+              <p className="text-sm text-blue-700">
+                Введите правильные ответы на все задания в полях ниже. 
+                Если у вас несколько вариантов, настройте ответы для каждого.
+              </p>
+              <div className="flex items-center gap-4 mt-2 text-xs text-blue-600">
+                <span>• Ответы могут быть текстовыми (&quot;Париж&quot;) или буквенными (&quot;A&quot;)</span>
+                <span>• Не забудьте нажать &quot;Сохранить ответы&quot;</span>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
       {/* Навигация по вариантам */}
       <Card>
         <CardHeader>
@@ -268,21 +427,27 @@ export function VariantManager({
       </Card>
 
       {/* Эталонные ответы */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <span>Эталонные ответы - Вариант {variant.variant_number}</span>
+      <Card className="border-green-200" data-answers-section>
+        <CardHeader className="bg-green-50">
+          <CardTitle className="flex items-center justify-between text-green-900">
+            <span className="flex items-center gap-2">
+              <div className="w-6 h-6 bg-green-600 text-white rounded-full flex items-center justify-center text-sm font-bold">
+                {variant.variant_number}
+              </div>
+              Эталонные ответы - Вариант {variant.variant_number}
+            </span>
             <Button
               variant="outline"
               size="sm"
               onClick={() => setShowAnswers(!showAnswers)}
+              className="text-green-700 border-green-300 hover:bg-green-100"
             >
               {showAnswers ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               {showAnswers ? 'Скрыть' : 'Показать'}
             </Button>
           </CardTitle>
-          <CardDescription>
-            Введите правильные ответы на все задания этого варианта
+          <CardDescription className="text-green-700">
+            Введите правильные ответы на все задания этого варианта для автоматической проверки AI
           </CardDescription>
         </CardHeader>
         {showAnswers && (
@@ -292,11 +457,18 @@ export function VariantManager({
                 {generateQuestionInputs()}
               </div>
               
-              <div className="flex justify-between items-center pt-4 border-t">
-                <div className="text-sm text-gray-500">
-                  Всего заданий: {totalQuestions}
+              <div className="flex justify-between items-center pt-4 border-t bg-gray-50 p-4 rounded-lg">
+                <div className="text-sm text-gray-600">
+                  <span className="font-medium">Всего заданий: {totalQuestions}</span>
+                  <br />
+                  <span className="text-xs">Ответы будут использованы для автоматической проверки</span>
                 </div>
-                <Button type="submit" disabled={isLoading}>
+                <Button 
+                  type="submit" 
+                  disabled={isLoading}
+                  className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 font-medium"
+                  size="lg"
+                >
                   <Save className="h-4 w-4 mr-2" />
                   {isLoading ? 'Сохраняем...' : 'Сохранить ответы'}
                 </Button>
