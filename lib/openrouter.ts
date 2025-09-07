@@ -16,42 +16,30 @@ export async function analyzeStudentWork(
 ): Promise<AIAnalysisResponse> {
 	
 	// Prepare the prompt for the AI
-	const systemPrompt = `Ты - опытный преподаватель, который проверяет школьные контрольные работы. 
-Твоя задача - проанализировать отсканированные изображения работы ученика и определить:
+	const systemPrompt = `Ты - преподаватель, проверяешь контрольные работы.
 
-1. ВАРИАНТ РАБОТЫ (если их несколько): Определи номер варианта (1-${variantCount}) по содержанию или заголовку
-2. ОТВЕТЫ УЧЕНИКА: Извлеки все ответы ученика из изображений
-3. ПРАВИЛЬНОСТЬ: Сравни с эталонными ответами (если предоставлены)
-4. ФИО УЧЕНИКА: Если видно на работе, извлеки имя и фамилию
-
-ВАЖНЫЕ ПРАВИЛА:
-- Внимательно изучи ВСЕ изображения работы
-- Если текст плохо читается, укажи это в уверенности (confidence)
-- Нумеруй ответы по порядку (1, 2, 3, ...)
-- Для математики: принимай эквивалентные формы записи (0.5 = 1/2)
-- Для текстовых ответов: учитывай орфографические ошибки как правильные, если смысл понятен
-
-ФОРМАТ ОТВЕТА: Верни JSON в точно таком формате:
+Проанализируй изображения работы ученика и верни ТОЛЬКО JSON:
 {
   "variant_detected": 1,
   "confidence_score": 0.95,
-  "student_name": "Иванов Иван" или null,
-  "total_questions": 10,
+  "student_name": null,
+  "total_questions": 5,
   "answers": {
-    "1": {"detected_answer": "42", "confidence": 0.9},
-    "2": {"detected_answer": "x=5", "confidence": 0.85},
-    ...
+    "1": {"detected_answer": "ответ1", "confidence": 0.9},
+    "2": {"detected_answer": "ответ2", "confidence": 0.8}
   },
-  "additional_notes": "Работа выполнена аккуратно, почерк читаемый"
-}`
+  "additional_notes": ""
+}
 
-	const userPrompt = `Проанализируй работу ученика на изображениях.
+Важно:
+- Извлеки ВСЕ ответы из изображений
+- Номера заданий: 1, 2, 3...
+- Если текст плохо видно, укажи низкую confidence
+- Верни ТОЛЬКО JSON, без лишнего текста`
 
-${referenceAnswers ? `ЭТАЛОННЫЕ ОТВЕТЫ:\n${JSON.stringify(referenceAnswers, null, 2)}\n` : ''}
+	const userPrompt = `Проанализируй эти изображения работы ученика.${referenceAnswers ? `\n\nЭталонные ответы: ${JSON.stringify(referenceAnswers)}` : ''}
 
-Количество вариантов: ${variantCount}
-
-Проанализируй ВСЕ изображения и верни результат в JSON формате.`
+Верни ТОЛЬКО JSON без дополнительного текста.`
 
 	// Prepare messages for OpenRouter
 	const messages: OpenRouterRequest['messages'] = [
@@ -92,13 +80,26 @@ ${referenceAnswers ? `ЭТАЛОННЫЕ ОТВЕТЫ:\n${JSON.stringify(referen
 	}
 
 	const requestBody: OpenRouterRequest = {
-		model: 'google/gemini-flash-1.5',
+		model: 'google/gemini-2.5-flash',
 		messages,
 		max_tokens: 2000,
-		temperature: 0.1 // Low temperature for consistent analysis
+		temperature: 0.2
 	}
 
 	try {
+		console.log('Sending request to OpenRouter with', submissionImages.length, 'images')
+		console.log('Image URLs:', submissionImages)
+		
+		// Validate images
+		if (submissionImages.length === 0) {
+			throw new Error('No images provided for analysis')
+		}
+		
+		if (submissionImages.length > 5) {
+			console.warn('Too many images, taking first 5')
+			submissionImages = submissionImages.slice(0, 5)
+		}
+		
 		const response = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
 			method: 'POST',
 			headers: {
@@ -113,30 +114,38 @@ ${referenceAnswers ? `ЭТАЛОННЫЕ ОТВЕТЫ:\n${JSON.stringify(referen
 		if (!response.ok) {
 			const errorText = await response.text()
 			console.error('OpenRouter API error:', response.status, errorText)
-			throw new Error(`OpenRouter API error: ${response.status} ${errorText}`)
+			console.error('Request that failed:', JSON.stringify(requestBody, null, 2))
+			throw new Error(`OpenRouter API error: ${response.status} - ${errorText}`)
 		}
 
 		const data: OpenRouterResponse = await response.json()
+		console.log('OpenRouter response received:', JSON.stringify(data, null, 2))
 		
 		if (!data.choices?.[0]?.message?.content) {
-			throw new Error('Invalid response from OpenRouter API')
+			console.error('Invalid OpenRouter response structure:', data)
+			throw new Error('Invalid response from OpenRouter API - no content')
 		}
 
 		// Parse the AI response
 		const aiResponseText = data.choices[0].message.content
+		console.log('AI response text:', aiResponseText)
+		
 		let parsedResponse: AIAnalysisResponse
 
 		try {
 			// Try to extract JSON from the response (AI might add extra text)
 			const jsonMatch = aiResponseText.match(/\{[\s\S]*\}/)
 			if (jsonMatch) {
+				console.log('JSON extracted from response:', jsonMatch[0])
 				parsedResponse = JSON.parse(jsonMatch[0])
 			} else {
+				console.error('No JSON pattern found in AI response:', aiResponseText)
 				throw new Error('No JSON found in AI response')
 			}
-		} catch {
+		} catch (parseError) {
 			console.error('Failed to parse AI response:', aiResponseText)
-			throw new Error('Failed to parse AI analysis result')
+			console.error('Parse error:', parseError)
+			throw new Error(`Failed to parse AI analysis result: ${parseError instanceof Error ? parseError.message : 'Unknown parse error'}`)
 		}
 
 		// Validate the response structure

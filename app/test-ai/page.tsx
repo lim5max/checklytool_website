@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { toast } from 'sonner'
 import { Loader2 } from 'lucide-react'
@@ -21,7 +20,7 @@ export default function TestAIPage() {
   const [isTesting, setIsTesting] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
   const [isLoadingSubmissions, setIsLoadingSubmissions] = useState(false)
-  const [result, setResult] = useState<any>(null)
+  const [result, setResult] = useState<Record<string, unknown> | null>(null)
   const [recentSubmissions, setRecentSubmissions] = useState<Submission[]>([])
 
   useEffect(() => {

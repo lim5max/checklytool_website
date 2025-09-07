@@ -95,8 +95,8 @@ export default function SubmissionPage({ params }: SubmissionPageProps) {
       file: photo,
       id: Math.random().toString(36).substr(2, 9),
       preview: URL.createObjectURL(photo),
-      status: 'pending',
-      progress: 0
+      status: 'completed', // Файлы с камеры сразу готовы к отправке
+      progress: 100
     }))
     
     setUploadedFiles(prev => [...prev, ...newFiles])
@@ -151,16 +151,26 @@ export default function SubmissionPage({ params }: SubmissionPageProps) {
       // Start processing
       setTimeout(async () => {
         try {
+          console.log('Starting evaluation for submission:', result.submission.id)
+          
           const evalResponse = await fetch(`/api/submissions/${result.submission.id}/evaluate`, {
             method: 'POST'
           })
           
           if (evalResponse.ok) {
-            toast.success('Обработка работы запущена')
+            const evalResult = await evalResponse.json()
+            console.log('Evaluation completed:', evalResult)
+            toast.success('Обработка работы завершена')
             router.push(`/dashboard/checks/${checkId}/results?highlight=${result.submission.id}`)
+          } else {
+            const errorData = await evalResponse.json()
+            console.error('Evaluation failed:', errorData)
+            toast.error(`Ошибка при обработке: ${errorData.error || 'Неизвестная ошибка'}`)
+            router.push(`/dashboard/checks/${checkId}`)
           }
         } catch (evalError) {
           console.error('Error starting evaluation:', evalError)
+          toast.error('Не удалось запустить обработку работы')
           router.push(`/dashboard/checks/${checkId}`)
         }
       }, 1000)
@@ -210,7 +220,7 @@ export default function SubmissionPage({ params }: SubmissionPageProps) {
 
   const completedFiles = uploadedFiles.filter(f => f.status === 'completed').length
   const totalFiles = uploadedFiles.length
-  const canSubmit = totalFiles > 0 && completedFiles === totalFiles && studentName.trim()
+  const canSubmit = totalFiles > 0 && studentName.trim() && !isSubmitting
 
   return (
     <div className="p-6">

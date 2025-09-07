@@ -16,6 +16,7 @@ import {
   AlertCircle
 } from 'lucide-react'
 import { VariantManager } from '@/components/checks/VariantManager'
+import { ResultsDisplay } from '@/components/results/ResultsDisplay'
 import { toast } from 'sonner'
 import { formatDistanceToNow } from 'date-fns'
 import { ru } from 'date-fns/locale'
@@ -309,28 +310,10 @@ export default function CheckPage({ params }: CheckPageProps) {
           </TabsContent>
 
           <TabsContent value="submissions" className="mt-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Работы студентов</CardTitle>
-                <CardDescription>
-                  Здесь будет список загруженных работ студентов
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-12">
-                  <Users className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-                  <p className="text-gray-600">
-                    Работы студентов появятся здесь после загрузки
-                  </p>
-                  <Button 
-                    className="mt-4"
-                    onClick={() => router.push(`/dashboard/checks/${checkData.id}/submit`)}
-                  >
-                    Загрузить работы
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+            <ResultsDisplay 
+              checkId={checkData.id}
+              checkTitle={checkData.title}
+            />
           </TabsContent>
 
           <TabsContent value="settings" className="mt-6">

@@ -42,23 +42,27 @@ interface StudentSubmission {
   id: string
   student_name?: string
   student_class?: string
-  image_urls: string[]
+  submission_images: string[]
   created_at: string
   updated_at: string
-  evaluation_result?: {
-    total_score: number
-    max_score: number
-    grade: number
-    percentage: number
+  status: 'pending' | 'processing' | 'completed' | 'failed'
+  evaluation_results?: Array<{
+    id: string
+    total_questions: number
+    correct_answers: number
+    incorrect_answers: number
+    percentage_score: number
+    final_grade: number
+    variant_used?: number
     detailed_answers?: Record<string, {
-      score: number
-      max_score: number
-      feedback?: string
+      given: string
+      correct: string | null
+      is_correct: boolean
+      confidence?: number
     }>
-    ai_feedback?: string
-    processing_time_ms?: number
-  }
-  status: 'pending' | 'processing' | 'completed' | 'error'
+    ai_response?: Record<string, unknown>
+    confidence_score?: number
+  }>
 }
 
 interface CheckStatistics {
@@ -83,6 +87,7 @@ export function ResultsDisplay({ checkId, checkTitle, highlightSubmissionId }: R
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [gradeFilter, setGradeFilter] = useState<string>('all')
+  const [selectedSubmission, setSelectedSubmission] = useState<StudentSubmission | null>(null)
 
   useEffect(() => {
     loadResultsData()
@@ -127,7 +132,7 @@ export function ResultsDisplay({ checkId, checkTitle, highlightSubmissionId }: R
 
       // Grade filter
       const matchesGrade = gradeFilter === 'all' || 
-        (submission.evaluation_result?.grade?.toString() === gradeFilter)
+        (submission.evaluation_results?.[0]?.final_grade?.toString() === gradeFilter)
 
       return matchesSearch && matchesStatus && matchesGrade
     })
@@ -139,7 +144,7 @@ export function ResultsDisplay({ checkId, checkTitle, highlightSubmissionId }: R
         return <Badge className="bg-green-100 text-green-800"><CheckCircle className="h-3 w-3 mr-1" />Готово</Badge>
       case 'processing':
         return <Badge className="bg-blue-100 text-blue-800"><Loader2 className="h-3 w-3 mr-1 animate-spin" />Обработка</Badge>
-      case 'error':
+      case 'failed':
         return <Badge className="bg-red-100 text-red-800"><XCircle className="h-3 w-3 mr-1" />Ошибка</Badge>
       default:
         return <Badge className="bg-gray-100 text-gray-800"><Clock className="h-3 w-3 mr-1" />Ожидание</Badge>
@@ -169,8 +174,8 @@ export function ResultsDisplay({ checkId, checkTitle, highlightSubmissionId }: R
       ...filteredSubmissions.map(submission => [
         submission.student_name || 'Неизвестно',
         submission.student_class || '',
-        submission.evaluation_result?.grade || '',
-        submission.evaluation_result?.percentage ? `${submission.evaluation_result.percentage}%` : '',
+        submission.evaluation_results?.[0]?.final_grade || '',
+        submission.evaluation_results?.[0]?.percentage_score ? `${submission.evaluation_results[0].percentage_score}%` : '',
         submission.status,
         new Date(submission.created_at).toLocaleDateString('ru-RU')
       ].join(','))
@@ -181,6 +186,13 @@ export function ResultsDisplay({ checkId, checkTitle, highlightSubmissionId }: R
     link.href = URL.createObjectURL(blob)
     link.download = `${checkTitle}_results.csv`
     link.click()
+  }
+
+  const viewSubmissionDetails = (submission: StudentSubmission) => {
+    setSelectedSubmission(submission)
+    console.log('Viewing submission details:', submission)
+    // TODO: Implement modal or navigation to detailed view
+    toast.info(`Подробности для ${submission.student_name || 'студента'}`)
   }
 
   if (isLoading) {
@@ -323,7 +335,7 @@ export function ResultsDisplay({ checkId, checkTitle, highlightSubmissionId }: R
                   <SelectItem value="completed">Проверено</SelectItem>
                   <SelectItem value="processing">Обработка</SelectItem>
                   <SelectItem value="pending">Ожидание</SelectItem>
-                  <SelectItem value="error">Ошибка</SelectItem>
+                  <SelectItem value="failed">Ошибка</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -406,11 +418,11 @@ export function ResultsDisplay({ checkId, checkTitle, highlightSubmissionId }: R
                         {getStatusBadge(submission.status)}
                       </TableCell>
                       <TableCell>
-                        {getGradeBadge(submission.evaluation_result?.grade)}
+                        {getGradeBadge(submission.evaluation_results?.[0]?.final_grade)}
                       </TableCell>
                       <TableCell>
-                        {submission.evaluation_result?.percentage 
-                          ? `${submission.evaluation_result.percentage}%`
+                        {submission.evaluation_results?.[0]?.percentage_score 
+                          ? `${submission.evaluation_results[0].percentage_score}%`
                           : '-'
                         }
                       </TableCell>
@@ -421,7 +433,11 @@ export function ResultsDisplay({ checkId, checkTitle, highlightSubmissionId }: R
                         })}
                       </TableCell>
                       <TableCell>
-                        <Button size="sm" variant="outline">
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => viewSubmissionDetails(submission)}
+                        >
                           <Eye className="h-4 w-4 mr-2" />
                           Подробно
                         </Button>

@@ -80,8 +80,12 @@ export default function DashboardPage() {
         fetch('/api/dashboard/stats')
       ])
 
+      console.log('[DASHBOARD] Checks response status:', checksResponse.status)
+      console.log('[DASHBOARD] Stats response status:', statsResponse.status)
+
       if (!checksResponse.ok) {
         const errorData = await checksResponse.json().catch(() => ({ error: 'Unknown error' }))
+        console.error('[DASHBOARD] Checks API error:', errorData)
         throw new Error(`Ошибка загрузки работ: ${errorData.error || checksResponse.statusText}`)
       }
       

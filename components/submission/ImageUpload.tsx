@@ -89,8 +89,8 @@ export function ImageUpload({
       file,
       id: Math.random().toString(36).substr(2, 9),
       preview: URL.createObjectURL(file),
-      status: 'pending',
-      progress: 0
+      status: 'completed', // Файлы сразу готовы к отправке
+      progress: 100
     }))
 
     const updatedFiles = [...files, ...newFiles]
@@ -128,7 +128,7 @@ export function ImageUpload({
   }, [onFilesChange])
 
   const retryUpload = useCallback((fileId: string) => {
-    updateFileStatus(fileId, { status: 'pending', error: undefined })
+    updateFileStatus(fileId, { status: 'completed', error: undefined, progress: 100 })
   }, [updateFileStatus])
 
   const openCamera = () => {

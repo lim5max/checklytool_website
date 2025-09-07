@@ -12,9 +12,13 @@ export async function POST(
 	request: NextRequest,
 	{ params }: RouteParams
 ) {
+	console.log('[EVALUATE] Starting evaluation request...')
 	try {
 		const { id: submissionId } = await params
+		console.log('[EVALUATE] Submission ID:', submissionId)
+		
 		const { supabase, userId } = await getAuthenticatedSupabase()
+		console.log('[EVALUATE] Authentication successful, userId:', userId)
 		
 		// Get submission with check details
 		const { data: submission, error: submissionError } = await supabase
@@ -83,16 +87,97 @@ export async function POST(
 			.eq('id', submissionId)
 		
 		try {
-			// Prepare reference data
+			// Refresh signed URLs for submission images before AI analysis
+			const refreshedImageUrls: string[] = []
+			
+			for (const imageUrl of submissionData.submission_images) {
+				// Extract file path from existing URL
+				let filePath: string
+				
+				if (imageUrl.includes('/storage/v1/object/sign/')) {
+					// Already a signed URL, extract path
+					const urlParts = imageUrl.split('/storage/v1/object/sign/checks/')
+					filePath = urlParts[1]?.split('?')[0] || ''
+				} else if (imageUrl.includes('/storage/v1/object/public/')) {
+					// Public URL, extract path  
+					const urlParts = imageUrl.split('/storage/v1/object/public/checks/')
+					filePath = urlParts[1] || ''
+				} else {
+					console.warn('Unknown URL format, keeping original:', imageUrl)
+					refreshedImageUrls.push(imageUrl)
+					continue
+				}
+				
+				if (filePath) {
+					// Create fresh signed URL
+					const { data: urlData, error: signError } = await supabase.storage
+						.from('checks')
+						.createSignedUrl(filePath, 86400) // 24 hours
+					
+					if (signError) {
+						console.error('Error creating signed URL:', signError)
+						refreshedImageUrls.push(imageUrl) // Keep original
+					} else {
+						refreshedImageUrls.push(urlData.signedUrl)
+					}
+				} else {
+					refreshedImageUrls.push(imageUrl)
+				}
+			}
+			
+			// Update submission with fresh URLs
+			await supabase
+				.from('student_submissions')
+				.update({ submission_images: refreshedImageUrls })
+				.eq('id', submissionId)
+			
+			// Prepare reference data with fresh signed URLs for reference images too
 			const variants = checkData.check_variants || []
 			const referenceAnswers = variants.length > 0 ? variants[0].reference_answers : null
-			const referenceImages = variants.length > 0 ? variants[0].reference_image_urls : null
+			let referenceImages = variants.length > 0 ? variants[0].reference_image_urls : null
+			
+			// Refresh reference image URLs if they exist
+			if (referenceImages && referenceImages.length > 0) {
+				const refreshedRefImages: string[] = []
+				for (const refImageUrl of referenceImages) {
+					let filePath: string
+					
+					if (refImageUrl.includes('/storage/v1/object/sign/')) {
+						const urlParts = refImageUrl.split('/storage/v1/object/sign/checks/')
+						filePath = urlParts[1]?.split('?')[0] || ''
+					} else if (refImageUrl.includes('/storage/v1/object/public/')) {
+						const urlParts = refImageUrl.split('/storage/v1/object/public/checks/')
+						filePath = urlParts[1] || ''
+					} else {
+						refreshedRefImages.push(refImageUrl)
+						continue
+					}
+					
+					if (filePath) {
+						const { data: urlData, error: signError } = await supabase.storage
+							.from('checks')
+							.createSignedUrl(filePath, 86400)
+						
+						if (!signError) {
+							refreshedRefImages.push(urlData.signedUrl)
+						} else {
+							refreshedRefImages.push(refImageUrl)
+						}
+					} else {
+						refreshedRefImages.push(refImageUrl)
+					}
+				}
+				referenceImages = refreshedRefImages
+			}
 			
 			console.log('Starting AI analysis for submission:', submissionId)
+			console.log('Reference answers available:', !!referenceAnswers)
+			console.log('Reference images available:', !!referenceImages)
+			console.log('Fresh signed URLs created for', refreshedImageUrls.length, 'submission images')
 			
-			// Call OpenRouter API with retry mechanism
+			// Call OpenRouter API with retry mechanism using refreshed URLs
 			const aiResult = await analyzeWithRetry(
-				submissionData.submission_images,
+				refreshedImageUrls,
 				referenceAnswers || null,
 				referenceImages || null,
 				checkData.variant_count
@@ -180,7 +265,10 @@ export async function POST(
 			})
 			
 		} catch (evaluationError) {
-			console.error('Evaluation failed:', evaluationError)
+			console.error('Evaluation failed for submission:', submissionId)
+			console.error('Error details:', evaluationError)
+			console.error('Error message:', evaluationError instanceof Error ? evaluationError.message : 'No error message')
+			console.error('Error stack:', evaluationError instanceof Error ? evaluationError.stack : 'No stack')
 			
 			// Update submission status to failed
 			await (supabase as any)
@@ -194,23 +282,27 @@ export async function POST(
 			return NextResponse.json(
 				{ 
 					error: 'Evaluation failed', 
-					details: evaluationError instanceof Error ? evaluationError.message : 'Unknown error'
+					details: evaluationError instanceof Error ? evaluationError.message : String(evaluationError),
+					submission_id: submissionId
 				},
 				{ status: 500 }
 			)
 		}
 		
 	} catch (error) {
+		console.error('[EVALUATE] Top-level error:', error)
+		
 		if (error instanceof Error && error.message === 'Unauthorized') {
+			console.log('[EVALUATE] Authentication error')
 			return NextResponse.json(
 				{ error: 'Authentication required' },
 				{ status: 401 }
 			)
 		}
 		
-		console.error('Unexpected error during evaluation:', error)
+		console.error('[EVALUATE] Unexpected error during evaluation:', error)
 		return NextResponse.json(
-			{ error: 'Internal server error' },
+			{ error: 'Internal server error', details: error instanceof Error ? error.message : String(error) },
 			{ status: 500 }
 		)
 	}

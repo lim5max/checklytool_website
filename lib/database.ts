@@ -8,12 +8,20 @@ import type { User } from 'next-auth'
 export async function getAuthenticatedSupabase() {
 	const session = await auth()
 	
+	console.log('[DATABASE] Session check:', { 
+		hasSession: !!session, 
+		hasUser: !!session?.user,
+		userEmail: session?.user?.email,
+		userId: session?.user?.id 
+	})
+	
 	if (!session?.user) {
+		console.log('[DATABASE] No session or user, throwing Unauthorized')
 		throw new Error('Unauthorized')
 	}
 
 	const supabase = await createClient()
-	const userId = session.user.id || session.user.email!
+	const userId = session.user.email! // Always use email as consistent identifier
 	
 	console.log('[DATABASE] Setting user context for RLS:', { userId, userEmail: session.user.email })
 	console.log('[DATABASE] Using service role key:', !!process.env.SUPABASE_SERVICE_ROLE_KEY)
@@ -34,7 +42,7 @@ export async function getAuthenticatedSupabase() {
 export async function upsertUserProfile(sessionUser: User & { provider?: string }) {
 	// Use service role client to bypass RLS for profile creation
 	const supabase = await createClient()
-	const userId = sessionUser.id || sessionUser.email
+	const userId = sessionUser.email // Always use email as consistent identifier
 	
 	console.log('Upserting user profile:', { userId, email: sessionUser.email, provider: sessionUser.provider })
 	
@@ -44,7 +52,7 @@ export async function upsertUserProfile(sessionUser: User & { provider?: string 
 	}
 
 	const profileData = {
-		user_id: userId,
+		user_id: sessionUser.email, // Use email as user_id for consistency
 		email: sessionUser.email,
 		name: sessionUser.name || null,
 		avatar_url: sessionUser.image || null,

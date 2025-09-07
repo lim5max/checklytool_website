@@ -112,12 +112,17 @@ export async function POST(
 					throw new Error(`Failed to upload ${file.name}`)
 				}
 				
-				// Get public URL
-				const { data: urlData } = supabaseClient.storage
+				// Get signed URL (valid for 24 hours) for external API access
+				const { data: urlData, error: signError } = await supabaseClient.storage
 					.from('checks')
-					.getPublicUrl(uploadData.path)
+					.createSignedUrl(uploadData.path, 86400) // 24 hours
 				
-				uploadedUrls.push(urlData.publicUrl)
+				if (signError) {
+					console.error('Error creating signed URL:', signError)
+					throw new Error('Failed to create image access URL')
+				}
+				
+				uploadedUrls.push(urlData.signedUrl)
 			}
 			
 			// Update variant with new image URLs

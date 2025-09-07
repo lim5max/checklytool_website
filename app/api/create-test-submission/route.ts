@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest, NextResponse } from 'next/server'
 import { getAuthenticatedSupabase } from '@/lib/database'
 
@@ -35,10 +36,10 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const checkId = checks[0].id
+    const checkId = (checks[0] as { id: string }).id
 
     // Create a test submission
-    const { data: submission, error: submissionError } = await supabase
+    const { data: submission, error: submissionError } = await (supabase as any)
       .from('student_submissions')
       .insert({
         check_id: checkId,
