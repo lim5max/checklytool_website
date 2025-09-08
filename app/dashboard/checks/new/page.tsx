@@ -1,5 +1,6 @@
-import { CreateCheckForm } from '@/components/checks/CreateCheckForm'
+import { redirect } from 'next/navigation'
 
+// Redirect to the new mobile-first check creation flow
 export default function NewCheckPage() {
-  return <CreateCheckForm />
+  redirect('/dashboard/checks/create')
 }

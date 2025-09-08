@@ -8,7 +8,8 @@ import StructuredData from "../components/StructuredData";
 import TeachersRepetitorsBlock from "../components/TeachersRepetitorsBlock";
 import HowItWorksSection from "../components/HowItWorksSection";
 import WaitlistModal from "../components/WaitlistModal";
-import MobileNavigation from "../components/MobileNavigation";
+import MobileHeader from "../components/MobileHeader";
+import DesktopHeader from "../components/DesktopHeader";
 
 
 
@@ -25,34 +26,11 @@ export default function Home() {
         <div className="box-border flex flex-col gap-10 items-start justify-start px-4  py-4 relative min-h-screen max-w-[1082px] mx-auto">
           
           <header className="relative w-full">
-            <MobileNavigation onOpenModal={openModal} />
-            
-            <div className="hidden md:flex items-center justify-between w-full">
-              <div className="flex items-center gap-8">
-                <Link href="/" className="flex gap-0.5 items-center justify-start relative">
-                  <Image 
-                    src="/images/logo.png" 
-                    alt="Checkly" 
-                    width={120} 
-                    height={40}
-                    priority
-                    className="object-contain"
-                  />
-                </Link>
-                <Link 
-                  href="/about" 
-                  className="text-slate-900 hover:text-slate-600 transition-colors font-inter tracking-tight font-semibold text-lg"
-                >
-                  О проекте
-                </Link>
-              </div>
-              <Link 
-                href="/auth/login"
-                className="bg-slate-900 hover:bg-slate-800 transition-colors text-white font-inter font-medium text-base px-5 py-3 rounded-full shadow-md inline-block"
-              >
-                Войти
-              </Link>
-            </div>
+            <MobileHeader 
+              variant="landing"
+              onOpenModal={openModal}
+            />
+            <DesktopHeader variant="landing" />
           </header>
 
           <main className="flex flex-col gap-32 items-center justify-start relative w-full">

@@ -74,6 +74,7 @@ export const authOptions: NextAuthConfig = {
     signIn: '/auth/login',
     error: '/auth/error',
   },
+  trustHost: true, // Required for custom domains/IPs in development
   callbacks: {
     async signIn({ user, account, profile }) {
       // Auto-create user profile on first login

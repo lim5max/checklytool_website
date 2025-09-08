@@ -156,6 +156,7 @@ export async function POST(request: NextRequest) {
 		const variantsData = Array.from({ length: validatedData.variant_count }, (_, i) => ({
 			check_id: checkResult.id,
 			variant_number: i + 1,
+			name: `Вариант ${i + 1}`, // Fix: Set correct name for each variant
 			reference_answers: {},
 			reference_image_urls: []
 		}))
@@ -170,6 +171,39 @@ export async function POST(request: NextRequest) {
 		}
 		
 		console.log('[API] Check creation completed successfully')
+
+		// If variant data was provided, update the variants with actual answers
+		if (body.variantData && Array.isArray(body.variantData)) {
+			console.log('[API] Processing variant answers...')
+			
+			for (const variantInfo of body.variantData) {
+				if (variantInfo.answers && variantInfo.answers.length > 0) {
+					// Find the corresponding database variant
+					const { data: variant } = await (supabase as any)
+						.from('check_variants')
+						.select('id')
+						.eq('check_id', checkResult.id)
+						.eq('variant_number', variantInfo.variantNumber || 1)
+						.single()
+					
+					if (variant) {
+						// Store answers in variant_answers table
+						for (let i = 0; i < variantInfo.answers.length; i++) {
+							const answer = variantInfo.answers[i]
+							if (answer.value && answer.value.trim()) {
+								await (supabase as any)
+									.from('variant_answers')
+									.insert({
+										variant_id: variant.id,
+										question_number: i + 1,
+										correct_answer: answer.value.trim()
+									})
+							}
+						}
+					}
+				}
+			}
+		}
 		
 		return NextResponse.json({
 			check: checkResult,

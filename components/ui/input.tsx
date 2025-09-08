@@ -8,9 +8,7 @@ function Input({ className, type, ...props }: React.ComponentProps<"input">) {
       type={type}
       data-slot="input"
       className={cn(
-        "file:text-foreground placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground dark:bg-input/30 border-input flex h-9 w-full min-w-0 rounded-md border bg-transparent px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm",
-        "focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]",
-        "aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive",
+        "flex h-14 w-full rounded-figma-lg border border-slate-100 bg-slate-50 px-[21px] py-[11px] text-base font-medium text-slate-800 placeholder:text-slate-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-blue focus-visible:border-primary-blue disabled:cursor-not-allowed disabled:opacity-50 font-inter transition-all",
         className
       )}
       {...props}
@@ -18,4 +16,31 @@ function Input({ className, type, ...props }: React.ComponentProps<"input">) {
   )
 }
 
-export { Input }
+// Specialized input variants for the Figma design
+const SearchInput = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>((
+  { className, ...props },
+  ref,
+) => {
+  return (
+    <div className="relative">
+      <input
+        type="text"
+        className={cn(
+          "flex h-14 w-full rounded-figma-lg border border-slate-100 bg-slate-50 px-[21px] py-[11px] pl-12 text-base font-medium text-slate-800 placeholder:text-slate-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-blue focus-visible:border-primary-blue font-inter transition-all",
+          className
+        )}
+        ref={ref}
+        {...props}
+      />
+      <div className="absolute left-[21px] top-1/2 -translate-y-1/2 text-slate-500">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <circle cx="11" cy="11" r="8"/>
+          <path d="21 21l-4.35-4.35"/>
+        </svg>
+      </div>
+    </div>
+  )
+})
+SearchInput.displayName = "SearchInput"
+
+export { Input, SearchInput }

@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { redirect } from 'next/navigation'
-import { auth } from '../../lib/auth'
-import DashboardNavbar from '../../components/dashboard/Navbar'
+import { auth, signOut } from '../../lib/auth'
+import MobileHeader from '../../components/MobileHeader'
+import DesktopHeader from '../../components/DesktopHeader'
 
 export const metadata: Metadata = {
   title: "Дашборд - ChecklyTool",
@@ -19,10 +20,41 @@ export default async function DashboardLayout({
     redirect('/auth/login')
   }
 
+  const handleSignOut = async () => {
+    'use server'
+    await signOut({ redirectTo: '/' })
+  }
+
   return (
-    <div className="min-h-screen bg-slate-50">
-      <DashboardNavbar session={session} />
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="min-h-screen bg-white">
+      {/* Headers */}
+      <div className="">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <MobileHeader 
+            variant="dashboard"
+            user={{
+              name: session.user?.name,
+              email: session.user?.email,
+              image: session.user?.image
+            }}
+            onSignOut={handleSignOut}
+            className="py-4"
+          />
+          <DesktopHeader 
+            variant="dashboard"
+            user={{
+              name: session.user?.name,
+              email: session.user?.email,
+              image: session.user?.image
+            }}
+            onSignOut={handleSignOut}
+            className="py-4"
+          />
+        </div>
+      </div>
+      
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-[100px]">
         {children}
       </main>
     </div>

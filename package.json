@@ -3,8 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack",
-    "build": "next build --turbopack",
+    "dev": "next dev -H 192.168.0.102",
+    "dev:turbo": "next dev --turbopack -H 192.168.0.102",
+    "build": "next build",
     "start": "next start",
     "lint": "eslint"
   },

@@ -4,48 +4,102 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
+  /* Base colors */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  
+  /* Primary and secondary colors */
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  
+  /* Status colors */
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  
+  /* Interactive elements */
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  
+  /* Slate color palette */
+  --color-slate-25: var(--slate-25);
+  --color-slate-50: var(--slate-50);
+  --color-slate-100: var(--slate-100);
+  --color-slate-200: var(--slate-200);
+  --color-slate-300: var(--slate-300);
+  --color-slate-400: var(--slate-400);
+  --color-slate-500: var(--slate-500);
+  --color-slate-600: var(--slate-600);
+  --color-slate-700: var(--slate-700);
+  --color-slate-800: var(--slate-800);
+  --color-slate-900: var(--slate-900);
+  
+  /* Green color palette */
+  --color-green-25: var(--green-25);
+  --color-green-50: var(--green-50);
+  --color-green-100: var(--green-100);
+  --color-green-200: var(--green-200);
+  --color-green-300: var(--green-300);
+  --color-green-400: var(--green-400);
+  --color-green-500: var(--green-500);
+  --color-green-600: var(--green-600);
+  --color-green-700: var(--green-700);
+  --color-green-800: var(--green-800);
+  --color-green-900: var(--green-900);
+  
+  /* Red color palette */
+  --color-red-25: var(--red-25);
+  --color-red-50: var(--red-50);
+  --color-red-100: var(--red-100);
+  --color-red-200: var(--red-200);
+  --color-red-300: var(--red-300);
+  --color-red-400: var(--red-400);
+  --color-red-500: var(--red-500);
+  --color-red-600: var(--red-600);
+  --color-red-700: var(--red-700);
+  --color-red-800: var(--red-800);
+  --color-red-900: var(--red-900);
+  
+  /* Typography */
   --font-inter: var(--font-inter);
   --font-nunito: var(--font-nunito);
-  --color-sidebar-ring: var(--sidebar-ring);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar: var(--sidebar);
-  --color-chart-5: var(--chart-5);
-  --color-chart-4: var(--chart-4);
-  --color-chart-3: var(--chart-3);
-  --color-chart-2: var(--chart-2);
-  --color-chart-1: var(--chart-1);
-  --color-ring: var(--ring);
-  --color-input: var(--input);
-  --color-border: var(--border);
-  --color-destructive: var(--destructive);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-accent: var(--accent);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-muted: var(--muted);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-secondary: var(--secondary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-primary: var(--primary);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-popover: var(--popover);
-  --color-card-foreground: var(--card-foreground);
-  --color-card: var(--card);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  
+  /* Border radius from Figma designs */
+  --radius-sm: 16px;
+  --radius-md: 20px;
+  --radius-lg: 27px;
+  --radius-xl: 32px;
+  --radius-2xl: 42px;
+  --radius-full: 180px;
+  
+  /* Safe area for devices with home indicators */
+  --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 body {
   font-family: var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   line-height: 1.6;
+}
+
+/* Safe area utilities for modern devices */
+.pb-safe-area {
+  padding-bottom: calc(18px + var(--safe-area-inset-bottom));
+}
+
+.mb-safe-area {
+  margin-bottom: var(--safe-area-inset-bottom);
 }
 
 .font-nunito {
@@ -97,71 +151,124 @@ body {
 
 :root {
   --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.13 0.028 261.692);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.13 0.028 261.692);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.13 0.028 261.692);
-  --primary: oklch(0.21 0.034 264.665);
-  --primary-foreground: oklch(0.985 0.002 247.839);
-  --secondary: oklch(0.967 0.003 264.542);
-  --secondary-foreground: oklch(0.21 0.034 264.665);
-  --muted: oklch(0.967 0.003 264.542);
-  --muted-foreground: oklch(0.551 0.027 264.364);
-  --accent: oklch(0.967 0.003 264.542);
-  --accent-foreground: oklch(0.21 0.034 264.665);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.928 0.006 264.531);
-  --input: oklch(0.928 0.006 264.531);
-  --ring: oklch(0.707 0.022 261.325);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.985 0.002 247.839);
-  --sidebar-foreground: oklch(0.13 0.028 261.692);
-  --sidebar-primary: oklch(0.21 0.034 264.665);
-  --sidebar-primary-foreground: oklch(0.985 0.002 247.839);
-  --sidebar-accent: oklch(0.967 0.003 264.542);
-  --sidebar-accent-foreground: oklch(0.21 0.034 264.665);
-  --sidebar-border: oklch(0.928 0.006 264.531);
-  --sidebar-ring: oklch(0.707 0.022 261.325);
+  
+  /* Base colors from Figma */
+  --background: #ffffff;
+  --foreground: #0f172a;
+  --card: #ffffff;
+  --card-foreground: #0f172a;
+  --popover: #ffffff;
+  --popover-foreground: #0f172a;
+  
+  /* Primary blue color from Figma */
+  --primary: #096ff5;
+  --primary-foreground: #ffffff;
+  
+  /* Secondary colors using slate variants */
+  --secondary: #f8fafc;
+  --secondary-foreground: #1e293b;
+  --muted: #f1f5f9;
+  --muted-foreground: #64748b;
+  --accent: #f1f5f9;
+  --accent-foreground: #1e293b;
+  
+  /* Green variants for success states */
+  --success: #22c55e;
+  --success-foreground: #ffffff;
+  
+  /* Red variants for destructive states */
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+  
+  /* Border and input colors */
+  --border: #e2e8f0;
+  --input: #f1f5f9;
+  --ring: #096ff5;
+  
+  /* Slate color variants */
+  --slate-25: #f8fafc;
+  --slate-50: #f1f5f9;
+  --slate-100: #e2e8f0;
+  --slate-200: #cbd5e1;
+  --slate-300: #94a3b8;
+  --slate-400: #64748b;
+  --slate-500: #475569;
+  --slate-600: #334155;
+  --slate-700: #1e293b;
+  --slate-800: #0f172a;
+  --slate-900: #020617;
+  
+  /* Green color variants */
+  --green-25: #f0fff2;
+  --green-50: #dfffe4;
+  --green-100: #9effb2;
+  --green-200: #69f68e;
+  --green-300: #56e57f;
+  --green-400: #42d56f;
+  --green-500: #22c55e;
+  --green-600: #00a148;
+  --green-700: #007231;
+  --green-800: #00441a;
+  --green-900: #001f08;
+  
+  /* Red color variants */
+  --red-25: #fffbfa;
+  --red-50: #fff2f0;
+  --red-100: #ffd3ce;
+  --red-200: #ffb3ac;
+  --red-300: #ff9087;
+  --red-400: #ff6660;
+  --red-500: #ef4444;
+  --red-600: #d60021;
+  --red-700: #9c0015;
+  --red-800: #640009;
+  --red-900: #360003;
 }
 
 .dark {
-  --background: oklch(0.13 0.028 261.692);
-  --foreground: oklch(0.985 0.002 247.839);
-  --card: oklch(0.21 0.034 264.665);
-  --card-foreground: oklch(0.985 0.002 247.839);
-  --popover: oklch(0.21 0.034 264.665);
-  --popover-foreground: oklch(0.985 0.002 247.839);
-  --primary: oklch(0.928 0.006 264.531);
-  --primary-foreground: oklch(0.21 0.034 264.665);
-  --secondary: oklch(0.278 0.033 256.848);
-  --secondary-foreground: oklch(0.985 0.002 247.839);
-  --muted: oklch(0.278 0.033 256.848);
-  --muted-foreground: oklch(0.707 0.022 261.325);
-  --accent: oklch(0.278 0.033 256.848);
-  --accent-foreground: oklch(0.985 0.002 247.839);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.551 0.027 264.364);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.21 0.034 264.665);
-  --sidebar-foreground: oklch(0.985 0.002 247.839);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0.002 247.839);
-  --sidebar-accent: oklch(0.278 0.033 256.848);
-  --sidebar-accent-foreground: oklch(0.985 0.002 247.839);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.551 0.027 264.364);
+  /* Dark mode using inverted slate variants */
+  --background: #0f172a;
+  --foreground: #f8fafc;
+  --card: #1e293b;
+  --card-foreground: #f8fafc;
+  --popover: #1e293b;
+  --popover-foreground: #f8fafc;
+  
+  /* Primary remains the same bright blue */
+  --primary: #096ff5;
+  --primary-foreground: #ffffff;
+  
+  /* Dark mode secondary colors */
+  --secondary: #334155;
+  --secondary-foreground: #f8fafc;
+  --muted: #475569;
+  --muted-foreground: #94a3b8;
+  --accent: #334155;
+  --accent-foreground: #f8fafc;
+  
+  /* Success and destructive remain readable */
+  --success: #22c55e;
+  --success-foreground: #ffffff;
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+  
+  /* Dark mode borders and inputs */
+  --border: #334155;
+  --input: #1e293b;
+  --ring: #096ff5;
+  
+  /* Dark variants for slate colors */
+  --slate-25: #0f172a;
+  --slate-50: #1e293b;
+  --slate-100: #334155;
+  --slate-200: #475569;
+  --slate-300: #64748b;
+  --slate-400: #94a3b8;
+  --slate-500: #cbd5e1;
+  --slate-600: #e2e8f0;
+  --slate-700: #f1f5f9;
+  --slate-800: #f8fafc;
+  --slate-900: #ffffff;
 }
 
 @layer base {
@@ -171,4 +278,73 @@ body {
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* Custom color classes for Figma design system */
+@layer utilities {
+  /* Primary blue */
+  .bg-primary-blue { background-color: #096ff5; }
+  .text-primary-blue { color: #096ff5; }
+  .border-primary-blue { border-color: #096ff5; }
+  
+  /* Slate variants */
+  .bg-slate-25 { background-color: var(--slate-25); }
+  .bg-slate-50 { background-color: var(--slate-50); }
+  .bg-slate-100 { background-color: var(--slate-100); }
+  .bg-slate-200 { background-color: var(--slate-200); }
+  .bg-slate-300 { background-color: var(--slate-300); }
+  .bg-slate-400 { background-color: var(--slate-400); }
+  .bg-slate-500 { background-color: var(--slate-500); }
+  .bg-slate-600 { background-color: var(--slate-600); }
+  .bg-slate-700 { background-color: var(--slate-700); }
+  .bg-slate-800 { background-color: var(--slate-800); }
+  .bg-slate-900 { background-color: var(--slate-900); }
+  
+  .text-slate-25 { color: var(--slate-25); }
+  .text-slate-50 { color: var(--slate-50); }
+  .text-slate-100 { color: var(--slate-100); }
+  .text-slate-200 { color: var(--slate-200); }
+  .text-slate-300 { color: var(--slate-300); }
+  .text-slate-400 { color: var(--slate-400); }
+  .text-slate-500 { color: var(--slate-500); }
+  .text-slate-600 { color: var(--slate-600); }
+  .text-slate-700 { color: var(--slate-700); }
+  .text-slate-800 { color: var(--slate-800); }
+  .text-slate-900 { color: var(--slate-900); }
+  
+  /* Green variants */
+  .bg-green-25 { background-color: var(--green-25); }
+  .bg-green-50 { background-color: var(--green-50); }
+  .bg-green-100 { background-color: var(--green-100); }
+  .bg-green-200 { background-color: var(--green-200); }
+  .bg-green-300 { background-color: var(--green-300); }
+  .bg-green-400 { background-color: var(--green-400); }
+  .bg-green-500 { background-color: var(--green-500); }
+  .bg-green-600 { background-color: var(--green-600); }
+  .bg-green-700 { background-color: var(--green-700); }
+  .bg-green-800 { background-color: var(--green-800); }
+  .bg-green-900 { background-color: var(--green-900); }
+  
+  .text-green-500 { color: var(--green-500); }
+  
+  /* Red variants */
+  .bg-red-25 { background-color: var(--red-25); }
+  .bg-red-50 { background-color: var(--red-50); }
+  .bg-red-100 { background-color: var(--red-100); }
+  .bg-red-200 { background-color: var(--red-200); }
+  .bg-red-300 { background-color: var(--red-300); }
+  .bg-red-400 { background-color: var(--red-400); }
+  .bg-red-500 { background-color: var(--red-500); }
+  .bg-red-600 { background-color: var(--red-600); }
+  .bg-red-700 { background-color: var(--red-700); }
+  .bg-red-800 { background-color: var(--red-800); }
+  .bg-red-900 { background-color: var(--red-900); }
+  
+  /* Figma-specific border radius values */
+  .rounded-figma-sm { border-radius: 16px; }
+  .rounded-figma-md { border-radius: 20px; }
+  .rounded-figma-lg { border-radius: 27px; }
+  .rounded-figma-xl { border-radius: 32px; }
+  .rounded-figma-2xl { border-radius: 42px; }
+  .rounded-figma-full { border-radius: 180px; }
 }

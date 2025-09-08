@@ -1,202 +1,79 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { useForm, useFieldArray } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { createCheckSchema, type CreateCheckFormData } from '@/lib/validations/check'
-import { Button } from '@/components/ui/button'
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form'
-import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { PlusCircle, Trash2, AlertCircle } from 'lucide-react'
-import { toast } from 'sonner'
-
-interface GradingCriterion {
-  grade: '2' | '3' | '4' | '5'
-  min_percentage: number
-}
-
-const SUBJECTS = [
-  'Математика',
-  'Русский язык',
-  'Физика',
-  'Химия', 
-  'Биология',
-  'История',
-  'Обществознание',
-  'География',
-  'Английский язык',
-  'Информатика'
-]
-
-const CLASS_LEVELS = [
-  '5 класс', '6 класс', '7 класс', '8 класс', '9 класс',
-  '10 класс', '11 класс'
-]
+import { Button } from '@/components/ui/button'
+import { ArrowRight, Smartphone } from 'lucide-react'
 
 export function CreateCheckForm() {
   const router = useRouter()
-  const [isLoading, setIsLoading] = useState(false)
-  const [configureAnswers, setConfigureAnswers] = useState(true)
-  
-  const form = useForm<CreateCheckFormData>({
-    resolver: zodResolver(createCheckSchema),
-    defaultValues: {
-      title: '',
-      description: '',
-      variant_count: 1,
-      subject: '',
-      class_level: '',
-      total_questions: 10,
-      grading_criteria: [
-        { grade: 5, min_percentage: 85 },
-        { grade: 4, min_percentage: 70 },
-        { grade: 3, min_percentage: 55 },
-        { grade: 2, min_percentage: 0 }
-      ]
-    }
-  })
 
-  const { fields: criteriaFields, append: appendCriteria, remove: removeCriteria } = useFieldArray({
-    control: form.control,
-    name: 'grading_criteria'
-  })
+  useEffect(() => {
+    // Auto-redirect to mobile-first flow after a brief delay
+    const timer = setTimeout(() => {
+      router.push('/dashboard/checks/create')
+    }, 3000)
 
-  const onSubmit = async (data: CreateCheckFormData) => {
-    setIsLoading(true)
-    
-    try {
-      const response = await fetch('/api/checks', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
-      })
+    return () => clearTimeout(timer)
+  }, [router])
 
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || 'Не удалось создать проверочную работу')
-      }
-
-      const result = await response.json()
-      
-      toast.success('Проверочная работа создана успешно!')
-      
-      // Navigate to check management or variant setup based on user preference
-      if (configureAnswers) {
-        router.push(`/dashboard/checks/${result.check.id}?tab=variants`)
-      } else {
-        router.push(`/dashboard/checks/${result.check.id}`)
-      }
-      
-    } catch (error) {
-      console.error('Error creating check:', error)
-      toast.error(error instanceof Error ? error.message : 'Произошла ошибка')
-    } finally {
-      setIsLoading(false)
-    }
+  const handleRedirect = () => {
+    router.push('/dashboard/checks/create')
   }
-
-  const addGradingCriterion = () => {
-    const usedGrades = criteriaFields.map(field => field.grade)
-    const availableGrades = [2, 3, 4, 5].filter(grade => !usedGrades.includes(grade as 2 | 3 | 4 | 5))
-    
-    if (availableGrades.length > 0) {
-      const newGrade = availableGrades[availableGrades.length - 1] as 2 | 3 | 4 | 5
-      appendCriteria({ grade: newGrade, min_percentage: 50 })
-    }
-  }
-
-  const canAddMoreCriteria = criteriaFields.length < 4
 
   return (
-    <div className="max-w-4xl mx-auto p-6 space-y-8">
-      <div className="text-center space-y-2">
-        <h1 className="text-3xl font-bold">Создание проверочной работы</h1>
+    <div className="max-w-2xl mx-auto p-6 space-y-6">
+      <div className="text-center space-y-4">
+        <div className="w-16 h-16 mx-auto bg-primary-blue rounded-full flex items-center justify-center">
+          <Smartphone className="w-8 h-8 text-white" />
+        </div>
+        <h1 className="text-3xl font-bold">Переход на новый интерфейс</h1>
         <p className="text-gray-600">
-          Создайте новую проверочную работу для автоматической проверки
+          Мы улучшили процесс создания проверочных работ! Теперь он стал более удобным и интуитивным.
         </p>
       </div>
 
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-          {/* Основная информация */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Основная информация</CardTitle>
-              <CardDescription>
-                Введите основные данные о проверочной работе
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <FormField
-                control={form.control}
-                name="title"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Название работы *</FormLabel>
-                    <FormControl>
-                      <Input 
-                        placeholder="Например: Контрольная работа по математике №1"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Smartphone className="w-5 h-5" />
+            Новый мобильный интерфейс
+          </CardTitle>
+          <CardDescription>
+            Создавайте проверочные работы быстрее с нашим обновленным пошаговым интерфейсом
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-3">
+            <div className="flex items-center gap-3 p-3 bg-green-50 rounded-lg">
+              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+              <span className="text-green-800 font-medium">Пошаговый процесс создания</span>
+            </div>
+            <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg">
+              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+              <span className="text-blue-800 font-medium">Адаптивный дизайн для всех устройств</span>
+            </div>
+            <div className="flex items-center gap-3 p-3 bg-purple-50 rounded-lg">
+              <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+              <span className="text-purple-800 font-medium">Улучшенная настройка критериев оценки</span>
+            </div>
+          </div>
 
-              <FormField
-                control={form.control}
-                name="description"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Описание</FormLabel>
-                    <FormControl>
-                      <Textarea 
-                        placeholder="Краткое описание проверочной работы..."
-                        className="min-h-[100px]"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      Опциональное описание содержания и целей работы
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <FormField
-                  control={form.control}
-                  name="subject"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Предмет</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Выберите предмет" />
+          <div className="pt-4">
+            <Button onClick={handleRedirect} className="w-full" size="lg">
+              Перейти к новому интерфейсу
+              <ArrowRight className="w-4 h-4 ml-2" />
+            </Button>
+            <p className="text-xs text-gray-500 text-center mt-2">
+              Автоматический переход через 3 секунды...
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
