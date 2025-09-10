@@ -20,6 +20,7 @@ import {
 } from 'lucide-react'
 import { ImageUpload, type UploadedFile } from '@/components/submission/ImageUpload'
 import { CameraScanner } from '@/components/submission/CameraScanner'
+import { SubmissionUploader, type Student } from '@/components/submission/SubmissionUploader'
 import { toast } from 'sonner'
 
 interface CheckInfo {
@@ -49,6 +50,7 @@ export default function SubmissionPage({ params }: SubmissionPageProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
   const [activeTab, setActiveTab] = useState('upload')
+  const [useNewUploader, setUseNewUploader] = useState(false)
 
   useEffect(() => {
     const getParams = async () => {
@@ -101,6 +103,90 @@ export default function SubmissionPage({ params }: SubmissionPageProps) {
     
     setUploadedFiles(prev => [...prev, ...newFiles])
     setActiveTab('upload') // Переключаемся на вкладку загрузки
+  }
+
+  const handleMultiStudentSubmit = async (students: Student[]) => {
+    if (students.length === 0 || students.every(s => s.photos.length === 0)) {
+      toast.error('Загрузите хотя бы одну фотографию')
+      return
+    }
+
+    setIsSubmitting(true)
+    setUploadProgress(0)
+
+    try {
+      const submissions: { student: Student; submissionId: string }[] = []
+      const totalStudents = students.filter(s => s.photos.length > 0).length
+      let completedStudents = 0
+
+      for (const student of students) {
+        if (student.photos.length === 0) continue
+
+        const formData = new FormData()
+        formData.append('student_name', student.name)
+        formData.append('student_class', studentClass)
+        
+        // Convert base64 photos to files
+        student.photos.forEach((photoDataUrl, index) => {
+          const byteString = atob(photoDataUrl.split(',')[1])
+          const mimeString = photoDataUrl.split(',')[0].split(':')[1].split(';')[0]
+          const ab = new ArrayBuffer(byteString.length)
+          const ia = new Uint8Array(ab)
+          for (let i = 0; i < byteString.length; i++) {
+            ia[i] = byteString.charCodeAt(i)
+          }
+          const blob = new Blob([ab], { type: mimeString })
+          const file = new File([blob], `photo_${index + 1}.jpg`, { type: mimeString })
+          formData.append('images', file)
+        })
+
+        setUploadProgress((completedStudents / totalStudents) * 80)
+
+        const response = await fetch(`/api/checks/${checkId}/submissions`, {
+          method: 'POST',
+          body: formData
+        })
+
+        if (!response.ok) {
+          const error = await response.json()
+          throw new Error(`Ошибка при загрузке работы ${student.name}: ${error.error || 'Неизвестная ошибка'}`)
+        }
+
+        const result = await response.json()
+        submissions.push(result.submission)
+        completedStudents++
+      }
+
+      setUploadProgress(90)
+      
+      toast.success(`Успешно загружено ${submissions.length} работ!`)
+      
+      // Start processing for all submissions
+      setUploadProgress(100)
+      
+      setTimeout(async () => {
+        try {
+          const evaluationPromises = submissions.map((submission: { student: Student; submissionId: string }) => 
+            fetch(`/api/submissions/${submission.submissionId}/evaluate`, { method: 'POST' })
+          )
+          
+          await Promise.all(evaluationPromises)
+          toast.success('Обработка всех работ завершена')
+          router.push(`/dashboard/checks/${checkId}/results`)
+        } catch (evalError) {
+          console.error('Error during batch evaluation:', evalError)
+          toast.error('Ошибка при обработке некоторых работ')
+          router.push(`/dashboard/checks/${checkId}`)
+        }
+      }, 1000)
+      
+    } catch (error) {
+      console.error('Error in batch submission:', error)
+      toast.error(error instanceof Error ? error.message : 'Ошибка при загрузке работ')
+      setUploadProgress(0)
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   const handleSubmit = async () => {
@@ -318,35 +404,87 @@ export default function SubmissionPage({ params }: SubmissionPageProps) {
           </CardContent>
         </Card>
 
-        {/* Загрузка изображений */}
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="upload">
-              <Upload className="h-4 w-4 mr-2" />
-              Загрузить файлы
-            </TabsTrigger>
-            <TabsTrigger value="camera">
-              <Camera className="h-4 w-4 mr-2" />
-              Сканировать камерой
-            </TabsTrigger>
-          </TabsList>
+        {/* Upload Mode Toggle */}
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-lg font-semibold">Режим загрузки</h3>
+                <p className="text-sm text-gray-600">
+                  Выберите удобный способ загрузки работ
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant={!useNewUploader ? 'default' : 'outline'}
+                  onClick={() => setUseNewUploader(false)}
+                  disabled={isSubmitting}
+                >
+                  Один студент
+                </Button>
+                <Button
+                  variant={useNewUploader ? 'default' : 'outline'}
+                  onClick={() => setUseNewUploader(true)}
+                  disabled={isSubmitting}
+                >
+                  Несколько студентов
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
-          <TabsContent value="upload">
-            <ImageUpload
-              onFilesChange={handleFilesChange}
-              maxFiles={20}
-              disabled={isSubmitting}
+        {useNewUploader ? (
+          /* Multi-student uploader */
+          <div className="space-y-4">
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                  <p className="text-sm text-green-700 font-medium">Режим загрузки для нескольких студентов активен</p>
+                </div>
+              </CardContent>
+            </Card>
+            <SubmissionUploader
+              onSubmit={handleMultiStudentSubmit}
+              maxStudents={10}
+              maxPhotosPerStudent={5}
             />
-          </TabsContent>
+          </div>
+        ) : (
+          /* Original single-student uploader */
+          <>
+            {/* Загрузка изображений */}
+            <Tabs value={activeTab} onValueChange={setActiveTab}>
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="upload">
+                  <Upload className="h-4 w-4 mr-2" />
+                  Загрузить файлы
+                </TabsTrigger>
+                <TabsTrigger value="camera">
+                  <Camera className="h-4 w-4 mr-2" />
+                  Сканировать камерой
+                </TabsTrigger>
+              </TabsList>
 
-          <TabsContent value="camera">
-            <CameraScanner
-              onPhotosCapture={handleCameraPhotos}
-              maxPhotos={20}
-              disabled={isSubmitting}
-            />
-          </TabsContent>
-        </Tabs>
+              <TabsContent value="upload">
+                <ImageUpload
+                  onFilesChange={handleFilesChange}
+                  maxFiles={20}
+                  disabled={isSubmitting}
+                />
+              </TabsContent>
+
+              <TabsContent value="camera">
+                <CameraScanner
+                  onPhotosCapture={handleCameraPhotos}
+                  maxPhotos={20}
+                  disabled={isSubmitting}
+                />
+              </TabsContent>
+            </Tabs>
+          </>
+        )}
 
         {/* Прогресс загрузки */}
         {isSubmitting && (
@@ -373,8 +511,8 @@ export default function SubmissionPage({ params }: SubmissionPageProps) {
           </Card>
         )}
 
-        {/* Сводка */}
-        {totalFiles > 0 && (
+        {/* Сводка - показываем только для одиночного режима */}
+        {!useNewUploader && totalFiles > 0 && (
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center justify-between">

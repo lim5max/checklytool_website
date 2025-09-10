@@ -110,7 +110,7 @@ export default function CheckPage({ params }: CheckPageProps) {
           </div>
         </div>
       ) : (
-        <EmptyCheckState title={checkData.title} />
+        <EmptyCheckState title={checkData.title} checkId={checkId} />
       )}
     </div>
   )

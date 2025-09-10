@@ -3,14 +3,29 @@
 import Image from 'next/image'
 import { ArrowLeft, Settings, X } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import { useState } from 'react'
+import { CameraWorkInterface } from '@/components/camera/CameraWorkInterface'
+import { toast } from 'sonner'
+
+interface Student {
+  id: string
+  name: string
+  photos: Array<{
+    id: string
+    dataUrl: string
+    timestamp: number
+  }>
+}
 
 interface EmptyCheckStateProps {
   className?: string
   title?: string
+  checkId?: string
 }
 
-export function EmptyCheckState({ className = '', title = 'Контрольная по информатике' }: EmptyCheckStateProps) {
+export function EmptyCheckState({ className = '', title = 'Контрольная по информатике', checkId }: EmptyCheckStateProps) {
   const router = useRouter()
+  const [isCameraOpen, setIsCameraOpen] = useState(false)
   
   const handleClose = () => {
     // При нажатии на крестик попадаем на главную
@@ -23,8 +38,32 @@ export function EmptyCheckState({ className = '', title = 'Контрольна�
   }
   
   const handleUpload = () => {
-    // TODO: Implement upload functionality
-    console.log('Upload clicked')
+    if (checkId) {
+      setIsCameraOpen(true)
+    } else {
+      console.log('No checkId provided')
+    }
+  }
+  
+  const handleCameraSubmit = async (students: Student[]) => {
+    try {
+      // Here you would typically send the data to your API
+      console.log('Submitting camera data:', students)
+      
+      // For now, just show success and close camera
+      toast.success(`Загружены работы для ${students.filter(s => s.photos.length > 0).length} учеников`)
+      setIsCameraOpen(false)
+      
+      // Optionally navigate to results or update the state
+      // router.push(`/dashboard/checks/${checkId}/results`)
+    } catch (error) {
+      console.error('Error submitting camera data:', error)
+      toast.error('Ошибка при загрузке работ')
+    }
+  }
+  
+  const handleCameraClose = () => {
+    setIsCameraOpen(false)
   }
 
   return (
@@ -85,6 +124,15 @@ export function EmptyCheckState({ className = '', title = 'Контрольна�
           </button>
         </div>
       </div>
+      
+      {/* Camera Work Interface */}
+      <CameraWorkInterface
+        isOpen={isCameraOpen}
+        onClose={handleCameraClose}
+        onSubmit={handleCameraSubmit}
+        checkTitle={title}
+        maxPhotosPerStudent={5}
+      />
     </div>
   )
 }

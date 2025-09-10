@@ -54,6 +54,11 @@ export function CameraScanner({
   // Проверяем доступность камеры
   const checkCameraAvailability = useCallback(async () => {
     try {
+      // Check if we're in a secure context
+      if (!window.isSecureContext) {
+        throw new Error('Camera access requires HTTPS or localhost')
+      }
+      
       const devices = await navigator.mediaDevices.enumerateDevices()
       const videoDevices = devices.filter(device => device.kind === 'videoinput')
       
