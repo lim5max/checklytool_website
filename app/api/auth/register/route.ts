@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { Resend } from 'resend'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
-
 const registerSchema = z.object({
   email: z.string().email('Некорректный email'),
   password: z.string().min(6, 'Пароль должен быть минимум 6 символов'),
@@ -27,6 +25,7 @@ export async function POST(request: NextRequest) {
     
     // For now, let's send a welcome email via Resend
     console.log('Attempting to send email...')
+    const resend = new Resend(process.env.RESEND_API_KEY)
     const emailResult = await resend.emails.send({
       from: 'ChecklyTool <noreply@resend.dev>',
       to: [email],

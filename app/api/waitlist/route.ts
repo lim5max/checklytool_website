@@ -1,10 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Resend } from 'resend';
 
-// Убедимся что API ключ имеет правильный формат
-const apiKey = process.env.RESEND_API_KEY;
-const resend = apiKey ? new Resend(apiKey) : null;
-
 export async function POST(request: NextRequest) {
   try {
     const { email } = await request.json();
@@ -18,7 +14,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Проверяем наличие API ключа
-    if (!apiKey || !resend) {
+    const apiKey = process.env.RESEND_API_KEY;
+    if (!apiKey) {
       console.error('RESEND_API_KEY не найден в переменных окружения');
       return NextResponse.json(
         { error: 'Сервис временно недоступен' },
@@ -34,6 +31,8 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
+
+    const resend = new Resend(apiKey);
 
     // Проверяем наличие audienceId
     const audienceId = process.env.RESEND_AUDIENCE_ID;
