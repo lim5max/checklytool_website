@@ -1,11 +1,6 @@
 import { OpenRouterRequest, OpenRouterResponse, AIAnalysisResponse } from '@/types/check'
 
-const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY
 const OPENROUTER_BASE_URL = process.env.OPENROUTER_BASE_URL || 'https://openrouter.ai/api/v1'
-
-if (!OPENROUTER_API_KEY) {
-	throw new Error('OPENROUTER_API_KEY is required')
-}
 
 // Main function to analyze student work using AI
 export async function analyzeStudentWork(
@@ -88,6 +83,11 @@ export async function analyzeStudentWork(
 				}))
 			]
 		})
+	}
+
+	const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY
+	if (!OPENROUTER_API_KEY) {
+		throw new Error('OPENROUTER_API_KEY is required')
 	}
 
 	const requestBody: OpenRouterRequest = {
