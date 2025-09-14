@@ -77,18 +77,15 @@ export default function Home() {
                   viewport={{ once: true }}
                   transition={{ duration: 0.6, delay: 0.8 }}
                 >
-                  <motion.div
+                  <motion.button
+                    onClick={openModal}
+                    className="bg-[#096ff5] hover:bg-blue-600 transition-colors text-white font-inter font-medium text-base px-6 py-3.5 rounded-full shadow-lg inline-block"
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                     transition={{ type: "spring", stiffness: 400, damping: 17 }}
                   >
-                    <Link 
-                      href="/auth/login"
-                      className="bg-[#096ff5] hover:bg-blue-600 transition-colors text-white font-inter font-medium text-base px-6 py-3.5 rounded-full shadow-lg inline-block"
-                    >
-                      Начать работу
-                    </Link>
-                  </motion.div>
+                    Начать работу
+                  </motion.button>
                   <p className="font-inter font-medium text-xs text-slate-900">
                     Всего 200 ₽ в мес.
                   </p>
@@ -197,19 +194,29 @@ export default function Home() {
                   </motion.p>
                 </div>
                 <motion.div 
+                  className="flex flex-col gap-4 w-full"
                   initial={{ opacity: 0, y: 30 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ duration: 0.6, delay: 1.0 }}
-                  whileHover={{ scale: 1.02, boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)" }}
-                  whileTap={{ scale: 0.98 }}
                 >
-                  <Link 
-                    href="/auth/login"
+                  <motion.button
+                    onClick={openModal}
                     className="bg-[#096ff5] hover:bg-blue-600 transition-colors w-full text-white font-inter font-medium text-2xl px-5 py-8 rounded-full shadow-lg h-[172px] flex items-center justify-center"
+                    whileHover={{ scale: 1.02, boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)" }}
+                    whileTap={{ scale: 0.98 }}
                   >
                     Начать сейчас
-                  </Link>
+                  </motion.button>
+                  
+                  <motion.button
+                    onClick={openModal}
+                    className="bg-white hover:bg-gray-50 border-2 border-[#096ff5] transition-colors w-full text-[#096ff5] font-inter font-medium text-lg px-6 py-4 rounded-full shadow-md"
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    Оставить заявку
+                  </motion.button>
                 </motion.div>
               </motion.div>
             </motion.section>

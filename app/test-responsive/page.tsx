@@ -3,9 +3,11 @@
 import React, { useState, useEffect } from "react"
 import CheckCreationStep1 from "@/components/CheckCreationStep1"
 import CheckCreationStep2 from "@/components/CheckCreationStep2"
-import { 
+import {
   type CheckCreationData,
   type WorkType,
+  type GradingCriteria,
+  type Answer,
   DEFAULT_GRADING_CRITERIA,
   DEFAULT_ANSWERS
 } from "@/lib/check-creation-validation"
@@ -49,7 +51,7 @@ export default function ResponsiveTestPage() {
     setCheckData(prev => ({ ...prev, workType }))
   }
 
-  const handleGradingCriteriaChange = (criteria: any) => {
+  const handleGradingCriteriaChange = (criteria: GradingCriteria) => {
     setCheckData(prev => ({ ...prev, gradingCriteria: criteria }))
   }
 
@@ -57,7 +59,7 @@ export default function ResponsiveTestPage() {
     setCheckData(prev => ({ ...prev, checkingMethod: method }))
   }
 
-  const handleAnswersChange = (answers: any) => {
+  const handleAnswersChange = (answers: Answer[]) => {
     setCheckData(prev => ({ ...prev, answers }))
   }
 

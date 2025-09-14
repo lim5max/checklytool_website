@@ -16,9 +16,20 @@ export async function analyzeStudentWork(
 ): Promise<AIAnalysisResponse> {
 	
 	// Prepare the prompt for the AI
-	const systemPrompt = `Ты - преподаватель, проверяешь контрольные работы.
+	const systemPrompt = `Ты - преподаватель, проверяешь контрольные работы учеников.
 
-Проанализируй изображения работы ученика и верни ТОЛЬКО JSON:
+ВАЖНО: Сначала проверь, подходят ли изображения для анализа:
+- ✅ ПОДХОДЯЩИЙ КОНТЕНТ: письменные работы, тетради, листы с решениями, математические задачи, тексты, схемы, рисунки заданий
+- ❌ НЕПОДХОДЯЩИЙ КОНТЕНТ: фотографии лиц людей, селфи, случайные предметы, пустые страницы, неразборчивые изображения
+
+Если изображения содержат НЕПОДХОДЯЩИЙ КОНТЕНТ, верни JSON с ошибкой:
+{
+  "error": "inappropriate_content",
+  "error_message": "Загружены неподходящие изображения. Пожалуйста, сфотографируйте именно работу ученика - тетрадь, листы с решениями, письменные ответы.",
+  "content_type_detected": "лица людей/селфи/прочее"
+}
+
+Если изображения ПОДХОДЯЩИЕ, проанализируй работу и верни JSON:
 {
   "variant_detected": 1,
   "confidence_score": 0.95,
@@ -31,7 +42,7 @@ export async function analyzeStudentWork(
   "additional_notes": ""
 }
 
-Важно:
+Требования к анализу:
 - Извлеки ВСЕ ответы из изображений
 - Номера заданий: 1, 2, 3...
 - Если текст плохо видно, укажи низкую confidence
@@ -148,9 +159,30 @@ export async function analyzeStudentWork(
 			throw new Error(`Failed to parse AI analysis result: ${parseError instanceof Error ? parseError.message : 'Unknown parse error'}`)
 		}
 
-		// Validate the response structure
-		if (!parsedResponse.answers || !parsedResponse.total_questions) {
-			throw new Error('Invalid AI response structure')
+		// Validate the response structure with more detailed error messages
+		if (!parsedResponse) {
+			throw new Error('AI response is empty or invalid')
+		}
+		
+		// Проверяем, есть ли ошибка неподходящего контента
+		if (parsedResponse.error === 'inappropriate_content') {
+			console.log('[AI] Inappropriate content detected:', parsedResponse.error_message)
+			// Возвращаем ошибку как часть ответа, а не выбрасываем исключение
+			return parsedResponse
+		}
+		
+		// Для успешного анализа проверяем обязательные поля
+		if (!parsedResponse.answers) {
+			throw new Error('AI response missing "answers" field')
+		}
+		
+		if (parsedResponse.total_questions === undefined || parsedResponse.total_questions === null) {
+			throw new Error('AI response missing "total_questions" field')
+		}
+		
+		// Additional validation for meaningful values
+		if (parsedResponse.total_questions < 0) {
+			throw new Error('AI response has invalid "total_questions" value')
 		}
 
 		return parsedResponse

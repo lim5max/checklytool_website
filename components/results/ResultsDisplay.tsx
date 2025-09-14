@@ -21,10 +21,10 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { 
-  TrendingUp, 
-  Users, 
-  Award, 
+import {
+  TrendingUp,
+  Users,
+  Award,
   Clock,
   Search,
   Download,
@@ -37,6 +37,8 @@ import {
 import { formatDistanceToNow } from 'date-fns'
 import { ru } from 'date-fns/locale'
 import { toast } from 'sonner'
+import { useRouter } from 'next/navigation'
+import { clearDraft, setDraftStudents, getTempFailedNames, clearTempFailedNames } from '@/lib/drafts'
 
 interface StudentSubmission {
   id: string
@@ -46,6 +48,7 @@ interface StudentSubmission {
   created_at: string
   updated_at: string
   status: 'pending' | 'processing' | 'completed' | 'failed'
+  error_message?: string
   evaluation_results?: Array<{
     id: string
     total_questions: number
@@ -81,6 +84,7 @@ interface ResultsDisplayProps {
 }
 
 export function ResultsDisplay({ checkId, checkTitle, highlightSubmissionId }: ResultsDisplayProps) {
+  const router = useRouter()
   const [submissions, setSubmissions] = useState<StudentSubmission[]>([])
   const [statistics, setStatistics] = useState<CheckStatistics | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -88,6 +92,36 @@ export function ResultsDisplay({ checkId, checkTitle, highlightSubmissionId }: R
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [gradeFilter, setGradeFilter] = useState<string>('all')
   const [selectedSubmission, setSelectedSubmission] = useState<StudentSubmission | null>(null)
+
+  // Функция для перевода технических ошибок в понятные пользователю сообщения
+  const getHumanReadableError = (submission: StudentSubmission): string => {
+    if (!submission.error_message) return 'Неизвестная ошибка'
+    
+    // Проверяем тип ошибки из error_details
+    if (submission.error_details?.error_type === 'inappropriate_content') {
+      const contentType = submission.error_details.content_type_detected
+      if (contentType?.includes('лиц') || contentType?.includes('селфи')) {
+        return '📸 Загружено фото лица вместо работы. Сфотографируйте тетрадь или лист с решениями.'
+      }
+      return '❌ Загружены неподходящие изображения. Нужно сфотографировать именно работу ученика.'
+    }
+    
+    // Другие типичные ошибки AI
+    if (submission.error_message.includes('Failed to parse') || submission.error_message.includes('JSON')) {
+      return '🤖 Ошибка обработки ИИ. Попробуйте сфотографировать работу заново с лучшим качеством.'
+    }
+    
+    if (submission.error_message.includes('No images') || submission.error_message.includes('empty')) {
+      return '📷 Не удалось загрузить изображения. Проверьте подключение к интернету.'
+    }
+    
+    if (submission.error_message.includes('timeout') || submission.error_message.includes('network')) {
+      return '⏱️ Превышено время обработки. Попробуйте еще раз.'
+    }
+    
+    // Для всех остальных случаев возвращаем оригинальное сообщение, но более дружелюбно
+    return `⚠️ ${submission.error_message}`
+  }
 
   useEffect(() => {
     loadResultsData()
@@ -188,6 +222,36 @@ export function ResultsDisplay({ checkId, checkTitle, highlightSubmissionId }: R
     link.click()
   }
 
+  const handleReshoot = async () => {
+    try {
+      // Собираем только неудачные имена из сервера
+      const serverFailedNames = submissions
+        .filter(s => s.status === 'failed')
+        .map(s => (s.student_name || '').trim())
+        .filter(n => n.length > 0)
+
+      // Плюс локальные имена, у которых upload дал 500
+      const localFailedNames = getTempFailedNames(checkId)
+
+      const names = Array.from(new Set([...serverFailedNames, ...localFailedNames]))
+
+      // Перезаписываем черновики этими студентами
+      clearDraft(checkId)
+      if (names.length > 0) {
+        setDraftStudents(checkId, names)
+      }
+
+      // Сбрасываем локальный список ошибок — он отработан
+      clearTempFailedNames(checkId)
+
+      // Переходим на страницу проверки где будет камера
+      router.push(`/dashboard/checks/${checkId}`)
+    } catch (e) {
+      console.error(e)
+      toast.error('Не удалось подготовить пересъемку')
+    }
+  }
+
   const viewSubmissionDetails = (submission: StudentSubmission) => {
     setSelectedSubmission(submission)
     console.log('Viewing submission details:', submission)
@@ -226,6 +290,76 @@ export function ResultsDisplay({ checkId, checkTitle, highlightSubmissionId }: R
 
   return (
     <div className="space-y-6">
+      {/* Error Summary Section - Show when there are failed submissions */}
+      {submissions.some(s => s.status === 'failed') && (
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center justify-between w-full">
+            <div className="font-medium text-slate-800 text-[16px] leading-[1.5]">
+              <p>Ошибки проверки</p>
+            </div>
+            <Button
+              onClick={handleReshoot}
+              className="bg-[#096ff5] rounded-[180px] h-9 px-4 text-white text-[16px] font-medium hover:bg-[#096ff5]/90"
+            >
+              Переснять
+            </Button>
+          </div>
+          
+          <div className="flex flex-col gap-2.5 items-center justify-start w-full">
+            {submissions
+              .filter(s => s.status === 'failed')
+              .map((s) => (
+                <div key={s.id} className="bg-slate-50 flex flex-col gap-2.5 items-start justify-start px-6 py-[18px] rounded-[24px] w-full">
+                  <div className="flex items-center justify-between w-full">
+                    <div className="flex items-center gap-3">
+                      <div className="font-medium text-slate-800 text-[18px] leading-[1.6]">
+                        <p>{s.student_name || 'Студент'}</p>
+                      </div>
+                    </div>
+                    {/* маленькая красная точка как в макете */}
+                    <div className="h-2 w-2 rounded-full bg-[#e33629]" />
+                  </div>
+                  {s.error_message && (
+                    <div className="text-sm text-red-600 mt-2">
+                      {getHumanReadableError(s)}
+                    </div>
+                  )}
+                  
+                  {/* Добавляем советы для конкретных типов ошибок */}
+                  {s.error_details?.error_type === 'inappropriate_content' && (
+                    <div className="bg-blue-50 p-3 rounded-lg mt-2 w-full">
+                      <div className="text-sm text-blue-800">
+                        <p className="font-medium mb-1">💡 Как исправить:</p>
+                        <p>• Сфотографируйте тетрадь или листы с решениями</p>
+                        <p>• Убедитесь, что работа ученика хорошо видна</p>
+                        <p>• Избегайте фотографий лиц и посторонних предметов</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+          </div>
+          
+          {/* Общие советы по исправлению ошибок */}
+          {submissions.filter(s => s.status === 'failed').length > 0 && (
+            <div className="bg-amber-50 p-4 rounded-lg border border-amber-200">
+              <div className="flex items-start gap-3">
+                <div className="text-amber-600 text-lg">💡</div>
+                <div className="text-sm text-amber-800">
+                  <p className="font-medium mb-2">Советы по улучшению качества фотографий:</p>
+                  <ul className="list-disc list-inside space-y-1">
+                    <li>Фотографируйте при хорошем освещении</li>
+                    <li>Держите камеру параллельно листу</li>
+                    <li>Убедитесь, что текст читаем</li>
+                    <li>Включите в кадр всю работу целиком</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Statistics Cards */}
       {statistics && (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">

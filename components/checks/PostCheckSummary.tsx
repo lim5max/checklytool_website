@@ -1,0 +1,317 @@
+'use client'
+
+import { useEffect, useMemo, useState } from 'react'
+import Image from 'next/image'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { clearDraft, setDraftStudents, getTempFailedNames, clearTempFailedNames } from '@/lib/drafts'
+import { toast } from 'sonner'
+import { useRouter } from 'next/navigation'
+import { X, Settings, Menu } from 'lucide-react'
+
+type SubmissionStatus = 'pending' | 'processing' | 'completed' | 'failed'
+
+interface EvaluationResult {
+  id: string
+  total_questions: number
+  correct_answers: number
+  incorrect_answers: number
+  percentage_score: number
+  final_grade: number
+  variant_used?: number
+  detailed_answers?: Record<string, {
+    given: string
+    correct: string | null
+    is_correct: boolean
+    confidence?: number
+  }>
+  ai_response?: Record<string, unknown>
+  confidence_score?: number
+}
+
+interface StudentSubmission {
+  id: string
+  student_name?: string
+  student_class?: string
+  submission_images: string[]
+  created_at: string
+  updated_at: string
+  status: SubmissionStatus
+  evaluation_results?: EvaluationResult[]
+  error_message?: string
+  error_details?: Record<string, unknown>
+}
+
+interface PostCheckSummaryProps {
+  checkId: string
+  title?: string
+  onOpenCamera?: () => void
+}
+
+export function PostCheckSummary({ checkId, title = 'Контрольная по информатике', onOpenCamera }: PostCheckSummaryProps) {
+  const router = useRouter()
+  const [submissions, setSubmissions] = useState<StudentSubmission[]>([])
+  const [loading, setLoading] = useState<boolean>(true)
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        setLoading(true)
+        console.log('[POST_CHECK_SUMMARY] Loading submissions for checkId:', checkId)
+        const res = await fetch(`/api/checks/${checkId}/submissions`)
+        if (!res.ok) throw new Error('Не удалось загрузить отправленные работы')
+        const data: { submissions: StudentSubmission[] } = await res.json()
+        console.log('[POST_CHECK_SUMMARY] Loaded submissions:', data.submissions)
+        data.submissions.forEach((s, i) => {
+          console.log(`[POST_CHECK_SUMMARY] Submission ${i}:`, {
+            id: s.id,
+            student_name: s.student_name,
+            status: s.status,
+            error_message: s.error_message,
+            error_details: s.error_details
+          })
+        })
+        console.log('[POST_CHECK_SUMMARY] Failed submissions:', data.submissions.filter(s => s.status === 'failed'))
+        console.log('[POST_CHECK_SUMMARY] Completed submissions:', data.submissions.filter(s => s.status === 'completed'))
+        setSubmissions(data.submissions || [])
+      } catch (e) {
+        console.error('[POST_CHECK_SUMMARY] Error loading submissions:', e)
+        toast.error('Ошибка загрузки списка работ')
+      } finally {
+        setLoading(false)
+      }
+    }
+    load()
+    
+    // Обновляем данные при получении отчетов об ошибках
+    let reloadTimeout: NodeJS.Timeout | null = null
+    
+    const onEvaluationComplete = () => {
+      console.log('[POST_CHECK_SUMMARY] Evaluation completed, scheduling reload...')
+      
+      // Отменяем предыдущий таймер если он есть
+      if (reloadTimeout) {
+        clearTimeout(reloadTimeout)
+      }
+      
+      // Устанавливаем новый таймер
+      reloadTimeout = setTimeout(() => {
+        console.log('[POST_CHECK_SUMMARY] Actually reloading data now')
+        load()
+        reloadTimeout = null
+      }, 2500) // Немного увеличиваем задержку
+    }
+    
+    if (typeof window !== 'undefined') {
+      window.addEventListener('evaluation:complete', onEvaluationComplete)
+      // Убираем дублирующий listener для submissions:uploaded так как он тоже вызывает загрузку
+    }
+    
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('evaluation:complete', onEvaluationComplete)
+        // Очищаем таймер при размонтировании
+        if (reloadTimeout) {
+          clearTimeout(reloadTimeout)
+        }
+      }
+    }
+  }, [checkId])
+
+  const failedSubs = useMemo(
+    () => submissions.filter((s) => s.status === 'failed'),
+    [submissions]
+  )
+
+  const completedSubs = useMemo(
+    () => submissions.filter((s) => s.status === 'completed'),
+    [submissions]
+  )
+
+  const handleOpenCamera = () => {
+    onOpenCamera?.()
+  }
+
+  const handleReshoot = async () => {
+    try {
+      // Собираем только неудачные имена из сервера
+      const serverFailedNames = failedSubs
+        .map((s) => (s.student_name || '').trim())
+        .filter((n) => n.length > 0)
+
+      // Плюс локальные имена, у которых upload дал 500
+      const localFailedNames = getTempFailedNames(checkId)
+
+      const names = Array.from(new Set([...serverFailedNames, ...localFailedNames]))
+
+      // Перезаписываем черновики этими студентами
+      clearDraft(checkId)
+      if (names.length > 0) {
+        setDraftStudents(checkId, names)
+      }
+
+      // Сбрасываем локальный список ошибок — он отработан
+      clearTempFailedNames(checkId)
+
+      onOpenCamera?.()
+    } catch (e) {
+      console.error(e)
+      toast.error('Не удалось подготовить пересъемку')
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-white px-4 py-6">
+        <div className="max-w-md mx-auto">
+          <div className="animate-pulse space-y-4">
+            <div className="h-8 bg-gray-200 rounded w-1/2" />
+            <div className="h-6 bg-gray-200 rounded w-1/3" />
+            <div className="h-24 bg-gray-200 rounded" />
+            <div className="h-8 bg-gray-200 rounded w-1/2" />
+            <div className="h-24 bg-gray-200 rounded" />
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  const hasErrors = failedSubs.length > 0
+
+  return (
+    <div className="min-h-screen bg-white px-4 py-6">
+      <div className="max-w-md mx-auto flex flex-col gap-6">
+        {/* Brand header (logo + burger) */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center">
+            <Image
+              src="/images/logo.png"
+              alt="ChecklyTool"
+              width={120}
+              height={40}
+              className="object-contain"
+              priority
+            />
+          </div>
+          <button
+            className="w-[42px] h-[42px] flex items-center justify-center"
+            aria-label="Меню"
+          >
+            <Menu className="w-6 h-6 text-slate-900" />
+          </button>
+        </div>
+
+        {/* Local nav like empty state: X left, gear right */}
+        <div className="flex items-center justify-between -mt-2">
+          <button
+            onClick={() => router.push('/dashboard')}
+            className="p-2 -ml-2 rounded-lg hover:bg-gray-100 transition-colors"
+            aria-label="Закрыть и вернуться на главную"
+          >
+            <X className="w-6 h-6 text-slate-800" />
+          </button>
+          <button
+            onClick={() => {}}
+            className="p-2 -mr-2 rounded-lg hover:bg-gray-100 transition-colors"
+            aria-label="Настройки"
+          >
+            <Settings className="w-6 h-6 text-slate-800" />
+          </button>
+        </div>
+
+        {/* Title */}
+        <div>
+          <h1 className="text-[28px] font-black leading-[1.2] text-slate-800">{title}</h1>
+        </div>
+
+        {/* Ошибки проверки + Переснять */}
+        {hasErrors && (
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center justify-between w-full">
+              <div className="font-medium text-slate-800 text-[16px] leading-[1.5]">
+                <p>Ошибки проверки</p>
+              </div>
+              <button
+                className="bg-[#096ff5] rounded-[180px] h-9 px-4 text-white text-[16px] font-medium"
+                onClick={handleReshoot}
+                aria-label="Переснять"
+              >
+                Переснять
+              </button>
+            </div>
+
+            <div className="flex flex-col gap-2.5 items-center justify-start w-[343px] max-w-full">
+              {failedSubs.map((s) => (
+                <div key={s.id} className="bg-slate-50 flex flex-col gap-2.5 items-start justify-start px-6 py-[18px] rounded-[24px] w-full">
+                  <div className="flex items-center justify-between w-full">
+                    <div className="flex items-center gap-3">
+                      <div className="font-medium text-slate-800 text-[18px] leading-[1.6]">
+                        <p>{s.student_name || 'Студент'}</p>
+                      </div>
+                    </div>
+                    {/* маленькая красная точка как в макете */}
+                    <div className="h-2 w-2 rounded-full bg-[#e33629]" />
+                  </div>
+                  {/* Показываем описание ошибки */}
+                  <div className="text-[14px] text-slate-600 leading-[1.4]">
+                    <p>
+                      {s.error_message || 'Ошибка при проверке работы. Попробуйте переснять фотографии.'}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Успешно проверенные - показываем только если есть завершенные работы */}
+        {completedSubs.length > 0 && (
+          <div className="flex flex-col gap-4">
+            <div className="font-medium text-slate-800 text-[16px] leading-[1.5]">
+              <p>Успешно проверенные</p>
+            </div>
+
+            <div className="flex flex-col gap-2.5 items-center justify-start w-[343px] max-w-full">
+              {completedSubs.map((s) => {
+                const grade = s.evaluation_results?.[0]?.final_grade
+                return (
+                  <div key={s.id} className="bg-slate-50 flex flex-col gap-2.5 items-start justify-start px-6 py-[18px] rounded-[24px] w-full">
+                    <div className="flex items-center justify-between w-full">
+                      <div className="flex items-center gap-3">
+                        <div className="font-medium text-slate-800 text-[18px] leading-[1.6]">
+                          <p>{s.student_name || 'Студент'}</p>
+                        </div>
+                      </div>
+                      {typeof grade === 'number' ? (
+                        <div className="font-extrabold text-[20px] leading-[1.2] text-[#319f43]">
+                          <p>{grade}</p>
+                        </div>
+                      ) : (
+                        <Badge variant="secondary">OK</Badge>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Bottom single button as in Figma */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-[18px] py-3">
+        <button
+          className={`w-full h-14 rounded-[180px] px-[43px] text-[16px] font-medium ${
+            hasErrors 
+              ? 'bg-slate-100 text-slate-800' 
+              : 'bg-[#096ff5] text-white'
+          }`}
+          onClick={() => onOpenCamera?.()}
+        >
+          Загрузить работы
+        </button>
+      </div>
+
+    </div>
+  )
+}

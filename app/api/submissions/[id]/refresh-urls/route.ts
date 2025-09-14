@@ -78,7 +78,7 @@ export async function POST(
 		}
 		
 		// Update submission with refreshed URLs
-		const { error: updateError } = await supabase
+		const { error: updateError } = await (supabase as any)
 			.from('student_submissions')
 			.update({
 				submission_images: refreshedUrls,

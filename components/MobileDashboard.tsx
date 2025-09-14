@@ -267,8 +267,7 @@ export default function MobileDashboard() {
                 <p 
                   className="font-nunito font-black italic text-[64px] leading-none text-[#096ff5] mr-1"
                   style={{
-                    WebkitTextStroke: '4px #096ff5',
-                    textStroke: '2px #096ff5'
+                    WebkitTextStroke: '4px #096ff5'
                   }}
                 >
                   {stats.total_submissions}

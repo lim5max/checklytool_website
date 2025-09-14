@@ -11,6 +11,7 @@ import {
   type GradingCriteria,
   type EssayGradingCriteria,
   type Answer,
+  type VariantData,
   validateStep1,
   validateStep2,
   validateCheckCreationData,
@@ -210,7 +211,7 @@ export default function CheckCreationPage() {
     setCheckData(prev => ({ ...prev, customPrompt: prompt }))
   }
 
-  const handleVariantsChange = (variants: any[]) => {
+  const handleVariantsChange = (variants: VariantData[]) => {
     setCheckData(prev => ({ ...prev, variants }))
   }
 

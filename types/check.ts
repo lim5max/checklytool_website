@@ -57,6 +57,13 @@ export interface StudentSubmission {
   variant_detected?: number
   processing_started_at?: string
   processing_completed_at?: string
+  error_message?: string
+  error_details?: {
+    error_type?: 'inappropriate_content' | 'ai_failure' | 'image_processing' | 'validation_error'
+    content_type_detected?: string
+    ai_message?: string
+    [key: string]: any
+  }
   created_at: string
   updated_at: string
 }
@@ -167,17 +174,23 @@ export interface OpenRouterResponse {
   }
 }
 
-// AI Analysis Response Structure
+// AI Analysis Response Structure - можеть быть либо успешный результат, либо ошибка контента
 export interface AIAnalysisResponse {
-  variant_detected: number
-  confidence_score: number
-  answers: Record<string, {
+  // Успешный анализ
+  variant_detected?: number
+  confidence_score?: number
+  answers?: Record<string, {
     detected_answer: string
     confidence: number
   }>
-  total_questions: number
+  total_questions?: number
   student_name?: string
   additional_notes?: string
+  
+  // Ошибка неподходящего контента
+  error?: 'inappropriate_content'
+  error_message?: string
+  content_type_detected?: string
 }
 
 // Admin Dashboard types

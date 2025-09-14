@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { auth, signOut } from '../../lib/auth'
 import MobileHeader from '../../components/MobileHeader'
 import DesktopHeader from '../../components/DesktopHeader'
+import HeaderGate from '../../components/HeaderGate'
 
 export const metadata: Metadata = {
   title: "Дашборд - ChecklyTool",
@@ -27,31 +28,33 @@ export default async function DashboardLayout({
 
   return (
     <div className="min-h-screen bg-white">
-      {/* Headers */}
-      <div className="">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <MobileHeader 
-            variant="dashboard"
-            user={{
-              name: session.user?.name,
-              email: session.user?.email,
-              image: session.user?.image
-            }}
-            onSignOut={handleSignOut}
-            className="py-4"
-          />
-          <DesktopHeader 
-            variant="dashboard"
-            user={{
-              name: session.user?.name,
-              email: session.user?.email,
-              image: session.user?.image
-            }}
-            onSignOut={handleSignOut}
-            className="py-4"
-          />
+      {/* Headers (hidden on checks pages to match Figma local nav) */}
+      <HeaderGate>
+        <div className="">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <MobileHeader
+              variant="dashboard"
+              user={{
+                name: session.user?.name,
+                email: session.user?.email,
+                image: session.user?.image
+              }}
+              onSignOut={handleSignOut}
+              className="py-4"
+            />
+            <DesktopHeader
+              variant="dashboard"
+              user={{
+                name: session.user?.name,
+                email: session.user?.email,
+                image: session.user?.image
+              }}
+              onSignOut={handleSignOut}
+              className="py-4"
+            />
+          </div>
         </div>
-      </div>
+      </HeaderGate>
       
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-[100px]">

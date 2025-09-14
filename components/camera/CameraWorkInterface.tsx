@@ -2,8 +2,17 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
-import { X, Camera, RotateCcw, ChevronLeft, ChevronRight, Plus, Upload, Trash2, Edit3 } from 'lucide-react'
+import { X, Camera, RotateCcw, ChevronDown, Plus, Upload, Trash2, Edit3, UserPlus } from 'lucide-react'
 import { toast } from 'sonner'
+import {
+  getDraft,
+  ensureStudent as ensureDraftStudent,
+  addPhotoToStudent as addPhotoDraft,
+  deletePhoto as deletePhotoDraft,
+  addStudent as addStudentDraft,
+  renameStudent as renameStudentDraft,
+  type DraftStudent,
+} from '@/lib/drafts'
 
 interface Photo {
   id: string
@@ -19,6 +28,7 @@ interface Student {
 
 interface CameraWorkInterfaceProps {
   isOpen: boolean
+  checkId: string
   onClose: () => void
   onSubmit: (students: Student[]) => void
   checkTitle?: string
@@ -27,11 +37,22 @@ interface CameraWorkInterfaceProps {
 
 type ViewMode = 'camera' | 'review'
 
+const mapDraftToLocal = (students: DraftStudent[]): Student[] =>
+  students.map((s) => ({
+    id: s.id,
+    name: s.name,
+    photos: s.photos.map((p) => ({
+      id: p.id,
+      dataUrl: p.dataUrl,
+      timestamp: p.createdAt,
+    })),
+  }))
+
 export function CameraWorkInterface({
   isOpen,
+  checkId,
   onClose,
   onSubmit,
-  checkTitle = 'Контрольная по информатике',
   maxPhotosPerStudent = 5
 }: CameraWorkInterfaceProps) {
   // Camera state
@@ -56,18 +77,35 @@ export function CameraWorkInterface({
   const streamRef = useRef<MediaStream | null>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  // Students strip: center active item
+  const navRef = useRef<HTMLDivElement>(null)
+  const itemRefs = useRef<Array<HTMLDivElement | null>>([])
+  // Serialize camera starts to avoid double inits on view switch
+  const isStartingRef = useRef(false)
 
   // Camera functions
   const startCamera = useCallback(async () => {
     try {
+      console.log('[CAMERA] startCamera called')
+      console.log('[CAMERA] isStartingRef.current:', isStartingRef.current)
+      console.log('[CAMERA] streamRef.current?.active:', streamRef.current?.active)
+
+      if (isStartingRef.current) {
+        console.log('[CAMERA] Start blocked - already starting')
+        return
+      }
+      isStartingRef.current = true
+
       setError(null)
-      
+
       // Check if camera API is available
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         throw new Error('Камера недоступна. Требуется HTTPS или localhost.')
       }
-      
+
+      // Stop any previous
       if (streamRef.current) {
+        console.log('[CAMERA] Stopping existing stream')
         streamRef.current.getTracks().forEach(track => track.stop())
       }
 
@@ -76,48 +114,73 @@ export function CameraWorkInterface({
           facingMode: currentFacingMode,
           width: { ideal: 1920 },
           height: { ideal: 1080 },
-          aspectRatio: { ideal: 16/9 }
+          aspectRatio: { ideal: 16 / 9 }
         },
         audio: false
       }
 
+      console.log('[CAMERA] Requesting media with constraints:', constraints)
       const stream = await navigator.mediaDevices.getUserMedia(constraints)
       streamRef.current = stream
+      console.log('[CAMERA] Media stream obtained:', stream.id)
 
       if (videoRef.current) {
         videoRef.current.srcObject = stream
-        await videoRef.current.play()
+        try {
+          console.log('[CAMERA] Attempting to play video')
+          await videoRef.current.play()
+          console.log('[CAMERA] Video playing successfully')
+        } catch (err) {
+          // Some browsers require a user gesture; surface error
+          console.error('[CAMERA] video.play() failed', err)
+        }
         setIsStreaming(true)
+        console.log('[CAMERA] Camera started successfully')
+      } else {
+        console.error('[CAMERA] videoRef.current is null')
       }
     } catch (err) {
-      console.error('Error starting camera:', err)
+      console.error('[CAMERA] Error starting camera:', err)
       if (err instanceof Error) {
         setError(err.message)
       } else {
         setError('Не удается получить доступ к камере. Проверьте разрешения или используйте HTTPS.')
       }
       setIsStreaming(false)
+    } finally {
+      isStartingRef.current = false
+      console.log('[CAMERA] startCamera completed')
     }
   }, [currentFacingMode])
 
   const stopCamera = useCallback(() => {
+    console.log('[CAMERA] stopCamera called')
+    console.log('[CAMERA] streamRef.current:', !!streamRef.current)
+    console.log('[CAMERA] streamRef.current?.active:', streamRef.current?.active)
+
     if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop())
+      console.log('[CAMERA] Stopping stream tracks')
+      streamRef.current.getTracks().forEach(track => {
+        console.log('[CAMERA] Stopping track:', track.kind, track.readyState)
+        track.stop()
+      })
       streamRef.current = null
     }
-    
+
     if (videoRef.current) {
+      console.log('[CAMERA] Clearing video srcObject')
       videoRef.current.srcObject = null
     }
-    
+
     setIsStreaming(false)
-    setError(null)
+    console.log('[CAMERA] stopCamera completed')
+    // Не скрываем сообщение об ошибке здесь — пусть остается если было
   }, [])
 
   const switchCamera = useCallback(() => {
     const newFacingMode = currentFacingMode === 'user' ? 'environment' : 'user'
     setCurrentFacingMode(newFacingMode)
-    
+
     if (isStreaming) {
       stopCamera()
       setTimeout(() => startCamera(), 100)
@@ -125,53 +188,98 @@ export function CameraWorkInterface({
   }, [currentFacingMode, isStreaming, stopCamera, startCamera])
 
   const capturePhoto = useCallback(async () => {
-    if (!videoRef.current || !canvasRef.current || isCapturing) return
+    console.log('[CAMERA] capturePhoto called, checking conditions...')
+    console.log('[CAMERA] videoRef.current:', !!videoRef.current)
+    console.log('[CAMERA] canvasRef.current:', !!canvasRef.current)
+    console.log('[CAMERA] isCapturing:', isCapturing)
+    console.log('[CAMERA] isStreaming:', isStreaming)
+
+    if (!videoRef.current || !canvasRef.current || isCapturing) {
+      console.log('[CAMERA] Capture blocked - missing refs or already capturing')
+      return
+    }
+
+    if (!isStreaming) {
+      console.log('[CAMERA] Capture blocked - camera not streaming')
+      toast.error('Камера не готова, попробуйте еще раз')
+      return
+    }
 
     const activeStudent = students[activeStudentIndex]
     if (activeStudent.photos.length >= maxPhotosPerStudent) {
+      console.log('[CAMERA] Capture blocked - max photos reached')
       toast.error(`Максимум ${maxPhotosPerStudent} фотографий на ученика`)
       return
     }
 
+    console.log('[CAMERA] Starting photo capture...')
     setIsCapturing(true)
-    
+
     try {
       const video = videoRef.current
       const canvas = canvasRef.current
       const context = canvas.getContext('2d')
-      
+
       if (!context) {
         throw new Error('Cannot get canvas context')
       }
+
+      // Проверяем, что видео готово
+      if (video.videoWidth === 0 || video.videoHeight === 0) {
+        throw new Error('Video not ready - width or height is 0')
+      }
+
+      console.log('[CAMERA] Video dimensions:', video.videoWidth, 'x', video.videoHeight)
 
       canvas.width = video.videoWidth
       canvas.height = video.videoHeight
       context.drawImage(video, 0, 0, canvas.width, canvas.height)
 
       const dataUrl = canvas.toDataURL('image/jpeg', 0.9)
-      const newPhoto: Photo = {
-        id: Date.now().toString(),
-        dataUrl,
-        timestamp: Date.now()
+
+      if (!dataUrl || dataUrl.length < 100) {
+        throw new Error('Generated image data is too small or empty')
       }
 
-      setStudents(prev => prev.map((student, index) => 
-        index === activeStudentIndex 
-          ? { ...student, photos: [...student.photos, newPhoto] }
-          : student
-      ))
+      console.log('[CAMERA] Photo captured successfully, data size:', dataUrl.length)
       
+      // Базовая клиентская валидация - проверяем размер изображения
+      // Очень маленькие изображения (меньше 50KB) могут быть проблематичными
+      if (dataUrl.length < 50000) {
+        console.warn('[CAMERA] Image seems too small, might be low quality')
+        toast.warning('Изображение получилось очень маленьким. Попробуйте сфотографировать ближе.')
+      }
+
+      const bundle = addPhotoDraft(checkId, activeStudentIndex, dataUrl)
+      setStudents(mapDraftToLocal(bundle.students))
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('drafts:updated'))
+      }
       toast.success('Фотография сделана!')
+      console.log('[CAMERA] Photo saved to drafts')
     } catch (err) {
-      console.error('Error capturing photo:', err)
-      toast.error('Не удалось сделать фотографию')
+      console.error('[CAMERA] Error capturing photo:', err)
+      console.error('[CAMERA] Camera state - isStreaming:', isStreaming)
+      console.error('[CAMERA] Video readyState:', videoRef.current?.readyState)
+      console.error('[CAMERA] Stream active:', streamRef.current?.active)
+      
+      toast.error('Не удалось сделать фотографию. Попробуйте еще раз.')
+      
+      // Попробуем перезапустить камеру если поток неактивен
+      if (!streamRef.current?.active && isStreaming) {
+        console.log('[CAMERA] Stream inactive, attempting restart...')
+        setTimeout(() => {
+          stopCamera()
+          setTimeout(() => startCamera(), 500)
+        }, 100)
+      }
     } finally {
       setIsCapturing(false)
     }
-  }, [isCapturing, students, activeStudentIndex, maxPhotosPerStudent])
+  }, [isCapturing, isStreaming, students, activeStudentIndex, maxPhotosPerStudent, checkId, startCamera, stopCamera])
 
   // File upload
-  const handleFileUpload = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files
     if (!files) return
 
@@ -183,28 +291,35 @@ export function CameraWorkInterface({
       return
     }
 
-    const filesToProcess = Array.from(files).slice(0, remainingSlots)
+    const filesToProcess = Array.from(files)
+      .filter((f) => f.type.startsWith('image/'))
+      .slice(0, remainingSlots)
 
-    filesToProcess.forEach(file => {
-      if (file.type.startsWith('image/')) {
+    const readAsDataUrl = (file: File) =>
+      new Promise<string>((resolve, reject) => {
         const reader = new FileReader()
-        reader.onload = (e) => {
-          const dataUrl = e.target?.result as string
-          const newPhoto: Photo = {
-            id: Date.now().toString() + Math.random(),
-            dataUrl,
-            timestamp: Date.now()
-          }
-
-          setStudents(prev => prev.map((student, index) => 
-            index === activeStudentIndex 
-              ? { ...student, photos: [...student.photos, newPhoto] }
-              : student
-          ))
-        }
+        reader.onload = (e) => resolve((e.target?.result as string) || '')
+        reader.onerror = (e) => reject(e)
         reader.readAsDataURL(file)
+      })
+
+    let lastBundle: ReturnType<typeof addPhotoDraft> | undefined
+
+    for (const file of filesToProcess) {
+      try {
+        const dataUrl = await readAsDataUrl(file)
+        lastBundle = addPhotoDraft(checkId, activeStudentIndex, dataUrl)
+      } catch {
+        // skip file on error
       }
-    })
+    }
+
+    if (lastBundle) {
+      setStudents(mapDraftToLocal(lastBundle.students))
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('drafts:updated'))
+      }
+    }
 
     if (filesToProcess.length > 0) {
       toast.success(`Добавлено ${filesToProcess.length} фотографий`)
@@ -212,51 +327,62 @@ export function CameraWorkInterface({
 
     // Clear input
     event.target.value = ''
-  }, [students, activeStudentIndex, maxPhotosPerStudent])
+  }, [students, activeStudentIndex, maxPhotosPerStudent, checkId])
 
   // Student management
   const addStudent = useCallback(() => {
-    const newStudent: Student = {
-      id: Date.now().toString(),
-      name: `Ученик ${students.length + 1}`,
-      photos: []
-    }
-    setStudents(prev => [...prev, newStudent])
-    setActiveStudentIndex(students.length)
+    const { bundle, index } = addStudentDraft(checkId, `Ученик ${students.length + 1}`)
+    setStudents(mapDraftToLocal(bundle.students))
+    setActiveStudentIndex(index)
     toast.success('Ученик добавлен')
-  }, [students.length])
+  }, [students.length, checkId])
 
   const updateStudentName = useCallback((name: string) => {
-    setStudents(prev => prev.map((student, index) => 
-      index === activeStudentIndex 
-        ? { ...student, name }
-        : student
-    ))
-  }, [activeStudentIndex])
+    const trimmed = name.trim().slice(0, 24) || `Ученик ${activeStudentIndex + 1}`
+    const bundle = renameStudentDraft(checkId, activeStudentIndex, trimmed)
+    setStudents(mapDraftToLocal(bundle.students))
+  }, [activeStudentIndex, checkId])
 
   const deletePhoto = useCallback((photoId: string) => {
-    setStudents(prev => prev.map((student, index) => 
-      index === activeStudentIndex 
-        ? { ...student, photos: student.photos.filter(p => p.id !== photoId) }
-        : student
-    ))
-    
-    const activeStudent = students[activeStudentIndex]
-    if (currentPhotoIndex >= activeStudent.photos.length - 1) {
-      setCurrentPhotoIndex(Math.max(0, activeStudent.photos.length - 2))
+    const bundle = deletePhotoDraft(checkId, activeStudentIndex, photoId)
+    const updated = mapDraftToLocal(bundle.students)
+    setStudents(updated)
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('drafts:updated'))
     }
-    
+
+    const activeStudent = updated[activeStudentIndex]
+    if (activeStudent) {
+      if (currentPhotoIndex >= activeStudent.photos.length - 1) {
+        setCurrentPhotoIndex(Math.max(0, activeStudent.photos.length - 2))
+      }
+    }
+
     toast.success('Фотография удалена')
-  }, [students, activeStudentIndex, currentPhotoIndex])
+  }, [checkId, activeStudentIndex, currentPhotoIndex])
 
   // Effects
+  // Load drafts when opening the camera and ensure at least one student exists
+  useEffect(() => {
+    if (!isOpen) return
+    const draft = getDraft(checkId)
+    if (draft && draft.students.length > 0) {
+      setStudents(mapDraftToLocal(draft.students))
+      setActiveStudentIndex(0)
+    } else {
+      const { bundle } = ensureDraftStudent(checkId)
+      setStudents(mapDraftToLocal(bundle.students))
+      setActiveStudentIndex(0)
+    }
+  }, [isOpen, checkId])
+
   useEffect(() => {
     if (isOpen && viewMode === 'camera') {
       startCamera()
     } else {
       stopCamera()
     }
-    
+
     return () => {
       stopCamera()
     }
@@ -265,13 +391,20 @@ export function CameraWorkInterface({
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
       if (!isOpen) return
-      
+
       if (viewMode === 'camera') {
         if (e.code === 'Space' || e.code === 'Enter') {
           e.preventDefault()
           capturePhoto()
         } else if (e.code === 'Escape') {
           onClose()
+        }
+      } else if (viewMode === 'review') {
+        // In review, Esc acts like "Готово": return to camera
+        if (e.code === 'Escape') {
+          e.preventDefault()
+          setViewMode('camera')
+          // rely on effect to start camera
         }
       }
     }
@@ -283,23 +416,38 @@ export function CameraWorkInterface({
   // Handle photo click - switch to review mode
   const handlePhotoClick = useCallback(() => {
     const activeStudent = students[activeStudentIndex]
-    if (activeStudent.photos.length > 0) {
+    if (activeStudent && activeStudent.photos.length > 0) {
       setCurrentPhotoIndex(activeStudent.photos.length - 1)
+      setViewMode('review')
+    } else {
+      // If no photos yet, still open review to allow actions like "Еще страница"
+      setCurrentPhotoIndex(0)
       setViewMode('review')
     }
   }, [students, activeStudentIndex])
 
-  // Handle submit
-  const handleSubmit = useCallback(() => {
-    const studentsWithPhotos = students.filter(s => s.photos.length > 0)
-    if (studentsWithPhotos.length === 0) {
-      toast.error('Добавьте хотя бы одну фотографию')
-      return
-    }
-    onSubmit(students)
-  }, [students, onSubmit])
+  // Keep active student centered in horizontal strip
+  useEffect(() => {
+    if (!navRef.current || !itemRefs.current[activeStudentIndex]) return
+    const container = navRef.current
+    const item = itemRefs.current[activeStudentIndex]!
 
-  if (!isOpen) return null
+    const center = () => {
+      const target = item.offsetLeft + item.offsetWidth / 2
+      const scrollLeft = Math.max(0, target - container.clientWidth / 2)
+      container.scrollTo({ left: scrollLeft, behavior: 'smooth' })
+    }
+
+    // Defer until layout is stable (fonts, mode switch)
+    requestAnimationFrame(center)
+  }, [activeStudentIndex, students.length, isOpen, viewMode])
+
+
+
+  if (!isOpen) {
+    console.log('[CAMERA] Modal is closed, isOpen:', isOpen)
+    return null
+  }
 
   const activeStudent = students[activeStudentIndex]
   const canAddMorePhotos = activeStudent?.photos.length < maxPhotosPerStudent
@@ -307,107 +455,92 @@ export function CameraWorkInterface({
   // Review mode
   if (viewMode === 'review') {
     const currentPhoto = activeStudent.photos[currentPhotoIndex]
-    
+
     return (
-      <div className="fixed inset-0 bg-black z-50 flex flex-col">
-        {/* Header */}
-        <div className="flex items-center justify-center p-4">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="absolute top-6 right-7 text-white hover:bg-white/20"
-            onClick={onClose}
-          >
-            <X className="w-8 h-8" />
-          </Button>
-          
-          <div className="bg-gray-500/30 rounded-full px-4 py-2 border-2 border-gray-600">
-            {editingName ? (
-              <input
-                type="text"
-                value={editName}
-                onChange={(e) => setEditName(e.target.value)}
-                onBlur={() => {
-                  updateStudentName(editName)
-                  setEditingName(false)
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
+      <div className="fixed inset-0 bg-black z-50 flex flex-col min-h-0 overflow-y-auto">
+        {/* Header - Name pill centered; Done text on top-right */}
+        <div className="flex items-center justify-between gap-3 p-4 pt-[env(safe-area-inset-top)]">
+          {/* Name pill — слева, занимает всю доступную ширину, не перекрывает «Готово» */}
+          <div className="flex-1 min-w-0">
+            <div className="rounded-[52px] px-4 py-2 border-2 border-[#4f4f4f] bg-transparent">
+              {editingName ? (
+                <input
+                  type="text"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  onBlur={() => {
                     updateStudentName(editName)
                     setEditingName(false)
-                  }
-                }}
-                className="bg-transparent text-white text-xl font-extrabold text-center outline-none"
-                autoFocus
-              />
-            ) : (
-              <div className="flex items-center gap-2">
-                <span className="text-white text-xl font-extrabold opacity-50">
-                  {activeStudent.name}
-                </span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    setEditName(activeStudent.name)
-                    setEditingName(true)
                   }}
-                  className="text-white hover:bg-white/20 h-auto p-1"
-                >
-                  <Edit3 className="w-4 h-4" />
-                </Button>
-              </div>
-            )}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      updateStudentName(editName)
+                      setEditingName(false)
+                    }
+                  }}
+                  className="bg-transparent text-white text-[20px] font-extrabold outline-none w-full text-left truncate"
+                  autoFocus
+                />
+              ) : (
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="text-white text-[20px] font-extrabold truncate">
+                    {activeStudent.name}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setEditName(activeStudent.name)
+                      setEditingName(true)
+                    }}
+                    className="text-white hover:bg-white/20 h-auto p-1 flex-shrink-0"
+                    aria-label="Редактировать имя"
+                  >
+                    <Edit3 className="w-4 h-4" strokeWidth={2.25} />
+                  </Button>
+                </div>
+              )}
+            </div>
           </div>
+
+          {/* Готово — справа, в обычном потоке */}
+          <button
+            className="text-white text-lg font-semibold flex-shrink-0"
+            onClick={() => {
+              setViewMode('camera')
+            }}
+            aria-label="Готово"
+          >
+            Готово
+          </button>
         </div>
 
         {/* Photo display */}
-        <div className="flex-1 flex items-center justify-center relative p-4">
+        <div className="px-4 pt-4">
           {currentPhoto && (
-            <img
-              src={currentPhoto.dataUrl}
-              alt="Фотография работы"
-              className="max-w-full max-h-full object-contain rounded-xl"
-            />
+            <div
+              className="mx-auto mb-4 bg-white rounded-[42px] overflow-hidden ring-1 ring-white/10 max-h-[calc(100vh-260px)]"
+              style={{ width: 'min(92vw, 560px)', aspectRatio: '2 / 3' }}
+            >
+              <img
+                src={currentPhoto.dataUrl}
+                alt="Фотография работы"
+                className="w-full h-full object-contain"
+              />
+            </div>
           )}
-          
-          {/* Navigation arrows */}
-          {activeStudent.photos.length > 1 && (
-            <>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="absolute left-4 top-1/2 -translate-y-1/2 text-white hover:bg-white/20"
-                onClick={() => setCurrentPhotoIndex(Math.max(0, currentPhotoIndex - 1))}
-                disabled={currentPhotoIndex === 0}
-              >
-                <ChevronLeft className="w-8 h-8" />
-              </Button>
-              
-              <Button
-                variant="ghost"
-                size="icon"
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-white hover:bg-white/20"
-                onClick={() => setCurrentPhotoIndex(Math.min(activeStudent.photos.length - 1, currentPhotoIndex + 1))}
-                disabled={currentPhotoIndex === activeStudent.photos.length - 1}
-              >
-                <ChevronRight className="w-8 h-8" />
-              </Button>
-            </>
-          )}
+
         </div>
 
         {/* Photo thumbnails */}
-        {activeStudent.photos.length > 1 && (
-          <div className="px-4 pb-2">
+        {activeStudent.photos.length > 0 && (
+          <div className="px-4 pb-28">
             <div className="flex items-center justify-center gap-2">
               {activeStudent.photos.map((photo, index) => (
                 <button
                   key={photo.id}
                   onClick={() => setCurrentPhotoIndex(index)}
-                  className={`w-12 h-12 rounded-lg overflow-hidden border-2 ${
-                    index === currentPhotoIndex ? 'border-white' : 'border-gray-600'
-                  }`}
+                  className={`h-[66px] w-[44px] rounded-[8px] overflow-hidden border-2 ${index === currentPhotoIndex ? 'border-white' : 'border-white/40 opacity-60'}`}
                 >
                   <img
                     src={photo.dataUrl}
@@ -421,52 +554,49 @@ export function CameraWorkInterface({
         )}
 
         {/* Bottom controls */}
-        <div className="bg-black px-7 py-6">
+        <div className="sticky bottom-0 bg-black px-7 py-6 pb-[env(safe-area-inset-bottom)] z-10">
           <div className="flex items-center justify-between">
-            <div className="flex flex-col items-center gap-1">
+            {/* Переснять */}
+            <div className="flex flex-col items-center gap-1 w-[75px]">
               <Button
                 variant="ghost"
                 size="icon"
                 className="text-white hover:bg-white/20"
                 onClick={() => {
                   setViewMode('camera')
-                  if (canAddMorePhotos) {
-                    startCamera()
-                  }
                 }}
               >
-                <Camera className="w-6 h-6" />
+                <Camera className="size-8" style={{ width: 32, height: 32 }} strokeWidth={3} />
               </Button>
-              <span className="text-white text-sm font-medium">Переснять</span>
+              <span className="text-white text-[14px] font-medium">Переснять</span>
             </div>
-            
-            <div className="flex flex-col items-center gap-1">
+
+            {/* Center: Еще страница */}
+            <div className="absolute left-1/2 -translate-x-1/2 flex flex-col items-center gap-1 w-[99px]">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-white hover:bg-white/20"
+                onClick={() => {
+                  setViewMode('camera')
+                }}
+              >
+                <Plus className="size-8" style={{ width: 32, height: 32 }} strokeWidth={3} />
+              </Button>
+              <span className="text-white text-[14px] font-medium">Еще страница</span>
+            </div>
+
+            {/* Удалить */}
+            <div className="flex flex-col items-center gap-1 w-[58px]">
               <Button
                 variant="ghost"
                 size="icon"
                 className="text-white hover:bg-white/20"
                 onClick={() => currentPhoto && deletePhoto(currentPhoto.id)}
               >
-                <Trash2 className="w-6 h-6" />
+                <Trash2 className="size-8" style={{ width: 32, height: 32 }} strokeWidth={3} />
               </Button>
-              <span className="text-white text-sm font-medium">Удалить</span>
-            </div>
-            
-            <div className="flex flex-col items-center gap-1">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="text-white hover:bg-white/20"
-                onClick={() => {
-                  setViewMode('camera')
-                  if (canAddMorePhotos) {
-                    startCamera()
-                  }
-                }}
-              >
-                <Plus className="w-6 h-6" />
-              </Button>
-              <span className="text-white text-sm font-medium">Еще страница</span>
+              <span className="text-white text-[14px] font-medium">Удалить</span>
             </div>
           </div>
         </div>
@@ -477,70 +607,27 @@ export function CameraWorkInterface({
   // Camera mode
   return (
     <div className="fixed inset-0 bg-black z-50 flex flex-col">
-      {/* Header */}
-      <div className="flex items-center justify-between p-6 text-white">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="text-white hover:bg-white/20"
-          onClick={onClose}
-        >
-          <X className="w-8 h-8" />
-        </Button>
-        
-        <h1 className="text-xl font-bold">{checkTitle}</h1>
-        
-        <Button
-          variant="ghost"
-          size="icon"
-          className="text-white hover:bg-white/20"
-          onClick={switchCamera}
-          disabled={!isStreaming}
-        >
-          <RotateCcw className="w-8 h-8" />
-        </Button>
-      </div>
-
-      {/* Video area */}
+      {/* Video area with absolute overlay controls (Rotate, Close) */}
       <div className="flex-1 relative">
         {error ? (
           <div className="absolute inset-0 flex items-center justify-center bg-black">
-            <div className="text-center text-white p-8 max-w-md">
-              <div className="mb-6">
-                <Camera className="w-16 h-16 text-white opacity-50 mx-auto mb-4" />
-                <h3 className="text-xl font-bold mb-2">Камера недоступна</h3>
-                <p className="text-base mb-4 leading-relaxed">{error}</p>
-              </div>
-              
-              <div className="space-y-3 text-sm text-white opacity-80">
-                <p><strong>Решения:</strong></p>
-                <ul className="text-left space-y-2">
-                  <li>• Откройте сайт через <code className="bg-white/20 px-1 rounded">localhost:3000</code></li>
-                  <li>• Используйте HTTPS соединение</li>
-                  <li>• Проверьте разрешения браузера</li>
-                </ul>
-              </div>
-              
-              <div className="mt-6 space-y-3">
-                <Button 
-                  onClick={startCamera} 
-                  variant="outline" 
-                  className="text-white border-white hover:bg-white hover:text-black"
-                >
+            <div className="text-center text-white px-6 py-8">
+              <Camera className="w-14 h-14 mx-auto mb-3 opacity-80" />
+              <h3 className="text-[24px] font-extrabold mb-2">Камера недоступна</h3>
+              <p className="text-white/70 text-sm mb-5">
+                Разрешите доступ к камере или используйте HTTPS/localhost. Вы также можете загрузить фото из галереи.
+              </p>
+              <div className="flex items-center justify-center gap-2">
+                <Button onClick={startCamera} className="rounded-[180px] h-11 px-6">
                   Попробовать снова
                 </Button>
-                
-                <div className="flex flex-col items-center gap-2">
-                  <p className="text-sm opacity-60">или загрузите фото с устройства</p>
-                  <Button
-                    onClick={() => fileInputRef.current?.click()}
-                    variant="ghost"
-                    className="text-white hover:bg-white/20"
-                  >
-                    <Upload className="w-5 h-5 mr-2" />
-                    Выбрать файлы
-                  </Button>
-                </div>
+                <Button
+                  variant="secondary"
+                  className="rounded-[180px] h-11 px-6"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  Загрузить из галереи
+                </Button>
               </div>
             </div>
           </div>
@@ -553,92 +640,77 @@ export function CameraWorkInterface({
               muted
               playsInline
             />
+            
+            
             <canvas ref={canvasRef} className="hidden" />
           </>
         )}
+
+        {/* Overlay controls */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="absolute top-6 left-6 text-white hover:bg-white/20 w-14 h-14"
+          onClick={switchCamera}
+          disabled={!isStreaming}
+          aria-label="Переключить камеру"
+        >
+          <RotateCcw className="size-8" style={{ width: 32, height: 32 }} strokeWidth={3} />
+        </Button>
+
+        <Button
+          variant="ghost"
+          size="icon"
+          className="absolute top-6 right-7 text-white hover:bg-white/20 w-14 h-14"
+          onClick={onClose}
+          aria-label="Закрыть"
+        >
+          <X className="size-8" style={{ width: 32, height: 32 }} strokeWidth={3} />
+        </Button>
       </div>
 
-      {/* Student navigation */}
-      <div className="bg-black px-4 py-4">
-        <div className="flex items-center justify-center gap-7 mb-6">
-          {students.map((student, index) => (
-            <button
-              key={student.id}
-              className="flex items-center gap-2"
-              onClick={() => setActiveStudentIndex(index)}
-            >
-              <span className={`text-xl font-extrabold whitespace-nowrap ${
-                index === activeStudentIndex 
-                  ? 'text-white' 
-                  : 'text-white opacity-40'
-              }`}>
-                {student.name}
-              </span>
-              {index === activeStudentIndex && (
-                <ChevronRight className="w-4 h-4 text-white" />
-              )}
-            </button>
-          ))}
-          
+      {/* Bottom controls and navigation adjusted per Figma */}
+      <div className="bg-black px-4 pt-6 pb-6">
+        {/* Bottom controls - centered trio */}
+        <div className="flex items-center justify-center gap-10 mt-1">
+          {/* Upload from gallery */}
           <Button
             variant="ghost"
             size="icon"
-            className="text-white hover:bg-white/20"
-            onClick={addStudent}
+            className="w-14 h-14 rounded-full text-white hover:bg-white/20"
+            onClick={() => fileInputRef.current?.click()}
+            aria-label="Загрузить из галереи"
           >
-            <Plus className="w-6 h-6" />
+            <Upload className="size-8" style={{ width: 32, height: 32 }} strokeWidth={3} />
           </Button>
-        </div>
 
-        {/* Bottom controls */}
-        <div className="flex items-center justify-center">
-          {/* Upload button */}
-          <div className="absolute left-[72px]">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="w-12 h-12 rounded-full text-white hover:bg-white/20"
-              onClick={() => fileInputRef.current?.click()}
-            >
-              <Upload className="w-6 h-6" />
-            </Button>
-          </div>
-
-          {/* Last photo thumbnail */}
-          {activeStudent?.photos.length > 0 && (
-            <button
-              onClick={handlePhotoClick}
-              className="absolute left-[72px] w-12 h-12 rounded-full bg-cover bg-center bg-no-repeat overflow-hidden border-2 border-white"
-            >
-              <img
-                src={activeStudent.photos[activeStudent.photos.length - 1].dataUrl}
-                alt="Последнее фото"
-                className="w-full h-full object-cover"
-              />
-            </button>
-          )}
-
-          {/* Capture button */}
+          {/* Capture button (center) - circular without icon */}
           <Button
             variant="ghost"
             size="icon"
-            className="w-[72px] h-[72px] rounded-full bg-white hover:bg-gray-200 disabled:opacity-50"
-            onClick={capturePhoto}
+            className="w-16 h-16 rounded-full bg-white hover:bg-white disabled:opacity-50 ring-2 ring-[#f8bd00]"
+            onClick={(e) => {
+              console.log('[CAMERA] Capture button clicked')
+              e.preventDefault()
+              e.stopPropagation()
+              capturePhoto()
+            }}
             disabled={!isStreaming || isCapturing || !canAddMorePhotos}
+            aria-label="Сделать снимок"
           >
-            <Camera className="w-8 h-8 text-black" />
+            <span className="sr-only">Сделать снимок</span>
           </Button>
 
-          {/* Submit button */}
-          <div className="absolute right-[72px]">
-            <Button
-              variant="ghost"
-              className="text-white hover:bg-white/20"
-              onClick={handleSubmit}
-            >
-              Отправить
-            </Button>
-          </div>
+          {/* Add student */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="w-14 h-14 rounded-full text-white hover:bg-white/20"
+            onClick={addStudent}
+            aria-label="Добавить ученика"
+          >
+            <UserPlus className="size-8" style={{ width: 32, height: 32 }} strokeWidth={3} />
+          </Button>
         </div>
 
         {/* Status text */}
@@ -649,6 +721,56 @@ export function CameraWorkInterface({
             </p>
           </div>
         )}
+      </div>
+
+      {/* Student navigation moved to very bottom; arrow integrated with each student block */}
+      <div className="bg-black px-4 pt-3 pb-4 pb-[env(safe-area-inset-bottom)]">
+        <div className="relative">
+          <div
+            ref={navRef}
+            className="flex items-start gap-5 overflow-x-auto no-scrollbar scroll-smooth snap-x snap-mandatory"
+          >
+            {/* spacers so that active item can be visually centered */}
+            <div className="flex-shrink-0 w-1/2" />
+            {students.map((student, index) => (
+              <div
+                key={student.id}
+                ref={(el) => { itemRefs.current[index] = el }}
+                className="relative grid grid-rows-[auto,auto] justify-items-center flex-shrink-0 snap-center px-3 py-0"
+              >
+                <button
+                  className="inline-flex items-center gap-2"
+                  onClick={() => setActiveStudentIndex(index)}
+                  aria-label={`Выбрать ${student.name}`}
+                >
+                  <span className={`text-[20px] leading-[24px] font-extrabold font-nunito tracking-tight whitespace-nowrap max-w-[60vw] overflow-hidden text-ellipsis ${
+                    index === activeStudentIndex ? 'text-white' : 'text-white/40'
+                  }`}>
+                    {student.name}
+                  </span>
+                  <span
+                    className={`ml-2 inline-flex items-center justify-center rounded-[10px] h-5 w-5 text-[10px] ${
+                      index === activeStudentIndex ? 'bg-[#f83b3b] text-white' : 'bg-white text-black/70 opacity-40'
+                    }`}
+                  >
+                    {student.photos.length}
+                  </span>
+                </button>
+                {index === activeStudentIndex && (
+                  <Button
+                    variant="ghost"
+                    className="mt-[-6px] text-white hover:bg-white/20 p-0 w-8 h-8 rounded-full"
+                    onClick={handlePhotoClick}
+                    aria-label="Открыть просмотр и редактирование"
+                  >
+                    <ChevronDown className="size-8" style={{ width: 32, height: 32 }} strokeWidth={3} />
+                  </Button>
+                )}
+              </div>
+            ))}
+            <div className="flex-shrink-0 w-1/2" />
+          </div>
+        </div>
       </div>
 
       {/* Hidden file input */}

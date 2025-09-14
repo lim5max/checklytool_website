@@ -38,6 +38,10 @@ export function FullscreenCameraModal({
   const videoRef = useRef<HTMLVideoElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const modalRef = useRef<HTMLDivElement>(null)
+  const captureButtonRef = useRef<HTMLButtonElement>(null)
+  const closeButtonRef = useRef<HTMLButtonElement>(null)
+  const switchButtonRef = useRef<HTMLButtonElement>(null)
 
   // Check camera availability
   const checkCameraAvailability = useCallback(async () => {
@@ -168,6 +172,10 @@ export function FullscreenCameraModal({
   useEffect(() => {
     if (isOpen) {
       startCamera()
+      // Ensure focus moves into the modal to prevent background buttons from receiving Space/Enter
+      requestAnimationFrame(() => {
+        captureButtonRef.current?.focus()
+      })
     } else {
       stopCamera()
     }
@@ -177,22 +185,133 @@ export function FullscreenCameraModal({
     }
   }, [isOpen, startCamera, stopCamera])
 
-  // Handle keyboard shortcuts
+  // Handle keyboard + focus trap with capture phase to preempt background handlers
   useEffect(() => {
-    const handleKeyPress = (e: KeyboardEvent) => {
+    if (!isOpen) return
+
+    const handler = (e: KeyboardEvent) => {
       if (!isOpen) return
-      
-      if (e.code === 'Space' || e.code === 'Enter') {
+
+      const code = e.code
+      const activeEl = document.activeElement as Element | null
+      const isInModal = !!(activeEl && modalRef.current && modalRef.current.contains(activeEl))
+      const isCaptureFocused = activeEl === captureButtonRef.current
+
+      // Focus trap for Tab navigation
+      if (code === 'Tab') {
+        if (!modalRef.current) return
+        const focusable = Array.from(
+          modalRef.current.querySelectorAll<HTMLElement>(
+            'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+          )
+        ).filter(el => !el.hasAttribute('disabled') && !el.getAttribute('aria-hidden'))
+
+        if (focusable.length === 0) {
+          e.preventDefault()
+          captureButtonRef.current?.focus()
+          return
+        }
+
+        const first = focusable[0]
+        const last = focusable[focusable.length - 1]
+        const target = (document.activeElement as HTMLElement | null)
+
+        if (e.shiftKey) {
+          if (target === first || !isInModal) {
+            e.preventDefault()
+            last.focus()
+          }
+        } else {
+          if (target === last) {
+            e.preventDefault()
+            first.focus()
+          }
+        }
+        return
+      }
+
+      if (code === 'Escape') {
         e.preventDefault()
-        capturePhoto()
-      } else if (e.code === 'Escape') {
+        e.stopPropagation()
         onClose()
+        return
+      }
+
+      if (code === 'Space' || code === 'Enter') {
+        // Prevent background focused element (e.g., Back button) from triggering navigation
+        if (!isInModal) {
+          e.preventDefault()
+          e.stopPropagation()
+          if (e.type === 'keydown') {
+            capturePhoto()
+          }
+          return
+        }
+
+        // If capture button is focused, allow its default click (avoid double capture)
+        if (isCaptureFocused) {
+          return
+        }
+
+        // Inside modal but not on the capture button: trigger capture and prevent default
+        e.preventDefault()
+        e.stopPropagation()
+        if (e.type === 'keydown') {
+          capturePhoto()
+        }
       }
     }
 
-    document.addEventListener('keydown', handleKeyPress)
-    return () => document.removeEventListener('keydown', handleKeyPress)
+    // Use capture phase to intercept before default actions
+    document.addEventListener('keydown', handler, true)
+    document.addEventListener('keyup', handler, true)
+    return () => {
+      document.removeEventListener('keydown', handler, true)
+      document.removeEventListener('keyup', handler, true)
+    }
   }, [isOpen, capturePhoto, onClose])
+
+  // Keep focus inside modal; prevent focusing background on open
+  useEffect(() => {
+    if (!isOpen) return
+    const onFocusIn = (e: FocusEvent) => {
+      if (!modalRef.current) return
+      if (!modalRef.current.contains(e.target as Node)) {
+        e.stopPropagation()
+        captureButtonRef.current?.focus()
+      }
+    }
+    document.addEventListener('focusin', onFocusIn, true)
+    return () => document.removeEventListener('focusin', onFocusIn, true)
+  }, [isOpen])
+
+  // Block clicks/taps outside the modal from interacting with background (safety on iOS)
+  useEffect(() => {
+    if (!isOpen) return
+    const block = (e: MouseEvent | TouchEvent | PointerEvent) => {
+      if (!modalRef.current) return
+      if (!modalRef.current.contains(e.target as Node)) {
+        e.preventDefault()
+        e.stopPropagation()
+      }
+    }
+    document.addEventListener('pointerdown', block, true)
+    document.addEventListener('click', block, true)
+    return () => {
+      document.removeEventListener('pointerdown', block, true)
+      document.removeEventListener('click', block, true)
+    }
+  }, [isOpen])
+
+  // Body scroll lock while modal is open
+  useEffect(() => {
+    if (!isOpen) return
+    const prevOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = prevOverflow
+    }
+  }, [isOpen])
 
   if (!isOpen) return null
 
@@ -200,7 +319,7 @@ export function FullscreenCameraModal({
   const canAddMorePhotos = activeStudent?.photos.length < maxPhotosPerStudent
 
   return (
-    <div className="fixed inset-0 bg-black z-50 flex flex-col">
+    <div ref={modalRef} role="dialog" aria-modal="true" className="fixed inset-0 bg-black z-50 flex flex-col">
       {/* Video stream area */}
       <div className="flex-1 relative">
         {error ? (
@@ -230,6 +349,7 @@ export function FullscreenCameraModal({
 
         {/* Close button */}
         <Button
+          ref={closeButtonRef}
           variant="ghost"
           size="icon"
           className="absolute top-6 right-7 text-white hover:bg-white/20"
@@ -240,6 +360,7 @@ export function FullscreenCameraModal({
 
         {/* Camera switch button */}
         <Button
+          ref={switchButtonRef}
           variant="ghost"
           size="icon"
           className="absolute top-6 left-64 text-white hover:bg-white/20"
@@ -292,6 +413,7 @@ export function FullscreenCameraModal({
 
           {/* Capture button */}
           <Button
+            ref={captureButtonRef}
             variant="ghost"
             size="icon"
             className="w-[72px] h-[72px] rounded-full bg-white hover:bg-gray-200 disabled:opacity-50"

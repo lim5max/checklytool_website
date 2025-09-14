@@ -126,7 +126,7 @@ export async function POST(
 			}
 			
 			// Update submission with fresh URLs
-			await supabase
+			await (supabase as any)
 				.from('student_submissions')
 				.update({ submission_images: refreshedImageUrls })
 				.eq('id', submissionId)
@@ -184,6 +184,42 @@ export async function POST(
 			)
 			
 			console.log('AI analysis completed:', aiResult)
+			
+			// Проверяем, не обнаружил ли AI неподходящий контент
+			if (aiResult.error === 'inappropriate_content') {
+				console.log('[EVALUATE] Inappropriate content detected by AI')
+				
+				// Обновляем статус submission как failed
+				const updateData: any = {
+					status: 'failed',
+					processing_completed_at: new Date().toISOString()
+				}
+
+				console.log('[EVALUATE] Updating submission with failed status')
+
+				await (supabase as any)
+					.from('student_submissions')
+					.update(updateData)
+					.eq('id', submissionId)
+				
+				return NextResponse.json(
+					{ 
+						error: 'inappropriate_content',
+						message: aiResult.error_message || 'Загружены неподходящие изображения',
+						details: {
+							content_type: aiResult.content_type_detected,
+							help: 'Пожалуйста, сфотографируйте именно работу ученика - тетрадь, листы с решениями, письменные ответы.'
+						},
+						submission_id: submissionId
+					},
+					{ status: 400 } // 400 Bad Request для неподходящего контента
+				)
+			}
+			
+			// Проверяем наличие обязательных полей для успешного анализа
+			if (!aiResult.answers || !aiResult.total_questions) {
+				throw new Error('AI analysis incomplete - missing answers or total_questions')
+			}
 			
 			// Count correct answers
 			let correctAnswers = 0
@@ -271,12 +307,16 @@ export async function POST(
 			console.error('Error stack:', evaluationError instanceof Error ? evaluationError.stack : 'No stack')
 			
 			// Update submission status to failed
+			const updateData: any = {
+				status: 'failed',
+				processing_completed_at: new Date().toISOString()
+			}
+
+			console.log('[EVALUATE] Updating submission with failed status (error case)')
+
 			await (supabase as any)
 				.from('student_submissions')
-				.update({ 
-					status: 'failed',
-					processing_completed_at: new Date().toISOString()
-				})
+				.update(updateData)
 				.eq('id', submissionId)
 			
 			return NextResponse.json(

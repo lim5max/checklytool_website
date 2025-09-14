@@ -1,11 +1,13 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { EmptyCheckState } from '@/components/checks/EmptyCheckState'
-import { StudentResultsList } from '@/components/checks/StudentResultsList'
-import NavigationHeader from '@/components/NavigationHeader'
+import { PendingSubmissions } from '@/components/checks/PendingSubmissions'
+import { PostCheckSummary } from '@/components/checks/PostCheckSummary'
+import { CameraWorkInterface } from '@/components/camera/CameraWorkInterface'
 import { toast } from 'sonner'
+import { getDraft } from '@/lib/drafts'
 
 interface StudentResult {
   id: string
@@ -28,22 +30,31 @@ export default function CheckPage({ params }: CheckPageProps) {
   const [checkData, setCheckData] = useState<CheckData | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [checkId, setCheckId] = useState<string>('')
+  const [hasDrafts, setHasDrafts] = useState(false)
+  const [submissionCount, setSubmissionCount] = useState<number>(0)
+  const [hasAnySubmissions, setHasAnySubmissions] = useState<boolean>(false)
+  const [isCameraOpen, setIsCameraOpen] = useState(false)
+  const [cameraKey, setCameraKey] = useState(0)
 
-  useEffect(() => {
-    const getParams = async () => {
-      const resolvedParams = await params
-      setCheckId(resolvedParams.id)
-    }
-    getParams()
-  }, [params])
+  const handleOpenCamera = () => {
+    console.log('[CHECK_PAGE] Opening camera')
+    setIsCameraOpen(true)
+    setCameraKey(k => k + 1)
+  }
 
-  useEffect(() => {
-    if (checkId) {
-      loadCheckData()
-    }
-  }, [checkId])
+  const handleCloseCamera = () => {
+    console.log('[CHECK_PAGE] Closing camera')
+    setIsCameraOpen(false)
+  }
 
-  const loadCheckData = async () => {
+  const handleCameraSubmit = async () => {
+    console.log('[CHECK_PAGE] Camera submit')
+    setIsCameraOpen(false)
+    toast.success('Фото сохранены в черновики')
+  }
+
+  // Определяем функции перед их использованием в useEffect
+  const loadCheckData = useCallback(async () => {
     try {
       setIsLoading(true)
       
@@ -56,7 +67,6 @@ export default function CheckPage({ params }: CheckPageProps) {
       const data = await response.json()
       
       // Check if there are any results from the API
-      // For now, assuming results come from the API response
       const results = data.check.results || []
       
       setCheckData({
@@ -64,6 +74,8 @@ export default function CheckPage({ params }: CheckPageProps) {
         title: data.check.title,
         results: results
       })
+      // Aggregate count (может обновляться с лагом)
+      setSubmissionCount(Number(data.submission_count || 0))
       
     } catch (error) {
       console.error('Error loading check data:', error)
@@ -72,7 +84,95 @@ export default function CheckPage({ params }: CheckPageProps) {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [checkId, router])
+
+  // Быстрый индикатор наличия отправок (не зависит от статистики)
+  const loadHasSubmissions = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/checks/${checkId}/submissions`)
+      if (!res.ok) {
+        setHasAnySubmissions(false)
+        return
+      }
+      const data = await res.json()
+      setHasAnySubmissions(Array.isArray(data.submissions) && data.submissions.length > 0)
+    } catch {
+      setHasAnySubmissions(false)
+    }
+  }, [checkId])
+
+  useEffect(() => {
+    const getParams = async () => {
+      const resolvedParams = await params
+      setCheckId(resolvedParams.id)
+    }
+    getParams()
+  }, [params])
+
+  useEffect(() => {
+    if (checkId) {
+      loadCheckData()
+      loadHasSubmissions()
+    }
+  }, [checkId, loadCheckData, loadHasSubmissions])
+
+  // Detect local drafts for this check and toggle pending view
+  useEffect(() => {
+    if (!isLoading && checkId) {
+      try {
+        const draft = getDraft(checkId)
+        const present = !!(draft && draft.students && draft.students.some((s) => s.photos.length > 0))
+        setHasDrafts(present)
+      } catch {
+        setHasDrafts(false)
+      }
+    }
+  }, [isLoading, checkId])
+
+  // Live update: react to camera/drafts changes without reload
+  useEffect(() => {
+    const onDraftsUpdated = () => {
+      console.log('[CHECK_PAGE] drafts:updated event received')
+      try {
+        const draft = getDraft(checkId)
+        const present = !!(draft && draft.students && draft.students.some((s) => s.photos.length > 0))
+        console.log('[CHECK_PAGE] Draft present:', present, 'Current hasDrafts:', hasDrafts)
+        console.log('[CHECK_PAGE] Draft students count:', draft?.students?.length || 0)
+        setHasDrafts(present)
+      } catch {
+        console.log('[CHECK_PAGE] Error reading drafts, setting to false')
+        setHasDrafts(false)
+      }
+    }
+
+    const onSubmissionsUploaded = () => {
+      console.log('[CHECK_PAGE] Submissions uploaded, updating state')
+      // После upload обновляем состояние
+      setHasDrafts(false) // черновики очищены
+      setHasAnySubmissions(true) // теперь есть submissions
+      loadHasSubmissions() // обновляем данные
+    }
+
+    const onEvaluationComplete = () => {
+      console.log('[CHECK_PAGE] Evaluation completed - PostCheckSummary will handle data reload')
+      // PostCheckSummary сам обновляет свои данные, нам не нужно дублировать загрузку
+      // loadCheckData()
+      // loadHasSubmissions()
+    }
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('drafts:updated', onDraftsUpdated)
+      window.addEventListener('submissions:uploaded', onSubmissionsUploaded)
+      window.addEventListener('evaluation:complete', onEvaluationComplete)
+    }
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('drafts:updated', onDraftsUpdated)
+        window.removeEventListener('submissions:uploaded', onSubmissionsUploaded)
+        window.removeEventListener('evaluation:complete', onEvaluationComplete)
+      }
+    }
+  }, [checkId, loadCheckData, loadHasSubmissions, hasDrafts])
 
   if (isLoading) {
     return (
@@ -93,25 +193,36 @@ export default function CheckPage({ params }: CheckPageProps) {
     )
   }
 
-  const hasResults = checkData.results && checkData.results.length > 0
+  const hasResults = hasAnySubmissions || (submissionCount && submissionCount > 0) || (checkData.results && checkData.results.length > 0)
 
   return (
     <div className="min-h-screen bg-white">
-      {hasResults ? (
-        <div>
-          <NavigationHeader 
-            title={checkData.title}
-            showCloseButton={true}
-          />
-          <div className="px-4 pb-6">
-            <div className="max-w-md mx-auto">
-              <StudentResultsList results={checkData.results} />
-            </div>
+      {hasDrafts ? (
+        <div className="px-4 pb-6">
+          <div className="max-w-md mx-auto">
+            <PendingSubmissions checkId={checkId} title={checkData.title} onOpenCamera={handleOpenCamera} />
+          </div>
+        </div>
+      ) : hasResults ? (
+        <div className="px-4 pb-6">
+          <div className="max-w-md mx-auto">
+            <PostCheckSummary checkId={checkId} title={checkData.title} onOpenCamera={handleOpenCamera} />
           </div>
         </div>
       ) : (
-        <EmptyCheckState title={checkData.title} checkId={checkId} />
+        <EmptyCheckState title={checkData.title} checkId={checkId} onOpenCamera={handleOpenCamera} />
       )}
+      
+      {/* Global Camera Interface - не размонтируется при переключении состояний */}
+      <CameraWorkInterface
+        key={cameraKey}
+        isOpen={isCameraOpen}
+        checkId={checkId}
+        onClose={handleCloseCamera}
+        onSubmit={handleCameraSubmit}
+        checkTitle={checkData.title}
+        maxPhotosPerStudent={5}
+      />
     </div>
   )
 }

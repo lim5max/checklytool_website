@@ -62,6 +62,7 @@ export default function RootLayout({
     <html lang="ru">
       <body
         className={`${inter.variable} ${nunito.variable} antialiased`}
+        suppressHydrationWarning={true}
       >
         {children}
         <YandexMetrika />
