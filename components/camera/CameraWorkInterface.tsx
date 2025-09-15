@@ -733,16 +733,30 @@ export function CameraWorkInterface({
               <div
                 key={student.id}
                 ref={(el) => { itemRefs.current[index] = el }}
-                className="relative flex flex-col items-center flex-shrink-0 snap-center px-3 py-0"
+                className="relative flex-shrink-0 snap-center px-3 py-0"
+                style={{ 
+                  display: 'flex', 
+                  flexDirection: 'column', 
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
               >
                 <button
-                  className="inline-flex items-center gap-1"
+                  className="flex items-center"
+                  style={{ gap: '4px' }}
                   onClick={() => setActiveStudentIndex(index)}
                   aria-label={`Выбрать ${student.name}`}
                 >
-                  <span className={`text-[20px] leading-[24px] font-extrabold font-nunito tracking-tight whitespace-nowrap max-w-[60vw] overflow-hidden text-ellipsis ${
-                    index === activeStudentIndex ? 'text-white' : 'text-white/40'
-                  }`}>
+                  <span 
+                    className={`text-[20px] leading-[24px] font-extrabold font-nunito tracking-tight whitespace-nowrap ${
+                      index === activeStudentIndex ? 'text-white' : 'text-white/40'
+                    }`}
+                    style={{ 
+                      maxWidth: '60vw', 
+                      overflow: 'hidden', 
+                      textOverflow: 'ellipsis' 
+                    }}
+                  >
                     {student.name}
                   </span>
                   <span

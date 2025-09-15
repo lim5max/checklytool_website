@@ -84,26 +84,35 @@ export async function POST(
 			})
 			
 			if (uploadError) {
-				console.error('Error uploading file:', uploadError)
+				console.error('[SUBMISSIONS] Error uploading file:', uploadError)
+				console.error('[SUBMISSIONS] Full upload error details:', JSON.stringify(uploadError, null, 2))
 				// Clean up previously uploaded files
 				for (const uploadedUrl of uploadedUrls) {
-					await supabase.storage.from('checks').remove([uploadedUrl])
+					const cleanupPath = uploadedUrl.split('/').slice(-2).join('/')
+					await supabase.storage.from('checks').remove([cleanupPath])
 				}
 				return NextResponse.json(
-					{ error: 'Failed to upload images' },
+					{ 
+						error: 'Failed to upload images', 
+						details: uploadError.message || 'Storage upload failed'
+					},
 					{ status: 500 }
 				)
 			}
 			
 			// Get signed URL (valid for 24 hours) for external API access
+			console.log(`[SUBMISSIONS] Creating signed URL for path:`, uploadData.path)
 			const { data: urlData, error: signError } = await supabase.storage
 				.from('checks')
 				.createSignedUrl(uploadData.path, 86400) // 24 hours
 			
 			if (signError) {
-				console.error('Error creating signed URL:', signError)
-				throw new Error('Failed to create image access URL')
+				console.error('[SUBMISSIONS] Error creating signed URL:', signError)
+				console.error('[SUBMISSIONS] Signed URL error details:', JSON.stringify(signError, null, 2))
+				throw new Error(`Failed to create image access URL: ${signError.message}`)
 			}
+			
+			console.log(`[SUBMISSIONS] Signed URL created successfully:`, urlData.signedUrl)
 			
 			uploadedUrls.push(urlData.signedUrl)
 		}
