@@ -12,11 +12,16 @@ export async function POST(
 	request: NextRequest,
 	{ params }: RouteParams
 ) {
+	console.log('[SUBMISSIONS] === POST REQUEST STARTED ===')
+	console.log('[SUBMISSIONS] Request method:', request.method)
+	console.log('[SUBMISSIONS] Request URL:', request.url)
+	
 	try {
 		console.log('[SUBMISSIONS] Starting submission creation...')
 		const { id: checkId } = await params
 		console.log('[SUBMISSIONS] Check ID:', checkId)
 		
+		console.log('[SUBMISSIONS] Calling getAuthenticatedSupabase...')
 		const { supabase, userId } = await getAuthenticatedSupabase()
 		console.log('[SUBMISSIONS] Authentication successful, userId:', userId)
 		
@@ -149,16 +154,26 @@ export async function POST(
 		}, { status: 201 })
 		
 	} catch (error) {
+		console.error('[SUBMISSIONS] === CATCH BLOCK ERROR ===')
+		console.error('[SUBMISSIONS] Error type:', typeof error)
+		console.error('[SUBMISSIONS] Error message:', error instanceof Error ? error.message : String(error))
+		console.error('[SUBMISSIONS] Error stack:', error instanceof Error ? error.stack : 'No stack trace')
+		console.error('[SUBMISSIONS] Full error object:', error)
+		
 		if (error instanceof Error && error.message === 'Unauthorized') {
+			console.log('[SUBMISSIONS] Returning 401 Unauthorized')
 			return NextResponse.json(
 				{ error: 'Authentication required' },
 				{ status: 401 }
 			)
 		}
 		
-		console.error('Unexpected error:', error)
+		console.error('[SUBMISSIONS] Returning 500 Internal Server Error')
 		return NextResponse.json(
-			{ error: 'Internal server error' },
+			{ 
+				error: 'Internal server error',
+				details: error instanceof Error ? error.message : String(error)
+			},
 			{ status: 500 }
 		)
 	}
