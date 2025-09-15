@@ -733,10 +733,10 @@ export function CameraWorkInterface({
               <div
                 key={student.id}
                 ref={(el) => { itemRefs.current[index] = el }}
-                className="relative grid grid-rows-[auto,auto] justify-items-center flex-shrink-0 snap-center px-3 py-0"
+                className="relative flex flex-col items-center flex-shrink-0 snap-center px-3 py-0"
               >
                 <button
-                  className="inline-flex items-center gap-2"
+                  className="inline-flex items-center gap-1"
                   onClick={() => setActiveStudentIndex(index)}
                   aria-label={`Выбрать ${student.name}`}
                 >
@@ -746,8 +746,8 @@ export function CameraWorkInterface({
                     {student.name}
                   </span>
                   <span
-                    className={`ml-2 inline-flex items-center justify-center rounded-[10px] h-5 w-5 text-[10px] ${
-                      index === activeStudentIndex ? 'bg-[#f83b3b] text-white' : 'bg-white text-black/70 opacity-40'
+                    className={`inline-flex items-center justify-center rounded-[10px] h-5 w-5 text-[10px] ${
+                      index === activeStudentIndex ? 'bg-[#096ff5] text-white' : 'bg-white text-black/70 opacity-40'
                     }`}
                   >
                     {student.photos.length}

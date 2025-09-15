@@ -55,6 +55,7 @@ export async function POST(
 			images: files
 		})
 		
+		console.log('[SUBMISSIONS] Starting image uploads...')
 		// Upload images to Supabase Storage
 		const uploadedUrls: string[] = []
 		
@@ -62,12 +63,25 @@ export async function POST(
 			const fileName = `${Date.now()}-${index}-${file.name}`
 			const filePath = `${checkId}/${fileName}`
 			
+			console.log(`[SUBMISSIONS] Uploading file ${index + 1}/${validatedData.images.length}:`, {
+				fileName,
+				filePath,
+				size: file.size,
+				type: file.type
+			})
+			
 			const { data: uploadData, error: uploadError } = await supabase.storage
 				.from('checks')
 				.upload(filePath, file, {
 					contentType: file.type,
 					upsert: false
 				})
+			
+			console.log(`[SUBMISSIONS] Upload result for file ${index + 1}:`, {
+				success: !uploadError,
+				error: uploadError,
+				path: uploadData?.path
+			})
 			
 			if (uploadError) {
 				console.error('Error uploading file:', uploadError)
