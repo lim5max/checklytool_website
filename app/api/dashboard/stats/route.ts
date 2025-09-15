@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAuthenticatedSupabase } from '@/lib/database'
 
-export async function GET() {
+export async function GET(_request: Request) {
   try {
     console.log('[DASHBOARD_STATS] Starting stats request...')
     const { supabase, userId, user } = await getAuthenticatedSupabase()
@@ -11,7 +11,7 @@ export async function GET() {
     console.log('  - User ID:', userId)
     console.log('  - User email:', user?.email)
     console.log('  - User name:', user?.name)
-    console.log('  - User provider:', (user as any)?.provider)
+    console.log('  - User provider:', (user as { provider?: string })?.provider)
     
     if (!user) {
       console.log('[DASHBOARD_STATS] Authentication failed - no user')
