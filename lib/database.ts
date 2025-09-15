@@ -26,14 +26,50 @@ export async function getAuthenticatedSupabase() {
 	console.log('[DATABASE] Setting user context for RLS:', { userId, userEmail: session.user.email })
 	console.log('[DATABASE] Using service role key:', !!process.env.SUPABASE_SERVICE_ROLE_KEY)
 	
-	// Устанавливаем email пользователя для RLS политик
-	// Note: RLS is currently disabled, so this is commented out
-	// if (session.user.email) {
-	//		await supabase.rpc('set_config', [
-	//			'request.jwt.claims',
-	//			JSON.stringify({ email: session.user.email })
-	//		])
-	// }
+	// Устанавливаем контекст пользователя для RLS политик
+	console.log('[DATABASE] Setting up RLS context for user:', session.user.email)
+	
+	try {
+		// Устанавливаем JWT claims для работы с auth.email() в RLS политиках
+		if (session.user.email) {
+			console.log('[DATABASE] Setting request.jwt.claims with email:', session.user.email)
+			
+			// Создаем JWT-подобный объект с необходимыми claims
+			const jwtClaims = {
+				email: session.user.email,
+				sub: session.user.id || session.user.email,
+				role: 'authenticated',
+				aud: 'authenticated'
+			}
+			
+			// Устанавливаем через set_config для доступа к auth.jwt()
+			await (supabase as any).rpc('set_config', [
+				'request.jwt.claims',
+				JSON.stringify(jwtClaims),
+				true
+			])
+			
+			console.log('[DATABASE] JWT claims set successfully')
+		}
+		
+		// Устанавливаем app.current_user_id для политик использующих current_setting
+		if (session.user.email) {
+			console.log('[DATABASE] Setting app.current_user_id:', session.user.email)
+			await (supabase as any).rpc('set_config', [
+				'app.current_user_id', 
+				session.user.email,
+				true
+			])
+			
+			console.log('[DATABASE] App user ID set successfully')
+		}
+		
+		console.log('[DATABASE] RLS context setup completed successfully')
+	} catch (error) {
+		console.error('[DATABASE] Error setting RLS context:', error)
+		// Не падаем, продолжаем работу - service role key все равно обойдет RLS
+		console.log('[DATABASE] Continuing with service role bypass')
+	}
 	
 	return { supabase, userId, user: session.user }
 }

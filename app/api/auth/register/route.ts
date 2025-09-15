@@ -13,9 +13,12 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { email, password, fullName } = registerSchema.parse(body)
 
-    console.log('Registration attempt:', { email, fullName })
-    console.log('Resend API key exists:', !!process.env.RESEND_API_KEY)
-    console.log('Resend API key starts with:', process.env.RESEND_API_KEY?.substring(0, 8))
+    console.log('[REGISTER] Registration attempt:', { email, fullName })
+    console.log('[REGISTER] Environment check:')
+    console.log('  - NODE_ENV:', process.env.NODE_ENV)
+    console.log('  - RESEND_API_KEY exists:', !!process.env.RESEND_API_KEY)
+    console.log('  - RESEND_API_KEY starts with:', process.env.RESEND_API_KEY?.substring(0, 8))
+    console.log('  - RESEND_API_KEY length:', process.env.RESEND_API_KEY?.length)
 
     // TODO: Add actual user registration logic here
     // This would typically involve:
@@ -23,10 +26,27 @@ export async function POST(request: NextRequest) {
     // 2. Hashing the password
     // 3. Saving user to database
     
-    // For now, let's send a welcome email via Resend
-    console.log('Attempting to send email...')
-    const resend = new Resend(process.env.RESEND_API_KEY)
-    const emailResult = await resend.emails.send({
+    // Try to send welcome email via Resend with detailed error handling
+    let emailSent = false
+    let emailError = null
+    
+    try {
+      console.log('[REGISTER] Attempting to initialize Resend client...')
+      
+      const apiKey = process.env.RESEND_API_KEY
+      if (!apiKey) {
+        throw new Error('RESEND_API_KEY is not set in environment variables')
+      }
+      
+      if (!apiKey.startsWith('re_')) {
+        throw new Error('RESEND_API_KEY appears to be invalid (should start with "re_")')
+      }
+      
+      const resend = new Resend(apiKey)
+      console.log('[REGISTER] Resend client initialized successfully')
+      
+      console.log('[REGISTER] Sending welcome email...')
+      const emailResult = await resend.emails.send({
       from: 'ChecklyTool <noreply@resend.dev>',
       to: [email],
       subject: 'Добро пожаловать в ChecklyTool!',
@@ -92,20 +112,45 @@ export async function POST(request: NextRequest) {
         
         ChecklyTool - Автоматическая проверка школьных работ
       `,
-    })
+      })
 
-    console.log('Email sent successfully:', emailResult)
-    
-    if (emailResult.error) {
-      console.error('Resend API error:', emailResult.error)
-      throw new Error(`Resend API error: ${emailResult.error.message}`)
+      console.log('[REGISTER] Email API response:', emailResult)
+      
+      if (emailResult.error) {
+        console.error('[REGISTER] Resend API returned error:', emailResult.error)
+        throw new Error(`Resend API error: ${emailResult.error.message || 'Unknown error'}`)
+      }
+      
+      if (emailResult.data?.id) {
+        console.log('[REGISTER] Email sent successfully with ID:', emailResult.data.id)
+        emailSent = true
+      } else {
+        console.warn('[REGISTER] Email sent but no ID returned:', emailResult)
+        emailSent = true // Still consider it successful
+      }
+      
+    } catch (error) {
+      emailError = error instanceof Error ? error.message : String(error)
+      console.error('[REGISTER] Failed to send email:', emailError)
+      console.error('[REGISTER] Full error object:', error)
+      
+      // Don't fail registration if email fails
+      emailSent = false
     }
 
-    return NextResponse.json({
-      message: 'Регистрация прошла успешно! Проверьте почту.',
+    // Always return success for registration, even if email fails
+    const response = {
+      message: emailSent 
+        ? 'Регистрация прошла успешно! Проверьте почту.' 
+        : 'Регистрация прошла успешно! (Email-уведомление временно недоступно)',
       success: true,
-      emailId: emailResult.data?.id
-    })
+      emailSent,
+      ...(emailError && { emailError })
+    }
+    
+    console.log('[REGISTER] Registration completed:', response)
+    return NextResponse.json(response)
+    
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(

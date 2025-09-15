@@ -457,7 +457,7 @@ export function CameraWorkInterface({
     const currentPhoto = activeStudent.photos[currentPhotoIndex]
 
     return (
-      <div className="fixed inset-0 bg-black z-50 flex flex-col min-h-0 overflow-y-auto">
+      <div className="fixed inset-0 bg-black z-50 flex flex-col min-h-[100dvh] overflow-y-auto">
         {/* Header - Name pill centered; Done text on top-right */}
         <div className="flex items-center justify-between gap-3 p-4 pt-[env(safe-area-inset-top)]">
           {/* Name pill — слева, занимает всю доступную ширину, не перекрывает «Готово» */}
@@ -554,7 +554,7 @@ export function CameraWorkInterface({
         )}
 
         {/* Bottom controls */}
-        <div className="sticky bottom-0 bg-black px-7 py-6 pb-[env(safe-area-inset-bottom)] z-10">
+        <div className="sticky bottom-0 bg-black px-7 py-[calc(1.5rem+env(safe-area-inset-bottom))] z-10">
           <div className="flex items-center justify-between">
             {/* Переснять */}
             <div className="flex flex-col items-center gap-1 w-[75px]">
@@ -606,7 +606,7 @@ export function CameraWorkInterface({
 
   // Camera mode
   return (
-    <div className="fixed inset-0 bg-black z-50 flex flex-col">
+    <div className="fixed inset-0 bg-black z-50 flex flex-col min-h-[100dvh]">
       {/* Video area with absolute overlay controls (Rotate, Close) */}
       <div className="flex-1 relative">
         {error ? (
@@ -650,7 +650,7 @@ export function CameraWorkInterface({
         <Button
           variant="ghost"
           size="icon"
-          className="absolute top-6 left-6 text-white hover:bg-white/20 w-14 h-14"
+          className="absolute top-[calc(1.5rem+env(safe-area-inset-top))] left-6 text-white hover:bg-white/20 w-14 h-14"
           onClick={switchCamera}
           disabled={!isStreaming}
           aria-label="Переключить камеру"
@@ -661,7 +661,7 @@ export function CameraWorkInterface({
         <Button
           variant="ghost"
           size="icon"
-          className="absolute top-6 right-7 text-white hover:bg-white/20 w-14 h-14"
+          className="absolute top-[calc(1.5rem+env(safe-area-inset-top))] right-7 text-white hover:bg-white/20 w-14 h-14"
           onClick={onClose}
           aria-label="Закрыть"
         >
@@ -670,7 +670,7 @@ export function CameraWorkInterface({
       </div>
 
       {/* Bottom controls and navigation adjusted per Figma */}
-      <div className="bg-black px-4 pt-6 pb-6">
+      <div className="bg-black px-4 pt-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
         {/* Bottom controls - centered trio */}
         <div className="flex items-center justify-center gap-10 mt-1">
           {/* Upload from gallery */}
@@ -724,7 +724,7 @@ export function CameraWorkInterface({
       </div>
 
       {/* Student navigation moved to very bottom; arrow integrated with each student block */}
-      <div className="bg-black px-4 pt-3 pb-4 pb-[env(safe-area-inset-bottom)]">
+      <div className="bg-black px-4 pt-3 pb-[calc(1rem+env(safe-area-inset-bottom))]">
         <div className="relative">
           <div
             ref={navRef}

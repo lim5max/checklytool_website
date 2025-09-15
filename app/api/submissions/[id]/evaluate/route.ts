@@ -192,7 +192,13 @@ export async function POST(
 				// Обновляем статус submission как failed
 				const updateData: any = {
 					status: 'failed',
-					processing_completed_at: new Date().toISOString()
+					processing_completed_at: new Date().toISOString(),
+					error_message: aiResult.error_message || 'Загружены неподходящие изображения',
+					error_details: {
+						error_type: 'inappropriate_content',
+						content_type_detected: aiResult.content_type_detected,
+						ai_response: aiResult
+					}
 				}
 
 				console.log('[EVALUATE] Updating submission with failed status')
@@ -309,7 +315,14 @@ export async function POST(
 			// Update submission status to failed
 			const updateData: any = {
 				status: 'failed',
-				processing_completed_at: new Date().toISOString()
+				processing_completed_at: new Date().toISOString(),
+				error_message: evaluationError instanceof Error ? evaluationError.message : 'Произошла ошибка при обработке работы',
+				error_details: {
+					error_type: 'processing_error',
+					error_message: evaluationError instanceof Error ? evaluationError.message : String(evaluationError),
+					error_stack: evaluationError instanceof Error ? evaluationError.stack : undefined,
+					timestamp: new Date().toISOString()
+				}
 			}
 
 			console.log('[EVALUATE] Updating submission with failed status (error case)')

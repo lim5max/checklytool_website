@@ -59,23 +59,72 @@ export function PostCheckSummary({ checkId, title = 'Контрольная по
         setLoading(true)
         console.log('[POST_CHECK_SUMMARY] Loading submissions for checkId:', checkId)
         const res = await fetch(`/api/checks/${checkId}/submissions`)
-        if (!res.ok) throw new Error('Не удалось загрузить отправленные работы')
+        console.log('[POST_CHECK_SUMMARY] API response status:', res.status)
+        console.log('[POST_CHECK_SUMMARY] API response headers:', Object.fromEntries(res.headers.entries()))
+        
+        if (!res.ok) {
+          const errorText = await res.text()
+          console.error('[POST_CHECK_SUMMARY] API error response:', errorText)
+          throw new Error('Не удалось загрузить отправленные работы')
+        }
+        
         const data: { submissions: StudentSubmission[] } = await res.json()
-        console.log('[POST_CHECK_SUMMARY] Loaded submissions:', data.submissions)
-        data.submissions.forEach((s, i) => {
-          console.log(`[POST_CHECK_SUMMARY] Submission ${i}:`, {
+        console.log('[POST_CHECK_SUMMARY] Raw API response data:', data)
+        console.log('[POST_CHECK_SUMMARY] Submissions array length:', data.submissions?.length || 0)
+        
+        if (data.submissions) {
+          data.submissions.forEach((s, i) => {
+            console.log(`[POST_CHECK_SUMMARY] Submission ${i} detailed:`, {
+              id: s.id,
+              student_name: s.student_name,
+              student_class: s.student_class,
+              status: s.status,
+              error_message: s.error_message,
+              error_details: s.error_details,
+              evaluation_results: s.evaluation_results,
+              created_at: s.created_at,
+              updated_at: s.updated_at,
+              submission_images: s.submission_images
+            })
+          })
+          
+          const failedSubs = data.submissions.filter(s => s.status === 'failed')
+          const completedSubs = data.submissions.filter(s => s.status === 'completed')
+          const pendingSubs = data.submissions.filter(s => s.status === 'pending')
+          const processingSubs = data.submissions.filter(s => s.status === 'processing')
+          
+          console.log('[POST_CHECK_SUMMARY] Status breakdown:', {
+            total: data.submissions.length,
+            failed: failedSubs.length,
+            completed: completedSubs.length,
+            pending: pendingSubs.length,
+            processing: processingSubs.length
+          })
+          
+          console.log('[POST_CHECK_SUMMARY] Failed submissions detailed:', failedSubs.map(s => ({
             id: s.id,
             student_name: s.student_name,
-            status: s.status,
             error_message: s.error_message,
-            error_details: s.error_details
-          })
-        })
-        console.log('[POST_CHECK_SUMMARY] Failed submissions:', data.submissions.filter(s => s.status === 'failed'))
-        console.log('[POST_CHECK_SUMMARY] Completed submissions:', data.submissions.filter(s => s.status === 'completed'))
+            error_details: s.error_details,
+            hasErrorMessage: !!s.error_message,
+            errorMessageLength: s.error_message?.length || 0
+          })))
+          
+          console.log('[POST_CHECK_SUMMARY] Completed submissions detailed:', completedSubs.map(s => ({
+            id: s.id,
+            student_name: s.student_name,
+            hasEvaluationResults: !!s.evaluation_results,
+            evaluationCount: s.evaluation_results?.length || 0
+          })))
+        }
+        
         setSubmissions(data.submissions || [])
       } catch (e) {
         console.error('[POST_CHECK_SUMMARY] Error loading submissions:', e)
+        console.error('[POST_CHECK_SUMMARY] Error details:', {
+          message: e instanceof Error ? e.message : String(e),
+          stack: e instanceof Error ? e.stack : undefined
+        })
         toast.error('Ошибка загрузки списка работ')
       } finally {
         setLoading(false)
@@ -118,15 +167,27 @@ export function PostCheckSummary({ checkId, title = 'Контрольная по
     }
   }, [checkId])
 
-  const failedSubs = useMemo(
-    () => submissions.filter((s) => s.status === 'failed'),
-    [submissions]
-  )
+  const failedSubs = useMemo(() => {
+    const failed = submissions.filter((s) => s.status === 'failed')
+    console.log('[POST_CHECK_SUMMARY] useMemo failedSubs:', {
+      totalSubmissions: submissions.length,
+      failedCount: failed.length,
+      failedIds: failed.map(s => s.id),
+      failedNames: failed.map(s => s.student_name)
+    })
+    return failed
+  }, [submissions])
 
-  const completedSubs = useMemo(
-    () => submissions.filter((s) => s.status === 'completed'),
-    [submissions]
-  )
+  const completedSubs = useMemo(() => {
+    const completed = submissions.filter((s) => s.status === 'completed')
+    console.log('[POST_CHECK_SUMMARY] useMemo completedSubs:', {
+      totalSubmissions: submissions.length,
+      completedCount: completed.length,
+      completedIds: completed.map(s => s.id),
+      completedNames: completed.map(s => s.student_name)
+    })
+    return completed
+  }, [submissions])
 
   const handleOpenCamera = () => {
     onOpenCamera?.()
@@ -177,6 +238,14 @@ export function PostCheckSummary({ checkId, title = 'Контрольная по
   }
 
   const hasErrors = failedSubs.length > 0
+  
+  console.log('[POST_CHECK_SUMMARY] Render state:', {
+    loading,
+    hasErrors,
+    failedSubsLength: failedSubs.length,
+    completedSubsLength: completedSubs.length,
+    submissionsLength: submissions.length
+  })
 
   return (
     <div className="min-h-screen bg-white px-4 py-6">
@@ -225,7 +294,9 @@ export function PostCheckSummary({ checkId, title = 'Контрольная по
         </div>
 
         {/* Ошибки проверки + Переснять */}
-        {hasErrors && (
+        {hasErrors && (() => {
+          console.log('[POST_CHECK_SUMMARY] Rendering errors section with', failedSubs.length, 'failed submissions')
+          return (
           <div className="flex flex-col gap-4">
             <div className="flex items-center justify-between w-full">
               <div className="font-medium text-slate-800 text-[16px] leading-[1.5]">
@@ -241,28 +312,48 @@ export function PostCheckSummary({ checkId, title = 'Контрольная по
             </div>
 
             <div className="flex flex-col gap-2.5 items-center justify-start w-[343px] max-w-full">
-              {failedSubs.map((s) => (
-                <div key={s.id} className="bg-slate-50 flex flex-col gap-2.5 items-start justify-start px-6 py-[18px] rounded-[24px] w-full">
-                  <div className="flex items-center justify-between w-full">
-                    <div className="flex items-center gap-3">
-                      <div className="font-medium text-slate-800 text-[18px] leading-[1.6]">
-                        <p>{s.student_name || 'Студент'}</p>
+              {failedSubs.map((s, index) => {
+                console.log('[POST_CHECK_SUMMARY] Rendering error card for submission:', {
+                  index,
+                  id: s.id,
+                  student_name: s.student_name,
+                  error_message: s.error_message,
+                  error_details: s.error_details,
+                  hasErrorMessage: !!s.error_message
+                })
+                return (
+                  <div key={s.id} className="bg-slate-50 flex flex-col gap-2.5 items-start justify-start px-6 py-[18px] rounded-[24px] w-full">
+                    <div className="flex items-center justify-between w-full">
+                      <div className="flex items-center gap-3">
+                        <div className="font-medium text-slate-800 text-[18px] leading-[1.6]">
+                          <p>{s.student_name || 'Студент'}</p>
+                        </div>
                       </div>
+                      {/* маленькая красная точка как в макете */}
+                      <div className="h-2 w-2 rounded-full bg-[#e33629]" />
                     </div>
-                    {/* маленькая красная точка как в макете */}
-                    <div className="h-2 w-2 rounded-full bg-[#e33629]" />
+                    {/* Показываем описание ошибки */}
+                    <div className="text-[14px] text-slate-600 leading-[1.4]">
+                      <p>
+                        {s.error_message || 'Ошибка при проверке работы. Попробуйте переснять фотографии.'}
+                      </p>
+                      {/* Debug: показываем error_details если есть */}
+                      {process.env.NODE_ENV === 'development' && s.error_details && (
+                        <details className="mt-2">
+                          <summary className="text-xs text-slate-400 cursor-pointer">Debug: error_details</summary>
+                          <pre className="text-xs text-slate-400 mt-1 whitespace-pre-wrap">
+                            {JSON.stringify(s.error_details, null, 2)}
+                          </pre>
+                        </details>
+                      )}
+                    </div>
                   </div>
-                  {/* Показываем описание ошибки */}
-                  <div className="text-[14px] text-slate-600 leading-[1.4]">
-                    <p>
-                      {s.error_message || 'Ошибка при проверке работы. Попробуйте переснять фотографии.'}
-                    </p>
-                  </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           </div>
-        )}
+          )
+        })()}
 
         {/* Успешно проверенные - показываем только если есть завершенные работы */}
         {completedSubs.length > 0 && (
