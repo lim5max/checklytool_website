@@ -13,19 +13,25 @@ export async function GET(request: NextRequest) {
 		const queryParams = Object.fromEntries(url.searchParams)
 		const { page, per_page, search, subject, sort_by, sort_order } = checksQuerySchema.parse(queryParams)
 		
-		// Build query
+		// Build optimized query - load only essential data for listing
 		let query = supabase
 			.from('checks')
 			.select(`
-				*,
-				grading_criteria (*),
+				id,
+				title,
+				description,
+				subject,
+				class_level,
+				variant_count,
+				total_questions,
+				created_at,
+				updated_at,
 				check_statistics (
 					total_submissions,
 					completed_submissions,
-					average_score,
-					grade_distribution
+					average_score
 				)
-			`)
+			`, { count: 'exact' })
 			.eq('user_id', userId)
 		
 		// Add search filter
@@ -41,12 +47,12 @@ export async function GET(request: NextRequest) {
 		// Add sorting
 		query = query.order(sort_by, { ascending: sort_order === 'asc' })
 		
-		// Add pagination
+		// Execute query with count in one request
 		const from = (page - 1) * per_page
 		const to = from + per_page - 1
-		query = query.range(from, to)
 		
-		const { data: checks, error } = await query
+		const { data: checks, error, count: totalCount } = await query
+			.range(from, to)
 		
 		if (error) {
 			console.error('Error fetching checks:', error)
@@ -55,12 +61,6 @@ export async function GET(request: NextRequest) {
 				{ status: 500 }
 			)
 		}
-		
-		// Get total count for pagination
-		const { count: totalCount } = await supabase
-			.from('checks')
-			.select('*', { count: 'exact', head: true })
-			.eq('user_id', userId)
 		
 		return NextResponse.json({
 			checks: checks || [],
