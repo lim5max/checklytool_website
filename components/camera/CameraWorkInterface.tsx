@@ -605,7 +605,7 @@ export function CameraWorkInterface({
   return (
     <div className="fixed inset-0 bg-black z-50 flex flex-col" style={{ minHeight: '100dvh', height: '100dvh' }}>
       {/* Video area with absolute overlay controls (Rotate, Close) */}
-      <div className="relative overflow-hidden" style={{ height: 'calc(100dvh - 220px)' }}>
+      <div className="relative overflow-hidden" style={{ height: 'calc(100dvh - 160px)' }}>
         {error ? (
           <div className="absolute inset-0 flex items-center justify-center bg-black">
             <div className="text-center text-white px-6 py-8">
@@ -667,7 +667,7 @@ export function CameraWorkInterface({
       </div>
 
       {/* Bottom controls and navigation adjusted per Figma */}
-      <div className="bg-black px-4 pt-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] flex-shrink-0" style={{ minHeight: '140px' }}>
+      <div className="bg-black px-4 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))] flex-shrink-0" style={{ minHeight: '100px' }}>
         {/* Bottom controls - centered trio */}
         <div className="flex items-center justify-center gap-10 mt-1">
           {/* Upload from gallery */}
@@ -721,7 +721,7 @@ export function CameraWorkInterface({
       </div>
 
       {/* Student navigation moved to very bottom; arrow integrated with each student block */}
-      <div className="bg-black px-4 pt-3 pb-[calc(1rem+env(safe-area-inset-bottom))] flex-shrink-0" style={{ minHeight: '80px' }}>
+      <div className="bg-black px-4 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] flex-shrink-0" style={{ minHeight: '60px' }}>
         <div className="relative">
           <div
             ref={navRef}
