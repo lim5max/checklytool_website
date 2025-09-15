@@ -419,11 +419,8 @@ export function CameraWorkInterface({
     if (activeStudent && activeStudent.photos.length > 0) {
       setCurrentPhotoIndex(activeStudent.photos.length - 1)
       setViewMode('review')
-    } else {
-      // If no photos yet, still open review to allow actions like "Еще страница"
-      setCurrentPhotoIndex(0)
-      setViewMode('review')
     }
+    // Don't open review mode if no photos - user should take photos first
   }, [students, activeStudentIndex])
 
   // Keep active student centered in horizontal strip
@@ -608,7 +605,7 @@ export function CameraWorkInterface({
   return (
     <div className="fixed inset-0 bg-black z-50 flex flex-col" style={{ minHeight: '100dvh', height: '100dvh' }}>
       {/* Video area with absolute overlay controls (Rotate, Close) */}
-      <div className="relative overflow-hidden" style={{ height: 'calc(100dvh - 180px)' }}>
+      <div className="relative overflow-hidden" style={{ height: 'calc(100dvh - 220px)' }}>
         {error ? (
           <div className="absolute inset-0 flex items-center justify-center bg-black">
             <div className="text-center text-white px-6 py-8">
@@ -756,7 +753,7 @@ export function CameraWorkInterface({
                     {student.photos.length}
                   </span>
                 </button>
-                {index === activeStudentIndex && (
+                {index === activeStudentIndex && student.photos.length > 0 && (
                   <Button
                     variant="ghost"
                     className="mt-[-6px] text-white hover:bg-white/20 p-0 w-8 h-8 rounded-full"

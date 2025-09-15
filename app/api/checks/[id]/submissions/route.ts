@@ -13,8 +13,12 @@ export async function POST(
 	{ params }: RouteParams
 ) {
 	try {
+		console.log('[SUBMISSIONS] Starting submission creation...')
 		const { id: checkId } = await params
+		console.log('[SUBMISSIONS] Check ID:', checkId)
+		
 		const { supabase, userId } = await getAuthenticatedSupabase()
+		console.log('[SUBMISSIONS] Authentication successful, userId:', userId)
 		
 		// Verify the check exists and belongs to the user
 		const { data: checkExists, error: checkError } = await supabase
@@ -31,10 +35,18 @@ export async function POST(
 			)
 		}
 		
+		console.log('[SUBMISSIONS] Parsing form data...')
 		const formData = await request.formData()
 		const studentName = formData.get('student_name') as string
 		const studentClass = formData.get('student_class') as string
 		const files = formData.getAll('images') as File[]
+		
+		console.log('[SUBMISSIONS] Form data parsed:', {
+			studentName,
+			studentClass,
+			filesCount: files.length,
+			fileSizes: files.map(f => f.size)
+		})
 		
 		// Validate submission data
 		const validatedData = createSubmissionSchema.parse({
