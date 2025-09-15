@@ -457,7 +457,7 @@ export function CameraWorkInterface({
     const currentPhoto = activeStudent.photos[currentPhotoIndex]
 
     return (
-      <div className="fixed inset-0 bg-black z-50 flex flex-col min-h-[100dvh] overflow-y-auto">
+      <div className="fixed inset-0 bg-black z-50 flex flex-col min-h-screen overflow-y-auto" style={{ minHeight: '100dvh', height: '100dvh' }}>
         {/* Header - Name pill centered; Done text on top-right */}
         <div className="flex items-center justify-between gap-3 p-4 pt-[env(safe-area-inset-top)]">
           {/* Name pill — слева, занимает всю доступную ширину, не перекрывает «Готово» */}
@@ -554,7 +554,7 @@ export function CameraWorkInterface({
         )}
 
         {/* Bottom controls */}
-        <div className="sticky bottom-0 bg-black px-7 py-[calc(1.5rem+env(safe-area-inset-bottom))] z-10">
+        <div className="sticky bottom-0 bg-black px-7 py-[calc(1.5rem+env(safe-area-inset-bottom))] z-10 flex-shrink-0">
           <div className="flex items-center justify-between">
             {/* Переснять */}
             <div className="flex flex-col items-center gap-1 w-[75px]">
@@ -606,9 +606,9 @@ export function CameraWorkInterface({
 
   // Camera mode
   return (
-    <div className="fixed inset-0 bg-black z-50 flex flex-col min-h-[100dvh]">
+    <div className="fixed inset-0 bg-black z-50 flex flex-col" style={{ minHeight: '100dvh', height: '100dvh' }}>
       {/* Video area with absolute overlay controls (Rotate, Close) */}
-      <div className="flex-1 relative">
+      <div className="relative overflow-hidden" style={{ height: 'calc(100dvh - 180px)' }}>
         {error ? (
           <div className="absolute inset-0 flex items-center justify-center bg-black">
             <div className="text-center text-white px-6 py-8">
@@ -670,7 +670,7 @@ export function CameraWorkInterface({
       </div>
 
       {/* Bottom controls and navigation adjusted per Figma */}
-      <div className="bg-black px-4 pt-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
+      <div className="bg-black px-4 pt-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] flex-shrink-0" style={{ minHeight: '140px' }}>
         {/* Bottom controls - centered trio */}
         <div className="flex items-center justify-center gap-10 mt-1">
           {/* Upload from gallery */}
@@ -724,7 +724,7 @@ export function CameraWorkInterface({
       </div>
 
       {/* Student navigation moved to very bottom; arrow integrated with each student block */}
-      <div className="bg-black px-4 pt-3 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+      <div className="bg-black px-4 pt-3 pb-[calc(1rem+env(safe-area-inset-bottom))] flex-shrink-0" style={{ minHeight: '80px' }}>
         <div className="relative">
           <div
             ref={navRef}
