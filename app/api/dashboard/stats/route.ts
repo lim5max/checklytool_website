@@ -10,6 +10,8 @@ export async function GET() {
     console.log('  - User exists:', !!user)
     console.log('  - User ID:', userId)
     console.log('  - User email:', user?.email)
+    console.log('  - User name:', user?.name)
+    console.log('  - User provider:', (user as any)?.provider)
     
     if (!user) {
       console.log('[DASHBOARD_STATS] Authentication failed - no user')
@@ -69,6 +71,18 @@ export async function GET() {
         data: userChecks.data,
         error: userChecks.error,
         count: userChecks.data?.length
+      })
+      
+      // Проверим, может есть submissions под другими user_id
+      const allSubmissions = await supabase
+        .from('student_submissions')
+        .select('id, check_id, student_name, created_at')
+        .order('created_at', { ascending: false })
+        .limit(10)
+      
+      console.log('[DASHBOARD_STATS] Latest 10 submissions (any user):', {
+        data: allSubmissions.data,
+        error: allSubmissions.error
       })
     }
 
