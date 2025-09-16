@@ -46,6 +46,11 @@ export async function POST(request: NextRequest) {
       console.log('[REGISTER] Resend client initialized successfully')
       
       console.log('[REGISTER] Sending welcome email...')
+      
+      // Определяем базовый URL для продакшена
+      const baseUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_SITE_URL || 'https://checklytool.com'
+      console.log('[REGISTER] Using base URL for email links:', baseUrl)
+      
       const emailResult = await resend.emails.send({
       from: 'ChecklyTool <noreply@resend.dev>',
       to: [email],
@@ -71,7 +76,7 @@ export async function POST(request: NextRequest) {
           </ul>
           
           <div style="text-align: center; margin: 30px 0;">
-            <a href="http://localhost:3000/auth/login" 
+            <a href="${baseUrl}/auth/login" 
                style="background-color: #3b82f6; color: white; padding: 12px 24px; 
                       text-decoration: none; border-radius: 6px; display: inline-block;">
               Войти в ChecklyTool
@@ -106,7 +111,7 @@ export async function POST(request: NextRequest) {
         - Просматривать детальные отчеты
         - Экономить время на проверке
         
-        Войти в ChecklyTool: http://localhost:3000/auth/login
+        Войти в ChecklyTool: ${baseUrl}/auth/login
         
         Если у вас есть вопросы, просто ответьте на это письмо.
         

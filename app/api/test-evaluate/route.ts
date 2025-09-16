@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
 
     // Call the existing evaluation endpoint
     const response = await fetch(
-      `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/submissions/${submissionId}/evaluate`,
+      `${process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_SITE_URL || 'https://checklytool.com'}/api/submissions/${submissionId}/evaluate`,
       {
         method: 'POST',
         headers: {

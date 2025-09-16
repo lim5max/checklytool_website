@@ -430,13 +430,39 @@ export function CameraWorkInterface({
     const item = itemRefs.current[activeStudentIndex]!
 
     const center = () => {
-      const target = item.offsetLeft + item.offsetWidth / 2
-      const scrollLeft = Math.max(0, target - container.clientWidth / 2)
-      container.scrollTo({ left: scrollLeft, behavior: 'smooth' })
+      try {
+        // Force layout recalculation for mobile
+        container.offsetHeight
+        item.offsetLeft
+        
+        // Get container's scroll area (without padding)
+        const containerWidth = container.clientWidth
+        const scrollWidth = container.scrollWidth
+        
+        // Calculate item position relative to scroll area
+        const itemCenter = item.offsetLeft + (item.offsetWidth / 2)
+        
+        // Target: put item center at container center
+        const targetScroll = itemCenter - (containerWidth / 2)
+        
+        // Apply scroll with bounds checking
+        const maxScroll = scrollWidth - containerWidth
+        const finalScroll = Math.max(0, Math.min(targetScroll, maxScroll))
+        
+        // Use both methods for better mobile compatibility
+        container.scrollLeft = finalScroll
+        container.scrollTo({ left: finalScroll, behavior: 'smooth' })
+      } catch (error) {
+        console.warn('[CAMERA] Centering error:', error)
+      }
     }
 
-    // Defer until layout is stable (fonts, mode switch)
-    requestAnimationFrame(center)
+    // Multiple attempts for different browser timing and slow devices
+    requestAnimationFrame(() => {
+      center()
+      setTimeout(center, 100)
+      setTimeout(center, 300) // Extra delay for slow mobile devices
+    })
   }, [activeStudentIndex, students.length, isOpen, viewMode])
 
 
@@ -721,65 +747,73 @@ export function CameraWorkInterface({
       </div>
 
       {/* Student navigation moved to very bottom; arrow integrated with each student block */}
-      <div className="bg-black px-4 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] flex-shrink-0" style={{ minHeight: '60px' }}>
-        <div className="relative">
+      <div className="bg-black px-4 pt-3 pb-[calc(0.5rem+env(safe-area-inset-bottom))] flex-shrink-0" style={{ minHeight: '70px' }}>
+        <div className="relative w-full overflow-hidden">
           <div
             ref={navRef}
-            className="flex items-start gap-5 overflow-x-auto no-scrollbar scroll-smooth snap-x snap-mandatory"
+            className="flex items-start gap-4 overflow-x-auto no-scrollbar scroll-smooth"
+            style={{ 
+              paddingLeft: 'calc(50vw - 60px)',
+              paddingRight: 'calc(50vw - 60px)',
+              scrollBehavior: 'smooth',
+              WebkitOverflowScrolling: 'touch',
+              touchAction: 'pan-x'
+            }}
           >
-            {/* spacers so that active item can be visually centered */}
-            <div className="flex-shrink-0 w-1/2" />
             {students.map((student, index) => (
               <div
                 key={student.id}
                 ref={(el) => { itemRefs.current[index] = el }}
-                className="relative flex-shrink-0 snap-center px-3 py-0"
+                className="relative flex-shrink-0 flex flex-col items-center justify-start"
                 style={{ 
-                  display: 'flex', 
-                  flexDirection: 'column', 
-                  alignItems: 'center',
-                  justifyContent: 'center'
+                  minWidth: 'max-content',
+                  padding: '0 6px'
                 }}
               >
                 <button
-                  className="flex items-center"
-                  style={{ gap: '4px' }}
+                  className="flex items-center justify-center"
+                  style={{ gap: '3px', whiteSpace: 'nowrap', alignItems: 'center' }}
                   onClick={() => setActiveStudentIndex(index)}
                   aria-label={`Выбрать ${student.name}`}
                 >
                   <span 
-                    className={`text-[20px] leading-[24px] font-extrabold font-nunito tracking-tight whitespace-nowrap ${
+                    className={`text-[18px] leading-[22px] font-extrabold font-nunito tracking-tight ${
                       index === activeStudentIndex ? 'text-white' : 'text-white/40'
                     }`}
                     style={{ 
-                      maxWidth: '60vw', 
+                      maxWidth: '120px', 
                       overflow: 'hidden', 
-                      textOverflow: 'ellipsis' 
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap'
                     }}
                   >
                     {student.name}
                   </span>
                   <span
-                    className={`inline-flex items-center justify-center rounded-[10px] h-5 w-5 text-[10px] ${
+                    className={`inline-flex items-center justify-center rounded-[8px] h-4 w-4 text-[9px] font-bold ${
                       index === activeStudentIndex ? 'bg-[#096ff5] text-white' : 'bg-white text-black/70 opacity-40'
                     }`}
+                    style={{ flexShrink: 0, lineHeight: '1' }}
                   >
                     {student.photos.length}
                   </span>
                 </button>
-                {index === activeStudentIndex && student.photos.length > 0 && (
+                <div style={{ height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <Button
                     variant="ghost"
-                    className="mt-[-6px] text-white hover:bg-white/20 p-0 w-8 h-8 rounded-full"
-                    onClick={handlePhotoClick}
+                    className={`p-0 w-8 h-8 rounded-full flex items-center justify-center transition-opacity ${
+                      activeStudentIndex === index 
+                        ? 'text-white hover:bg-white/20 opacity-100' 
+                        : 'opacity-0 pointer-events-none'
+                    }`}
+                    onClick={activeStudentIndex === index ? handlePhotoClick : undefined}
                     aria-label="Открыть просмотр и редактирование"
                   >
-                    <ChevronDown className="size-8" style={{ width: 32, height: 32 }} strokeWidth={3} />
+                    <ChevronDown className="size-6" style={{ width: 24, height: 24 }} strokeWidth={3} />
                   </Button>
-                )}
+                </div>
               </div>
             ))}
-            <div className="flex-shrink-0 w-1/2" />
           </div>
         </div>
       </div>

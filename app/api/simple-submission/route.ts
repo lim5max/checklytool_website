@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
     
     // Create a simple submission without file upload
     console.log('[SIMPLE-SUBMISSION] Creating submission record...')
-    const { data: submission, error } = await supabase
+    const { data: submission, error } = await (supabase as any)
       .from('student_submissions')
       .insert({
         check_id: checkId,
