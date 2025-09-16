@@ -30,10 +30,13 @@ export async function getAuthenticatedSupabase() {
 	console.log('[DATABASE] Setting up RLS context for user:', session.user.email)
 	
 	try {
-		// Устанавливаем JWT claims для работы с auth.email() в RLS политиках
+		console.log('[DATABASE] Service role mode - RLS will be bypassed')
+		console.log('[DATABASE] User context:', { email: session.user.email, id: session.user.id })
+
+		// В режиме service role мы можем обойти RLS, но сохраним логику для будущего использования
 		if (session.user.email) {
 			console.log('[DATABASE] Setting request.jwt.claims with email:', session.user.email)
-			
+
 			// Создаем JWT-подобный объект с необходимыми claims
 			const jwtClaims = {
 				email: session.user.email,
@@ -41,33 +44,33 @@ export async function getAuthenticatedSupabase() {
 				role: 'authenticated',
 				aud: 'authenticated'
 			}
-			
-			// Устанавливаем через set_config для доступа к auth.jwt()
-			await (supabase as any).rpc('set_config', [
-				'request.jwt.claims',
-				JSON.stringify(jwtClaims),
-				true
-			])
-			
-			console.log('[DATABASE] JWT claims set successfully')
+
+			try {
+				// Пытаемся установить через set_config для доступа к auth.jwt()
+				const { data, error } = await (supabase as any).rpc('set_config', {
+					setting_name: 'request.jwt.claims',
+					new_value: JSON.stringify(jwtClaims),
+					is_local: true
+				})
+
+				if (error) {
+					console.log('[DATABASE] RPC set_config failed, trying direct approach:', error.message)
+
+					// Альтернативный метод через SQL - убираем так как функция не существует
+					console.log('[DATABASE] Fallback to direct SQL not available')
+				} else {
+					console.log('[DATABASE] JWT claims set successfully via RPC')
+				}
+			} catch (setConfigError) {
+				console.log('[DATABASE] All set_config methods failed:', setConfigError)
+				// Это нормально для service role - продолжаем
+			}
 		}
-		
-		// Устанавливаем app.current_user_id для политик использующих current_setting
-		if (session.user.email) {
-			console.log('[DATABASE] Setting app.current_user_id:', session.user.email)
-			await (supabase as any).rpc('set_config', [
-				'app.current_user_id', 
-				session.user.email,
-				true
-			])
-			
-			console.log('[DATABASE] App user ID set successfully')
-		}
-		
-		console.log('[DATABASE] RLS context setup completed successfully')
+
+		console.log('[DATABASE] Context setup completed - using service role bypass')
 	} catch (error) {
-		console.error('[DATABASE] Error setting RLS context:', error)
-		// Не падаем, продолжаем работу - service role key все равно обойдет RLS
+		console.error('[DATABASE] Error during context setup:', error)
+		// В любом случае продолжаем - service role обойдет все проблемы
 		console.log('[DATABASE] Continuing with service role bypass')
 	}
 	
