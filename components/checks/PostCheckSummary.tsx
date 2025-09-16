@@ -151,14 +151,23 @@ export function PostCheckSummary({ checkId, title = 'Контрольная по
       }, 2500) // Немного увеличиваем задержку
     }
     
+    const onSubmissionsUploaded = () => {
+      console.log('[POST_CHECK_SUMMARY] Submissions uploaded, clearing temp errors and reloading...')
+      // Очищаем временные ошибки из localStorage так как отправка прошла успешно
+      clearTempFailedNames(checkId)
+      // Перезагружаем данные
+      setTimeout(() => load(), 500)
+    }
+    
     if (typeof window !== 'undefined') {
       window.addEventListener('evaluation:complete', onEvaluationComplete)
-      // Убираем дублирующий listener для submissions:uploaded так как он тоже вызывает загрузку
+      window.addEventListener('submissions:uploaded', onSubmissionsUploaded)
     }
     
     return () => {
       if (typeof window !== 'undefined') {
         window.removeEventListener('evaluation:complete', onEvaluationComplete)
+        window.removeEventListener('submissions:uploaded', onSubmissionsUploaded)
         // Очищаем таймер при размонтировании
         if (reloadTimeout) {
           clearTimeout(reloadTimeout)
@@ -169,14 +178,38 @@ export function PostCheckSummary({ checkId, title = 'Контрольная по
 
   const failedSubs = useMemo(() => {
     const failed = submissions.filter((s) => s.status === 'failed')
+    
+    // Добавляем временные ошибки из localStorage (500 ошибки при отправке)
+    const tempFailedNames = getTempFailedNames(checkId)
+    const tempFailedSubs: StudentSubmission[] = tempFailedNames.map(name => ({
+      id: `temp-${name}-${Date.now()}`,
+      student_name: name,
+      student_class: '',
+      submission_images: [],
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      status: 'failed' as SubmissionStatus,
+      error_message: 'Ошибка при отправке фотографий на сервер (500)',
+      error_details: { type: 'upload_error', isTemporary: true }
+    }))
+    
+    // Убираем дубли - если есть и серверная ошибка и временная для одного имени
+    const allFailed = [...failed, ...tempFailedSubs]
+    const uniqueFailed = allFailed.filter((sub, index, self) => 
+      index === self.findIndex(s => s.student_name === sub.student_name)
+    )
+    
     console.log('[POST_CHECK_SUMMARY] useMemo failedSubs:', {
       totalSubmissions: submissions.length,
-      failedCount: failed.length,
-      failedIds: failed.map(s => s.id),
-      failedNames: failed.map(s => s.student_name)
+      failedCount: uniqueFailed.length,
+      failedIds: uniqueFailed.map(s => s.id),
+      failedNames: uniqueFailed.map(s => s.student_name),
+      tempFailedCount: tempFailedSubs.length,
+      tempFailedNames: tempFailedNames
     })
-    return failed
-  }, [submissions])
+    
+    return uniqueFailed
+  }, [submissions, checkId])
 
   const completedSubs = useMemo(() => {
     const completed = submissions.filter((s) => s.status === 'completed')
