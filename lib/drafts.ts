@@ -220,17 +220,36 @@ function failKey(checkId: string) {
 
 /** Add a single failed student name (deduplicated) */
 export function addTempFailedName(checkId: string, name: string): void {
-  if (!isBrowser()) return
+  if (!isBrowser()) {
+    console.log('[DRAFTS] addTempFailedName: not in browser')
+    return
+  }
   try {
     const existing = getTempFailedNames(checkId)
     const trimmed = (name ?? '').toString().trim()
-    if (!trimmed) return
+    console.log('[DRAFTS] addTempFailedName:', {
+      checkId,
+      name,
+      trimmed,
+      existing,
+      alreadyExists: existing.includes(trimmed)
+    })
+    if (!trimmed) {
+      console.log('[DRAFTS] addTempFailedName: empty name, returning')
+      return
+    }
     if (!existing.includes(trimmed)) {
       const next = [...existing, trimmed]
-      window.localStorage.setItem(failKey(checkId), JSON.stringify(next))
+      const key = failKey(checkId)
+      window.localStorage.setItem(key, JSON.stringify(next))
+      console.log('[DRAFTS] addTempFailedName: saved to localStorage:', {
+        key,
+        next,
+        serialized: JSON.stringify(next)
+      })
     }
-  } catch {
-    // ignore
+  } catch (e) {
+    console.error('[DRAFTS] addTempFailedName error:', e)
   }
 }
 
@@ -238,12 +257,22 @@ export function addTempFailedName(checkId: string, name: string): void {
 export function getTempFailedNames(checkId: string): string[] {
   if (!isBrowser()) return []
   try {
-    const raw = window.localStorage.getItem(failKey(checkId))
+    const key = failKey(checkId)
+    const raw = window.localStorage.getItem(key)
     const parsed = raw ? JSON.parse(raw) as unknown : []
-    return Array.isArray(parsed)
+    const result = Array.isArray(parsed)
       ? parsed.map((s) => String(s)).filter((s) => s.length > 0)
       : []
-  } catch {
+    console.log('[DRAFTS] getTempFailedNames:', {
+      checkId,
+      key,
+      raw,
+      parsed,
+      result
+    })
+    return result
+  } catch (e) {
+    console.error('[DRAFTS] getTempFailedNames error:', e)
     return []
   }
 }

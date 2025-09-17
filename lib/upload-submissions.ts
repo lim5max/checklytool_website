@@ -75,9 +75,15 @@ export async function submitStudents(
         // mark this student as failed locally and continue
         try {
           const { addTempFailedName } = await import('./drafts')
+          console.log('[UPLOAD] Adding temp failed name to localStorage:', {
+            checkId,
+            studentName: student.name,
+            responseStatus: response.status,
+            errorMessage: message
+          })
           addTempFailedName(checkId, student.name)
-        } catch {
-          // ignore import/localStorage issues
+        } catch (e) {
+          console.error('[UPLOAD] Failed to add temp failed name:', e)
         }
         failedNames.push(student.name)
         continue
@@ -96,22 +102,32 @@ export async function submitStudents(
         // if no id — treat as failed for reshoot
         try {
           const { addTempFailedName } = await import('./drafts')
+          console.log('[UPLOAD] Adding temp failed name (no submission ID):', {
+            checkId,
+            studentName: student.name,
+            result
+          })
           addTempFailedName(checkId, student.name)
-        } catch {
-          // ignore
+        } catch (e) {
+          console.error('[UPLOAD] Failed to add temp failed name (no ID):', e)
         }
         failedNames.push(student.name)
         continue
       }
 
       items.push({ student, submissionId })
-    } catch {
+    } catch (error) {
       // Network or unexpected error — mark as failed and continue
       try {
         const { addTempFailedName } = await import('./drafts')
+        console.log('[UPLOAD] Adding temp failed name (network error):', {
+          checkId,
+          studentName: student.name,
+          error: error instanceof Error ? error.message : String(error)
+        })
         addTempFailedName(checkId, student.name)
-      } catch {
-        // ignore
+      } catch (e) {
+        console.error('[UPLOAD] Failed to add temp failed name (network error):', e)
       }
       failedNames.push(student.name)
     }
