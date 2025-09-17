@@ -271,13 +271,20 @@ export function PostCheckSummary({ checkId, title = 'Контрольная по
   }
 
   const hasErrors = failedSubs.length > 0
-  
+
   console.log('[POST_CHECK_SUMMARY] Render state:', {
     loading,
     hasErrors,
     failedSubsLength: failedSubs.length,
     completedSubsLength: completedSubs.length,
-    submissionsLength: submissions.length
+    submissionsLength: submissions.length,
+    willRenderErrorsSection: !loading && hasErrors,
+    failedSubsDetailed: failedSubs.map(s => ({
+      id: s.id,
+      name: s.student_name,
+      error_message: s.error_message,
+      isTemporary: s.error_details?.isTemporary
+    }))
   })
 
   return (
@@ -328,7 +335,11 @@ export function PostCheckSummary({ checkId, title = 'Контрольная по
 
         {/* Ошибки проверки + Переснять */}
         {hasErrors && (() => {
-          console.log('[POST_CHECK_SUMMARY] Rendering errors section with', failedSubs.length, 'failed submissions')
+          console.log('[POST_CHECK_SUMMARY] ===== RENDERING ERRORS SECTION =====')
+          console.log('[POST_CHECK_SUMMARY] hasErrors:', hasErrors)
+          console.log('[POST_CHECK_SUMMARY] failedSubs.length:', failedSubs.length)
+          console.log('[POST_CHECK_SUMMARY] failedSubs:', failedSubs)
+          console.log('[POST_CHECK_SUMMARY] About to render', failedSubs.length, 'error cards')
           return (
           <div className="flex flex-col gap-4">
             <div className="flex items-center justify-between w-full">
