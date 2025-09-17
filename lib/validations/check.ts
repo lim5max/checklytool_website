@@ -91,8 +91,8 @@ export const createSubmissionSchema = z.object({
 			'Поддерживаются только изображения (JPEG, PNG, WebP, HEIC)'
 		)
 		.refine(
-			(files) => files.every(file => file.size && file.size <= 10 * 1024 * 1024), // 10MB
-			'Размер каждого файла не должен превышать 10 МБ'
+			(files) => files.every(file => file.size && file.size <= 50 * 1024 * 1024), // 50MB
+			'Размер каждого файла не должен превышать 50 МБ'
 		)
 })
 

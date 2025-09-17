@@ -3,6 +3,16 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getAuthenticatedSupabase } from '@/lib/database'
 import { createSubmissionSchema } from '@/lib/validations/check'
 
+// Увеличиваем лимиты для загрузки больших изображений
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: '50mb', // Максимальный размер запроса
+    },
+    responseLimit: '50mb', // Максимальный размер ответа
+  },
+}
+
 interface RouteParams {
 	params: Promise<{ id: string }>
 }
