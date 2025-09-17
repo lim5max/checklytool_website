@@ -7,7 +7,7 @@ import { PendingSubmissions } from '@/components/checks/PendingSubmissions'
 import { PostCheckSummary } from '@/components/checks/PostCheckSummary'
 import { CameraWorkInterface } from '@/components/camera/CameraWorkInterface'
 import { toast } from 'sonner'
-import { getDraft } from '@/lib/drafts'
+import { getDraft, getTempFailedNames } from '@/lib/drafts'
 
 interface StudentResult {
   id: string
@@ -193,7 +193,21 @@ export default function CheckPage({ params }: CheckPageProps) {
     )
   }
 
-  const hasResults = hasAnySubmissions || (submissionCount && submissionCount > 0) || (checkData.results && checkData.results.length > 0)
+  // Проверяем временные ошибки из localStorage (500 ошибки при отправке)
+  const tempFailedNames = getTempFailedNames(checkId)
+  const hasTempFailures = tempFailedNames.length > 0
+
+  const hasResults = hasAnySubmissions || (submissionCount && submissionCount > 0) || (checkData.results && checkData.results.length > 0) || hasTempFailures
+
+  console.log('[CHECK_PAGE] Result calculation:', {
+    checkId,
+    hasAnySubmissions,
+    submissionCount,
+    checkDataResultsLength: checkData.results?.length || 0,
+    tempFailedNames,
+    hasTempFailures,
+    hasResults
+  })
 
   return (
     <div className="min-h-screen bg-white">
