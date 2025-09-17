@@ -223,7 +223,7 @@ export default function CheckPage({ params }: CheckPageProps) {
 
   if (!checkData) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center min-h-screen px-4 py-4">
         <div className="text-center">
           <h2 className="text-xl font-semibold mb-2">Проверочная работа не найдена</h2>
           <p className="text-gray-600">Возможно, работа была удалена или у вас нет прав доступа</p>
@@ -233,7 +233,7 @@ export default function CheckPage({ params }: CheckPageProps) {
   }
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white px-4 py-4">
       <div className="max-w-md mx-auto">
         {/* Всегда показываем результаты проверки */}
         <PostCheckSummary
