@@ -98,9 +98,10 @@ export function ensureStudent(checkId: string, name?: string): { bundle: DraftBu
   let createdIndex = -1
   const bundle = mutateDraft(checkId, (b) => {
     if (b.students.length === 0) {
+      const studentName = name?.trim() || generateUniqueStudentName(checkId, b.students)
       const newStudent: DraftStudent = {
         id: `student_${Date.now()}`,
-        name: name?.trim() || `Ученик 1`,
+        name: studentName,
         photos: [],
       }
       createdIndex = 0
@@ -151,12 +152,33 @@ export function deletePhoto(checkId: string, studentIndex: number, photoId: stri
 }
 
 /**
+ * Generate unique student name that doesn't conflict with existing drafts or failed submissions
+ */
+function generateUniqueStudentName(checkId: string, existingStudents: DraftStudent[]): string {
+  const existingNames = new Set(existingStudents.map(s => s.name.toLowerCase()))
+
+  // Also check failed submissions from temp storage
+  const tempFailedNames = getTempFailedNames(checkId)
+  tempFailedNames.forEach(name => existingNames.add(name.toLowerCase()))
+
+  let counter = 1
+  let candidateName = `Ученик ${counter}`
+
+  while (existingNames.has(candidateName.toLowerCase())) {
+    counter++
+    candidateName = `Ученик ${counter}`
+  }
+
+  return candidateName
+}
+
+/**
  * Utility: add a new student (returns its index)
  */
 export function addStudent(checkId: string, name: string, afterIndex?: number): { bundle: DraftBundle; index: number } {
   let newIndex = 0
   const bundle = mutateDraft(checkId, (b) => {
-    const baseName = name.trim() || `Ученик ${b.students.length + 1}`
+    const baseName = name.trim() || generateUniqueStudentName(checkId, b.students)
     const newStudent: DraftStudent = {
       id: `student_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
       name: baseName,

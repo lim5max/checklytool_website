@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { Input } from '@/components/ui/input'
 
@@ -35,7 +35,61 @@ interface DashboardStats {
   avg_completion_rate: number
 }
 
-export default function MobileDashboard() {
+// Мемоизированный компонент элемента списка
+const CheckItem = React.memo<{
+  check: Check & { completionRate: number }
+  onCheckClick: (checkId: string) => void
+  formatDate: (dateString: string) => string
+}>(function CheckItem({ check, onCheckClick, formatDate }) {
+  return (
+    <div
+      onClick={() => onCheckClick(check.id)}
+      className="bg-slate-50 border-0 rounded-figma-lg p-4 cursor-pointer hover:bg-slate-100 transition-colors active:scale-[0.98]"
+    >
+      <div className="flex items-start justify-between">
+        <div className="flex-1 min-w-0">
+          <h3 className="font-nunito font-extrabold text-[20px] leading-[1.2] text-slate-700 truncate">
+            {check.title}
+          </h3>
+        </div>
+
+        <div className="w-6 h-6 flex-shrink-0">
+          <ChevronRight className="w-6 h-6 text-slate-400" />
+        </div>
+      </div>
+
+      <div className="flex items-center gap-2 mt-2.5">
+        <div className="flex items-start gap-1.5">
+          <span className="font-inter font-medium text-[16px] leading-[1.5] text-slate-500">
+            Средний балл
+          </span>
+          <span className="font-inter font-medium text-[16px] leading-[1.5] text-slate-800">
+            {check.statistics?.average_score ? check.statistics.average_score.toFixed(1) : '0.0'}
+          </span>
+        </div>
+
+        <div className="w-1 h-1 bg-slate-400 rounded-full"></div>
+
+        <div className="flex items-start gap-1.5">
+          <span className="font-inter font-medium text-[16px] leading-[1.5] text-slate-500">
+            Учеников
+          </span>
+          <span className="font-inter font-medium text-[16px] leading-[1.5] text-slate-800">
+            {check.statistics?.total_submissions || 0}
+          </span>
+        </div>
+      </div>
+
+      <div className="mt-2.5">
+        <span className="font-inter font-medium text-[14px] leading-[1.6] text-slate-600">
+          {formatDate(check.created_at)}
+        </span>
+      </div>
+    </div>
+  )
+})
+
+function MobileDashboard() {
   const router = useRouter()
   const [checks, setChecks] = useState<Check[]>([])
   const [stats, setStats] = useState<DashboardStats | null>(null)
@@ -44,16 +98,11 @@ export default function MobileDashboard() {
   const [subjectFilter, setSubjectFilter] = useState<string>('')
   const [sortBy, setSortBy] = useState<'created_at' | 'title' | 'updated_at'>('created_at')
 
-  // Загрузка данных
-  useEffect(() => {
-    loadDashboardData()
-  }, [searchQuery, subjectFilter, sortBy])
-
-  const loadDashboardData = async () => {
+  // Мемоизируем загрузку данных для предотвращения лишних запросов
+  const loadDashboardData = useCallback(async () => {
     try {
       setIsLoading(true)
-      
-      // Параметры запроса
+
       const params = new URLSearchParams()
       if (searchQuery) params.append('search', searchQuery)
       if (subjectFilter) params.append('subject', subjectFilter)
@@ -69,7 +118,7 @@ export default function MobileDashboard() {
         const errorData = await checksResponse.json().catch(() => ({ error: 'Unknown error' }))
         throw new Error(`Ошибка загрузки работ: ${errorData.error || checksResponse.statusText}`)
       }
-      
+
       if (!statsResponse.ok) {
         const errorData = await statsResponse.json().catch(() => ({ error: 'Unknown error' }))
         throw new Error(`Ошибка загрузки статистики: ${errorData.error || statsResponse.statusText}`)
@@ -80,63 +129,105 @@ export default function MobileDashboard() {
 
       setChecks(checksData.checks || [])
       setStats(statsData.stats || null)
-      
+
     } catch (error) {
       console.error('Error loading dashboard data:', error)
       toast.error(error instanceof Error ? error.message : 'Не удалось загрузить данные')
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [searchQuery, subjectFilter, sortBy])
 
-  const formatDate = (dateString: string) => {
+  // Загрузка данных
+  useEffect(() => {
+    loadDashboardData()
+  }, [loadDashboardData])
+
+  // Мемоизируем форматирование даты
+  const formatDate = useCallback((dateString: string) => {
     return formatDistanceToNow(new Date(dateString), {
       addSuffix: true,
       locale: ru
     })
-  }
+  }, [])
 
-  const getCompletionRate = (check: Check) => {
-    if (!check.statistics || check.statistics.total_submissions === 0) {
-      return 0
-    }
-    return Math.round(
-      (check.statistics.completed_submissions / check.statistics.total_submissions) * 100
+  // Мемоизируем вычисление предметов для предотвращения ререндеров
+  const subjects = useMemo(() => {
+    const subjectsSet = new Set(
+      checks.map(check => check.subject).filter(Boolean) as string[]
     )
-  }
+    return Array.from(subjectsSet)
+  }, [checks])
 
-  const getSubjects = () => {
-    const subjects = new Set(checks.map(check => check.subject).filter(Boolean) as string[])
-    return Array.from(subjects)
-  }
+  // Мемоизируем вычисление рейтингов и статистики
+  const checksWithStats = useMemo(() =>
+    checks.map(check => ({
+      ...check,
+      completionRate: (!check.statistics || check.statistics.total_submissions === 0)
+        ? 0
+        : Math.round((check.statistics.completed_submissions / check.statistics.total_submissions) * 100)
+    })),
+    [checks]
+  )
 
-  const handleCreateCheck = () => {
+  // Мемоизируем обработчики событий
+  const handleCreateCheck = useCallback(() => {
     router.push('/dashboard/checks/create')
-  }
+  }, [router])
 
-  const handleCheckClick = (checkId: string) => {
+  const handleCheckClick = useCallback((checkId: string) => {
     router.push(`/dashboard/checks/${checkId}`)
-  }
+  }, [router])
+
+  const handleSubjectFilter = useCallback((subject: string) => {
+    setSubjectFilter(subject)
+  }, [])
+
+  const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(e.target.value)
+  }, [])
 
   if (isLoading) {
     return (
       <div className="p-4 space-y-6">
         {/* Loading stats */}
-        <div className="grid grid-cols-2 gap-3">
-          {[1, 2].map(i => (
-            <div key={i} className="bg-slate-50 rounded-figma-lg p-4 animate-pulse">
-              <div className="h-4 bg-slate-200 rounded w-3/4 mb-2"></div>
-              <div className="h-8 bg-slate-200 rounded w-1/2"></div>
+        <div className="space-y-3">
+          <div className="bg-slate-50 rounded-[42px] p-7 animate-pulse">
+            <div className="h-7 bg-slate-200 rounded w-48 mb-3"></div>
+            <div className="flex items-start gap-3">
+              <div className="h-16 bg-slate-200 rounded w-20"></div>
+              <div className="h-4 bg-slate-200 rounded w-16 mt-4"></div>
             </div>
-          ))}
+          </div>
+
+          <div className="w-full h-28 bg-slate-200 rounded-[180px] animate-pulse"></div>
         </div>
-        
+
+        {/* Loading search section */}
+        <div className="space-y-3">
+          <div className="h-6 bg-slate-200 rounded w-40 animate-pulse"></div>
+          <div className="bg-slate-50 h-14 rounded-[27px] animate-pulse">
+            <div className="flex items-center gap-2 h-14 px-[21px] py-[11px]">
+              <div className="w-[18px] h-[18px] bg-slate-200 rounded animate-pulse"></div>
+              <div className="h-4 bg-slate-200 rounded w-24 animate-pulse"></div>
+            </div>
+          </div>
+        </div>
+
         {/* Loading checks */}
         <div className="space-y-3">
           {[1, 2, 3].map(i => (
             <div key={i} className="bg-slate-50 rounded-figma-lg p-4 animate-pulse">
-              <div className="h-5 bg-slate-200 rounded w-3/4 mb-2"></div>
-              <div className="h-4 bg-slate-200 rounded w-1/2"></div>
+              <div className="flex items-start justify-between mb-2">
+                <div className="h-5 bg-slate-200 rounded w-3/4"></div>
+                <div className="w-6 h-6 bg-slate-200 rounded"></div>
+              </div>
+              <div className="flex items-center gap-2 mb-2">
+                <div className="h-4 bg-slate-200 rounded w-20"></div>
+                <div className="w-1 h-1 bg-slate-200 rounded-full"></div>
+                <div className="h-4 bg-slate-200 rounded w-16"></div>
+              </div>
+              <div className="h-4 bg-slate-200 rounded w-24"></div>
             </div>
           ))}
         </div>
@@ -283,31 +374,31 @@ export default function MobileDashboard() {
           <Input
             placeholder="Поиск работ"
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={handleSearchChange}
             className="pl-[49px] h-14 rounded-[27px] border-slate-100 bg-slate-50 font-inter font-medium text-[16px] placeholder:text-slate-500"
           />
           <div className="absolute inset-0 border border-slate-100 rounded-[27px] pointer-events-none"></div>
         </div>
         
-        {getSubjects().length > 0 && (
+        {subjects.length > 0 && (
           <div className="flex gap-2 overflow-x-auto pb-2">
             <button
-              onClick={() => setSubjectFilter('')}
+              onClick={() => handleSubjectFilter('')}
               className={`px-4 py-2 rounded-figma-full font-inter font-medium text-[14px] whitespace-nowrap transition-colors ${
-                !subjectFilter 
-                  ? 'bg-[#096ff5] text-white' 
+                !subjectFilter
+                  ? 'bg-[#096ff5] text-white'
                   : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
               }`}
             >
               Все
             </button>
-            {getSubjects().map((subject) => (
+            {subjects.map((subject) => (
               <button
                 key={subject}
-                onClick={() => setSubjectFilter(subject)}
+                onClick={() => handleSubjectFilter(subject)}
                 className={`px-4 py-2 rounded-figma-full font-inter font-medium text-[14px] whitespace-nowrap transition-colors ${
-                  subjectFilter === subject 
-                    ? 'bg-[#096ff5] text-white' 
+                  subjectFilter === subject
+                    ? 'bg-[#096ff5] text-white'
                     : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                 }`}
               >
@@ -320,58 +411,18 @@ export default function MobileDashboard() {
 
       {/* Список работ */}
       <div className="space-y-3">
-        {checks.map((check) => {
-          const completionRate = getCompletionRate(check)
-          
-          return (
-            <div
-              key={check.id}
-              onClick={() => handleCheckClick(check.id)}
-              className="bg-slate-50 border-0 rounded-figma-lg p-4 cursor-pointer hover:bg-slate-100 transition-colors active:scale-[0.98]"
-            >
-              <div className="flex items-start justify-between">
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-nunito font-extrabold text-[20px] leading-[1.2] text-slate-700 truncate">
-                    {check.title}
-                  </h3>
-                </div>
-                
-                <div className="w-6 h-6 flex-shrink-0">
-                  <ChevronRight className="w-6 h-6 text-slate-400" />
-                </div>
-              </div>
-              
-              <div className="flex items-center gap-2 mt-2.5">
-                <div className="flex items-start gap-1.5">
-                  <span className="font-inter font-medium text-[16px] leading-[1.5] text-slate-500">
-                    Средний балл
-                  </span>
-                  <span className="font-inter font-medium text-[16px] leading-[1.5] text-slate-800">
-                    {check.statistics?.average_score ? check.statistics.average_score.toFixed(1) : '0.0'}
-                  </span>
-                </div>
-                
-                <div className="w-1 h-1 bg-slate-400 rounded-full"></div>
-                
-                <div className="flex items-start gap-1.5">
-                  <span className="font-inter font-medium text-[16px] leading-[1.5] text-slate-500">
-                    Учеников
-                  </span>
-                  <span className="font-inter font-medium text-[16px] leading-[1.5] text-slate-800">
-                    {check.statistics?.total_submissions || 0}
-                  </span>
-                </div>
-              </div>
-              
-              <div className="mt-2.5">
-                <span className="font-inter font-medium text-[14px] leading-[1.6] text-slate-600">
-                  {formatDate(check.created_at)}
-                </span>
-              </div>
-            </div>
-          )
-        })}
+        {checksWithStats.map((check) => (
+          <CheckItem
+            key={check.id}
+            check={check}
+            onCheckClick={handleCheckClick}
+            formatDate={formatDate}
+          />
+        ))}
       </div>
     </div>
   )
 }
+
+// Экспортируем мемоизированный компонент для оптимизации производительности
+export default React.memo(MobileDashboard)

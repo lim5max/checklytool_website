@@ -4,10 +4,10 @@ import { useEffect, useMemo, useState } from 'react'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { clearDraft, setDraftStudents, getTempFailedNames, clearTempFailedNames } from '@/lib/drafts'
+import { clearDraft, setDraftStudents, getTempFailedNames, clearTempFailedNames, addTempFailedName } from '@/lib/drafts'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
-import { X, Settings, Menu } from 'lucide-react'
+import { X, Settings, Menu, Trash2 } from 'lucide-react'
 
 type SubmissionStatus = 'pending' | 'processing' | 'completed' | 'failed'
 
@@ -254,16 +254,63 @@ export function PostCheckSummary({ checkId, title = 'Контрольная по
     }
   }
 
+  const handleDeleteFailedSubmission = async (submission: StudentSubmission) => {
+    try {
+      const isTemporary = submission.error_details?.isTemporary === true
+
+      if (isTemporary) {
+        // Временная ошибка - удаляем из localStorage
+        const tempFailedNames = getTempFailedNames(checkId)
+        const updatedNames = tempFailedNames.filter(name => name !== submission.student_name)
+        clearTempFailedNames(checkId)
+        updatedNames.forEach(name => addTempFailedName(checkId, name))
+
+        toast.success(`Работа "${submission.student_name}" удалена`)
+
+        // Обновляем состояние (не перезагружаем весь список)
+        setSubmissions(prev => prev.filter(s => s.id !== submission.id))
+      } else {
+        // Серверная ошибка - удаляем через API
+        const response = await fetch(`/api/submissions/${submission.id}`, {
+          method: 'DELETE'
+        })
+
+        if (!response.ok) {
+          const errorData = await response.json()
+          throw new Error(errorData.error || 'Не удалось удалить работу')
+        }
+
+        toast.success(`Работа "${submission.student_name}" удалена`)
+
+        // Обновляем состояние
+        setSubmissions(prev => prev.filter(s => s.id !== submission.id))
+      }
+    } catch (error) {
+      console.error('Error deleting failed submission:', error)
+      toast.error('Не удалось удалить работу')
+    }
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-white px-4 py-6">
         <div className="max-w-md mx-auto">
-          <div className="animate-pulse space-y-4">
-            <div className="h-8 bg-gray-200 rounded w-1/2" />
-            <div className="h-6 bg-gray-200 rounded w-1/3" />
-            <div className="h-24 bg-gray-200 rounded" />
-            <div className="h-8 bg-gray-200 rounded w-1/2" />
-            <div className="h-24 bg-gray-200 rounded" />
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="h-10 bg-gray-200 rounded animate-pulse w-32" />
+              <div className="h-10 bg-gray-200 rounded animate-pulse w-10" />
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="h-6 bg-gray-200 rounded animate-pulse w-6" />
+              <div className="h-6 bg-gray-200 rounded animate-pulse w-6" />
+            </div>
+            <div className="h-8 bg-gray-200 rounded animate-pulse w-3/4" />
+            <div className="h-6 bg-gray-200 rounded animate-pulse w-1/2" />
+            <div className="space-y-2">
+              <div className="h-16 bg-gray-200 rounded-[24px] animate-pulse" />
+              <div className="h-16 bg-gray-200 rounded-[24px] animate-pulse" />
+              <div className="h-16 bg-gray-200 rounded-[24px] animate-pulse" />
+            </div>
           </div>
         </div>
       </div>
@@ -366,31 +413,42 @@ export function PostCheckSummary({ checkId, title = 'Контрольная по
                   hasErrorMessage: !!s.error_message
                 })
                 return (
-                  <div key={s.id} className="bg-slate-50 flex flex-col gap-2.5 items-start justify-start px-6 py-[18px] rounded-[24px] w-full">
-                    <div className="flex items-center justify-between w-full">
-                      <div className="flex items-center gap-3">
-                        <div className="font-medium text-slate-800 text-[18px] leading-[1.6]">
-                          <p>{s.student_name || 'Студент'}</p>
+                  <div key={s.id} className="flex items-center gap-2 w-full">
+                    <div className="bg-slate-50 flex flex-col gap-2.5 items-start justify-start px-6 py-[18px] rounded-[24px] flex-1">
+                      <div className="flex items-center justify-between w-full">
+                        <div className="flex items-center gap-3">
+                          <div className="font-medium text-slate-800 text-[18px] leading-[1.6]">
+                            <p>{s.student_name || 'Студент'}</p>
+                          </div>
                         </div>
+                        {/* маленькая красная точка как в макете */}
+                        <div className="h-2 w-2 rounded-full bg-[#e33629]" />
                       </div>
-                      {/* маленькая красная точка как в макете */}
-                      <div className="h-2 w-2 rounded-full bg-[#e33629]" />
+                      {/* Показываем описание ошибки */}
+                      <div className="text-[14px] text-slate-600 leading-[1.4]">
+                        <p>
+                          {s.error_message || 'Ошибка при проверке работы. Попробуйте переснять фотографии.'}
+                        </p>
+                        {/* Debug: показываем error_details если есть */}
+                        {process.env.NODE_ENV === 'development' && s.error_details && (
+                          <details className="mt-2">
+                            <summary className="text-xs text-slate-400 cursor-pointer">Debug: error_details</summary>
+                            <pre className="text-xs text-slate-400 mt-1 whitespace-pre-wrap">
+                              {JSON.stringify(s.error_details, null, 2)}
+                            </pre>
+                          </details>
+                        )}
+                      </div>
                     </div>
-                    {/* Показываем описание ошибки */}
-                    <div className="text-[14px] text-slate-600 leading-[1.4]">
-                      <p>
-                        {s.error_message || 'Ошибка при проверке работы. Попробуйте переснять фотографии.'}
-                      </p>
-                      {/* Debug: показываем error_details если есть */}
-                      {process.env.NODE_ENV === 'development' && s.error_details && (
-                        <details className="mt-2">
-                          <summary className="text-xs text-slate-400 cursor-pointer">Debug: error_details</summary>
-                          <pre className="text-xs text-slate-400 mt-1 whitespace-pre-wrap">
-                            {JSON.stringify(s.error_details, null, 2)}
-                          </pre>
-                        </details>
-                      )}
-                    </div>
+
+                    {/* Delete button */}
+                    <button
+                      onClick={() => handleDeleteFailedSubmission(s)}
+                      className="shrink-0 h-[74px] w-8 flex items-center justify-center rounded-lg hover:bg-red-50 transition-colors"
+                      aria-label={`Удалить работу ${s.student_name}`}
+                    >
+                      <Trash2 className="w-5 h-5 text-[#e33629]" />
+                    </button>
                   </div>
                 )
               })}

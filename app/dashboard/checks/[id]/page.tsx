@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { EmptyCheckState } from '@/components/checks/EmptyCheckState'
 import { PendingSubmissions } from '@/components/checks/PendingSubmissions'
@@ -129,37 +129,34 @@ export default function CheckPage({ params }: CheckPageProps) {
     }
   }, [isLoading, checkId])
 
+  // Мемоизируем event handlers для предотвращения лишних ререндеров
+  const onDraftsUpdated = useCallback(() => {
+    console.log('[CHECK_PAGE] drafts:updated event received')
+    try {
+      const draft = getDraft(checkId)
+      const present = !!(draft && draft.students && draft.students.some((s) => s.photos.length > 0))
+      console.log('[CHECK_PAGE] Draft present:', present)
+      console.log('[CHECK_PAGE] Draft students count:', draft?.students?.length || 0)
+      setHasDrafts(present)
+    } catch {
+      console.log('[CHECK_PAGE] Error reading drafts, setting to false')
+      setHasDrafts(false)
+    }
+  }, [checkId])
+
+  const onSubmissionsUploaded = useCallback(() => {
+    console.log('[CHECK_PAGE] Submissions uploaded, updating state')
+    setHasDrafts(false)
+    setHasAnySubmissions(true)
+    loadHasSubmissions()
+  }, [loadHasSubmissions])
+
+  const onEvaluationComplete = useCallback(() => {
+    console.log('[CHECK_PAGE] Evaluation completed - PostCheckSummary will handle data reload')
+  }, [])
+
   // Live update: react to camera/drafts changes without reload
   useEffect(() => {
-    const onDraftsUpdated = () => {
-      console.log('[CHECK_PAGE] drafts:updated event received')
-      try {
-        const draft = getDraft(checkId)
-        const present = !!(draft && draft.students && draft.students.some((s) => s.photos.length > 0))
-        console.log('[CHECK_PAGE] Draft present:', present, 'Current hasDrafts:', hasDrafts)
-        console.log('[CHECK_PAGE] Draft students count:', draft?.students?.length || 0)
-        setHasDrafts(present)
-      } catch {
-        console.log('[CHECK_PAGE] Error reading drafts, setting to false')
-        setHasDrafts(false)
-      }
-    }
-
-    const onSubmissionsUploaded = () => {
-      console.log('[CHECK_PAGE] Submissions uploaded, updating state')
-      // После upload обновляем состояние
-      setHasDrafts(false) // черновики очищены
-      setHasAnySubmissions(true) // теперь есть submissions
-      loadHasSubmissions() // обновляем данные
-    }
-
-    const onEvaluationComplete = () => {
-      console.log('[CHECK_PAGE] Evaluation completed - PostCheckSummary will handle data reload')
-      // PostCheckSummary сам обновляет свои данные, нам не нужно дублировать загрузку
-      // loadCheckData()
-      // loadHasSubmissions()
-    }
-
     if (typeof window !== 'undefined') {
       window.addEventListener('drafts:updated', onDraftsUpdated)
       window.addEventListener('submissions:uploaded', onSubmissionsUploaded)
@@ -172,12 +169,52 @@ export default function CheckPage({ params }: CheckPageProps) {
         window.removeEventListener('evaluation:complete', onEvaluationComplete)
       }
     }
-  }, [checkId, loadCheckData, loadHasSubmissions, hasDrafts])
+  }, [onDraftsUpdated, onSubmissionsUploaded, onEvaluationComplete])
+
+  // Мемоизируем сложные вычисления для предотвращения ререндеров
+  const hasResults = useMemo(() => {
+    if (!checkData) {
+      return false
+    }
+
+    const tempNames = getTempFailedNames(checkId)
+    const hasTempFailures = tempNames.length > 0
+    const hasRes = hasAnySubmissions ||
+      (submissionCount && submissionCount > 0) ||
+      (checkData.results && checkData.results.length > 0) ||
+      hasTempFailures
+
+    console.log('[CHECK_PAGE] Result calculation:', {
+      checkId,
+      hasAnySubmissions,
+      submissionCount,
+      checkDataResultsLength: checkData.results?.length || 0,
+      tempFailedNames: tempNames,
+      hasTempFailures,
+      hasResults: hasRes
+    })
+
+    return hasRes
+  }, [checkId, hasAnySubmissions, submissionCount, checkData])
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-pulse text-lg">Загрузка...</div>
+      <div className="min-h-screen bg-white px-4 py-6">
+        <div className="max-w-md mx-auto">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="h-6 bg-gray-200 rounded animate-pulse w-6" />
+              <div className="h-6 bg-gray-200 rounded animate-pulse w-6" />
+            </div>
+            <div className="h-8 bg-gray-200 rounded animate-pulse w-3/4" />
+            <div className="h-6 bg-gray-200 rounded animate-pulse w-1/2" />
+            <div className="space-y-2">
+              <div className="h-16 bg-gray-200 rounded-[24px] animate-pulse" />
+              <div className="h-16 bg-gray-200 rounded-[24px] animate-pulse" />
+              <div className="h-16 bg-gray-200 rounded-[24px] animate-pulse" />
+            </div>
+          </div>
+        </div>
       </div>
     )
   }
@@ -192,22 +229,6 @@ export default function CheckPage({ params }: CheckPageProps) {
       </div>
     )
   }
-
-  // Проверяем временные ошибки из localStorage (500 ошибки при отправке)
-  const tempFailedNames = getTempFailedNames(checkId)
-  const hasTempFailures = tempFailedNames.length > 0
-
-  const hasResults = hasAnySubmissions || (submissionCount && submissionCount > 0) || (checkData.results && checkData.results.length > 0) || hasTempFailures
-
-  console.log('[CHECK_PAGE] Result calculation:', {
-    checkId,
-    hasAnySubmissions,
-    submissionCount,
-    checkDataResultsLength: checkData.results?.length || 0,
-    tempFailedNames,
-    hasTempFailures,
-    hasResults
-  })
 
   return (
     <div className="min-h-screen bg-white">

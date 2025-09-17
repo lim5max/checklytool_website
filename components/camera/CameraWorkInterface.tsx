@@ -342,6 +342,9 @@ export function CameraWorkInterface({
     const trimmed = name.trim().slice(0, 24) || `Ученик ${activeStudentIndex + 1}`
     const bundle = renameStudentDraft(checkId, activeStudentIndex, trimmed)
     setStudents(mapDraftToLocal(bundle.students))
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('drafts:updated'))
+    }
   }, [activeStudentIndex, checkId])
 
   const deletePhoto = useCallback((photoId: string) => {
