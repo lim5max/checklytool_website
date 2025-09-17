@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { EmptyCheckState } from '@/components/checks/EmptyCheckState'
 import { PendingSubmissions } from '@/components/checks/PendingSubmissions'
 import { PostCheckSummary } from '@/components/checks/PostCheckSummary'
 import { CameraWorkInterface } from '@/components/camera/CameraWorkInterface'
@@ -171,35 +170,10 @@ export default function CheckPage({ params }: CheckPageProps) {
     }
   }, [onDraftsUpdated, onSubmissionsUploaded, onEvaluationComplete])
 
-  // Мемоизируем сложные вычисления для предотвращения ререндеров
-  const hasResults = useMemo(() => {
-    if (!checkData) {
-      return false
-    }
-
-    const tempNames = getTempFailedNames(checkId)
-    const hasTempFailures = tempNames.length > 0
-    const hasRes = hasAnySubmissions ||
-      (submissionCount && submissionCount > 0) ||
-      (checkData.results && checkData.results.length > 0) ||
-      hasTempFailures
-
-    console.log('[CHECK_PAGE] Result calculation:', {
-      checkId,
-      hasAnySubmissions,
-      submissionCount,
-      checkDataResultsLength: checkData.results?.length || 0,
-      tempFailedNames: tempNames,
-      hasTempFailures,
-      hasResults: hasRes
-    })
-
-    return hasRes
-  }, [checkId, hasAnySubmissions, submissionCount, checkData])
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-white px-4 py-6">
+      <div className="min-h-screen bg-white px-4 py-4">
         <div className="max-w-md mx-auto">
           <div className="space-y-4">
             <div className="flex items-center justify-between">
@@ -232,21 +206,17 @@ export default function CheckPage({ params }: CheckPageProps) {
 
   return (
     <div className="min-h-screen bg-white">
-      {hasDrafts ? (
-        <div className="px-4 pb-6">
-          <div className="max-w-md mx-auto">
-            <PendingSubmissions checkId={checkId} title={checkData.title} onOpenCamera={handleOpenCamera} />
-          </div>
-        </div>
-      ) : hasResults ? (
-        <div className="px-4 pb-6">
-          <div className="max-w-md mx-auto">
-            <PostCheckSummary checkId={checkId} title={checkData.title} onOpenCamera={handleOpenCamera} />
-          </div>
-        </div>
-      ) : (
-        <EmptyCheckState title={checkData.title} checkId={checkId} onOpenCamera={handleOpenCamera} />
-      )}
+      <div className="max-w-md mx-auto">
+        {hasDrafts ? (
+          <PendingSubmissions checkId={checkId} title={checkData.title} onOpenCamera={handleOpenCamera} />
+        ) : (
+          <PostCheckSummary
+            checkId={checkId}
+            title={checkData.title}
+            onOpenCamera={handleOpenCamera}
+          />
+        )}
+      </div>
       
       {/* Global Camera Interface - не размонтируется при переключении состояний */}
       <CameraWorkInterface

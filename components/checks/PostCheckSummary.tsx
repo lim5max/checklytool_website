@@ -293,7 +293,7 @@ export function PostCheckSummary({ checkId, title = 'Контрольная по
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-white px-4 py-6">
+      <div className="min-h-screen bg-white ">
         <div className="max-w-md mx-auto">
           <div className="space-y-4">
             <div className="flex items-center justify-between">
@@ -335,7 +335,7 @@ export function PostCheckSummary({ checkId, title = 'Контрольная по
   })
 
   return (
-    <div className="min-h-screen bg-white px-4 py-6">
+    <div className="min-h-screen bg-white ">
       <div className="max-w-md mx-auto flex flex-col gap-6">
         {/* Brand header (logo + burger) */}
         <div className="flex items-center justify-between">
@@ -402,7 +402,7 @@ export function PostCheckSummary({ checkId, title = 'Контрольная по
               </button>
             </div>
 
-            <div className="flex flex-col gap-2.5 items-center justify-start w-[343px] max-w-full">
+            <div className="flex flex-col gap-2.5 items-center justify-start  max-w-full">
               {failedSubs.map((s, index) => {
                 console.log('[POST_CHECK_SUMMARY] Rendering error card for submission:', {
                   index,
@@ -486,6 +486,30 @@ export function PostCheckSummary({ checkId, title = 'Контрольная по
                   </div>
                 )
               })}
+            </div>
+          </div>
+        )}
+
+        {/* Пустое состояние - показываем когда нет ни ошибок ни завершенных работ */}
+        {!hasErrors && completedSubs.length === 0 && (
+          <div className="flex-1 flex flex-col items-center justify-center gap-2.5 py-12">
+            {/* Illustration */}
+            <div className="h-[235px] w-full overflow-hidden relative mb-4">
+              <div className="absolute bg-center bg-no-repeat bg-cover size-[219px] top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+                <Image
+                  src="/images/empty-work-illustration.png"
+                  alt="Пустой список"
+                  width={219}
+                  height={219}
+                  className="object-cover"
+                  priority
+                />
+              </div>
+            </div>
+
+            {/* Message */}
+            <div className="font-medium text-center text-slate-500 text-base w-[191px] leading-[1.6]">
+              <p>Список проверенных работ пуст</p>
             </div>
           </div>
         )}

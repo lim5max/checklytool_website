@@ -94,7 +94,7 @@ export function PendingSubmissions({ checkId, title = 'Контрольная п
   }
 
   return (
-    <div className="min-h-screen bg-white px-4 py-6">
+    <div className="min-h-screen bg-white px-4 py-4">
       <div className="max-w-md mx-auto flex flex-col gap-6">
         {/* Local nav like Empty state: X left, gear right */}
         <div className="flex items-center justify-between mb-2">

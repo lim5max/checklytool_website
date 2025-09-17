@@ -35,7 +35,7 @@ export function EmptyCheckState({ className = '', title = 'Контрольна�
   
 
   return (
-    <div className={`min-h-screen bg-white px-4 py-6 ${className}`}>
+    <div className={`min-h-screen bg-white px-4 py-4 ${className}`}>
       <div className="max-w-md mx-auto flex flex-col h-full">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
