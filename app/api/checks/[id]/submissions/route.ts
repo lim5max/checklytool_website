@@ -240,7 +240,7 @@ export async function GET(
 			.from('student_submissions')
 			.select(`
 				*,
-				evaluation_results (*)
+				evaluation_results(*)
 			`)
 			.eq('check_id', checkId)
 			.order('created_at', { ascending: false })
