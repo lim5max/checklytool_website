@@ -6,14 +6,7 @@ const nextConfig: NextConfig = {
     unoptimized: true,
   },
   trailingSlash: false,
-  // Увеличиваем лимиты для больших файлов
-  experimental: {
-    serverComponentsExternalPackages: [],
-    // Увеличиваем лимит для всех API routes
-    bodyParser: {
-      sizeLimit: '50mb',
-    },
-  },
+  serverExternalPackages: [],
 };
 
 export default nextConfig;

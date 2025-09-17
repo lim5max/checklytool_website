@@ -27,7 +27,7 @@ export async function POST(
 				*,
 				checks!inner (
 					*,
-					check_variants (*),
+					check_variants (id, variant_number, reference_answers, reference_image_urls),
 					grading_criteria (*)
 				)
 			`)
@@ -51,6 +51,8 @@ export async function POST(
 				id: string
 				variant_count: number
 				check_variants: Array<{
+					id: string
+					variant_number: number
 					reference_answers?: Record<string, string>
 					reference_image_urls?: string[]
 				}>
@@ -182,13 +184,13 @@ export async function POST(
 				referenceImages || null,
 				checkData.variant_count
 			)
-			
+
 			console.log('AI analysis completed:', aiResult)
-			
+
 			// Проверяем, не обнаружил ли AI неподходящий контент
 			if (aiResult.error === 'inappropriate_content') {
 				console.log('[EVALUATE] Inappropriate content detected by AI')
-				
+
 				// Обновляем статус submission как failed
 				const updateData: any = {
 					status: 'failed',
@@ -207,9 +209,9 @@ export async function POST(
 					.from('student_submissions')
 					.update(updateData)
 					.eq('id', submissionId)
-				
+
 				return NextResponse.json(
-					{ 
+					{
 						error: 'inappropriate_content',
 						message: aiResult.error_message || 'Загружены неподходящие изображения',
 						details: {
@@ -221,12 +223,64 @@ export async function POST(
 					{ status: 400 } // 400 Bad Request для неподходящего контента
 				)
 			}
-			
+
 			// Проверяем наличие обязательных полей для успешного анализа
 			if (!aiResult.answers || !aiResult.total_questions) {
 				throw new Error('AI analysis incomplete - missing answers or total_questions')
 			}
-			
+
+			// Determine which variant to use for correct answers
+			const detectedVariant = aiResult.variant_detected || 1
+			console.log('Detected variant:', detectedVariant, 'Available variants:', checkData.check_variants.length)
+
+			// Get correct answers for the detected variant from variant_answers table
+			let correctAnswersMap: Record<string, string> = {}
+
+			if (detectedVariant <= checkData.variant_count) {
+				// Find the variant in database
+				const targetVariant = checkData.check_variants.find(v => v.variant_number === detectedVariant)
+				if (targetVariant) {
+					// Load answers from variant_answers table
+					const { data: variantAnswers } = await supabase
+						.from('variant_answers')
+						.select('question_number, correct_answer')
+						.eq('variant_id', targetVariant.id)
+
+					if (variantAnswers && variantAnswers.length > 0) {
+						// Convert to map format
+						const answers = variantAnswers as Array<{ question_number: number; correct_answer: string }>
+						const answerMap: Record<string, string> = {}
+						answers.forEach(answer => {
+							answerMap[answer.question_number.toString()] = answer.correct_answer
+						})
+						correctAnswersMap = answerMap
+						console.log('Loaded correct answers for variant', detectedVariant, ':', correctAnswersMap)
+					} else {
+						console.warn('No answers found for variant', detectedVariant)
+					}
+				}
+			} else {
+				console.warn('Detected variant', detectedVariant, 'exceeds available variants', checkData.variant_count)
+				// If detected variant is higher than available, fallback to variant 1
+				const targetVariant = checkData.check_variants.find(v => v.variant_number === 1)
+				if (targetVariant) {
+					const { data: variantAnswers } = await supabase
+						.from('variant_answers')
+						.select('question_number, correct_answer')
+						.eq('variant_id', targetVariant.id)
+
+					if (variantAnswers && variantAnswers.length > 0) {
+						const answers = variantAnswers as Array<{ question_number: number; correct_answer: string }>
+						const answerMap: Record<string, string> = {}
+						answers.forEach(answer => {
+							answerMap[answer.question_number.toString()] = answer.correct_answer
+						})
+						correctAnswersMap = answerMap
+						console.log('Fallback to variant 1 answers:', correctAnswersMap)
+					}
+				}
+			}
+
 			// Count correct answers
 			let correctAnswers = 0
 			const detailedAnswers: Record<string, {
@@ -235,20 +289,20 @@ export async function POST(
 				is_correct: boolean
 				confidence?: number
 			}> = {}
-			
+
 			Object.entries(aiResult.answers).forEach(([questionNum, answerData]) => {
 				const questionKey = questionNum.toString()
 				const studentAnswer = answerData.detected_answer
-				const correctAnswer = referenceAnswers?.[questionKey]
-				
+				const correctAnswer = correctAnswersMap[questionKey]
+
 				let isCorrect = false
 				if (correctAnswer && studentAnswer) {
 					// Simple comparison - can be enhanced with more sophisticated matching
 					isCorrect = studentAnswer.toLowerCase().trim() === correctAnswer.toLowerCase().trim()
 				}
-				
+
 				if (isCorrect) correctAnswers++
-				
+
 				detailedAnswers[questionKey] = {
 					given: studentAnswer,
 					correct: correctAnswer || null,
