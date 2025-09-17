@@ -1,24 +1,18 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { Button } from '@/components/ui/button'
+import { useEffect, useState } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
-import { getDraft, type DraftBundle, removeStudent, clearDraft } from '@/lib/drafts'
-import { submitStudents, evaluateAll } from '@/lib/upload-submissions'
+import { getDraft, type DraftBundle, removeStudent } from '@/lib/drafts'
 import { toast } from 'sonner'
-import { X, Settings, Trash2 } from 'lucide-react'
+import { Trash2 } from 'lucide-react'
 
 interface PendingSubmissionsProps {
   checkId: string
-  title?: string
-  onOpenCamera?: () => void
+  isSecondaryView?: boolean // Флаг для режима второстепенного отображения
 }
 
-export function PendingSubmissions({ checkId, title = 'Контрольная по информатике', onOpenCamera }: PendingSubmissionsProps) {
-  const router = useRouter()
+export function PendingSubmissions({ checkId, isSecondaryView = false }: PendingSubmissionsProps) {
   const [bundle, setBundle] = useState<DraftBundle | null>(null)
-  const [sending, setSending] = useState(false)
 
   // Load drafts on mount and when camera closes
   const reload = () => {
@@ -45,78 +39,14 @@ export function PendingSubmissions({ checkId, title = 'Контрольная п
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const totalPhotos = useMemo(
-    () => bundle?.students.reduce((sum, s) => sum + s.photos.length, 0) ?? 0,
-    [bundle]
-  )
-
-  const canSend = (bundle?.students ?? []).some((s) => s.photos.length > 0)
-
-  const handleOpenCamera = () => {
-    onOpenCamera?.()
-  }
-
-  const handleSendAll = async () => {
-    if (!bundle || !canSend) {
-      toast.error('Нет работ для отправки')
-      return
-    }
-    try {
-      setSending(true)
-      const { items } = await submitStudents(checkId, bundle.students)
-      // Запускаем проверку, но не блокируем переход (экран 2790:494)
-      evaluateAll(items.map((i) => ({ submissionId: i.submissionId }))).catch((err) => {
-        console.error('Evaluate errors:', err)
-      })
-      clearDraft(checkId)
-      // Вместо перенаправления, уведомляем родителя о завершении upload
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('submissions:uploaded', { 
-          detail: { checkId, items }
-        }))
-      }
-    } catch (e) {
-      console.error('Submit error:', e)
-      // Даже при ошибках уведомляем о завершении
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('submissions:uploaded', { 
-          detail: { checkId, items: [] }
-        }))
-      }
-    } finally {
-      setSending(false)
-    }
-  }
-
   if (!bundle || bundle.students.length === 0) {
     // Fallback to nothing; parent page can decide to show empty state
     return null
   }
 
   return (
-    <div className="min-h-screen bg-white px-4 py-4">
-      <div className="max-w-md mx-auto flex flex-col gap-6">
-        {/* Local nav like Empty state: X left, gear right */}
-        <div className="flex items-center justify-between mb-2">
-          <button
-            onClick={() => router.push('/dashboard')}
-            className="p-2 -ml-2 rounded-lg hover:bg-gray-100 transition-colors"
-            aria-label="Закрыть и вернуться на главную"
-          >
-            <X className="w-6 h-6 text-slate-800" />
-          </button>
-          <button
-            onClick={() => {}}
-            className="p-2 -mr-2 rounded-lg hover:bg-gray-100 transition-colors"
-            aria-label="Настройки"
-          >
-            <Settings className="w-6 h-6 text-slate-800" />
-          </button>
-        </div>
-        {/* Title */}
-        <div>
-          <h1 className="font-nunito font-black text-[28px] leading-[1.1] tracking-[-0.4px] text-slate-800 mt-1">{title}</h1>
-        </div>
+      <div className={isSecondaryView ? "flex flex-col gap-6" : "max-w-md mx-auto flex flex-col gap-6"}>
+        {/* Навигация убрана - теперь она в PostCheckSummary */}
 
         {/* Section label like Figma */}
         <div className="font-medium text-slate-800 text-[16px] leading-[1.5]">
@@ -165,28 +95,7 @@ export function PendingSubmissions({ checkId, title = 'Контрольная п
         </div>
 
 
-        {/* Bottom actions — stacked like Figma */}
-        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-[18px] py-3">
-          <div className="flex flex-col gap-2">
-            <Button
-              className="w-full rounded-[180px] h-14"
-              onClick={handleSendAll}
-              disabled={!canSend || sending}
-            >
-              Проверить работы
-            </Button>
-            <Button
-              className="w-full rounded-[180px] h-14"
-              variant="secondary"
-              onClick={handleOpenCamera}
-              disabled={sending}
-            >
-              Загрузить работы
-            </Button>
-          </div>
-        </div>
+        {/* Кнопки убираем - они будут глобальными на странице */}
       </div>
-
-    </div>
   )
 }

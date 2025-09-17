@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import Image from 'next/image'
-import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { clearDraft, setDraftStudents, getTempFailedNames, clearTempFailedNames, addTempFailedName } from '@/lib/drafts'
 import { toast } from 'sonner'
@@ -48,7 +47,7 @@ interface PostCheckSummaryProps {
   onOpenCamera?: () => void
 }
 
-export function PostCheckSummary({ checkId, title = 'Контрольная по информатике', onOpenCamera }: PostCheckSummaryProps) {
+export function PostCheckSummary({ checkId, title = 'Проверочная работа', onOpenCamera }: PostCheckSummaryProps) {
   const router = useRouter()
   const [submissions, setSubmissions] = useState<StudentSubmission[]>([])
   const [loading, setLoading] = useState<boolean>(true)
@@ -222,9 +221,6 @@ export function PostCheckSummary({ checkId, title = 'Контрольная по
     return completed
   }, [submissions])
 
-  const handleOpenCamera = () => {
-    onOpenCamera?.()
-  }
 
   const handleReshoot = async () => {
     try {
@@ -291,31 +287,6 @@ export function PostCheckSummary({ checkId, title = 'Контрольная по
     }
   }
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-white ">
-        <div className="max-w-md mx-auto">
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="h-10 bg-gray-200 rounded animate-pulse w-32" />
-              <div className="h-10 bg-gray-200 rounded animate-pulse w-10" />
-            </div>
-            <div className="flex items-center justify-between">
-              <div className="h-6 bg-gray-200 rounded animate-pulse w-6" />
-              <div className="h-6 bg-gray-200 rounded animate-pulse w-6" />
-            </div>
-            <div className="h-8 bg-gray-200 rounded animate-pulse w-3/4" />
-            <div className="h-6 bg-gray-200 rounded animate-pulse w-1/2" />
-            <div className="space-y-2">
-              <div className="h-16 bg-gray-200 rounded-[24px] animate-pulse" />
-              <div className="h-16 bg-gray-200 rounded-[24px] animate-pulse" />
-              <div className="h-16 bg-gray-200 rounded-[24px] animate-pulse" />
-            </div>
-          </div>
-        </div>
-      </div>
-    )
-  }
 
   const hasErrors = failedSubs.length > 0
 
@@ -335,7 +306,6 @@ export function PostCheckSummary({ checkId, title = 'Контрольная по
   })
 
   return (
-    <div className="min-h-screen bg-white ">
       <div className="max-w-md mx-auto flex flex-col gap-6">
         {/* Brand header (logo + burger) */}
         <div className="flex items-center justify-between">
@@ -457,41 +427,50 @@ export function PostCheckSummary({ checkId, title = 'Контрольная по
           )
         })()}
 
-        {/* Успешно проверенные - показываем только если есть завершенные работы */}
-        {completedSubs.length > 0 && (
+        {/* Успешно проверенные - показываем если есть завершенные работы или идет загрузка */}
+        {(completedSubs.length > 0 || loading) && (
           <div className="flex flex-col gap-4">
             <div className="font-medium text-slate-800 text-[16px] leading-[1.5]">
               <p>Успешно проверенные</p>
             </div>
 
             <div className="flex flex-col gap-2.5 items-center justify-start w-[343px] max-w-full">
-              {completedSubs.map((s) => {
-                const grade = s.evaluation_results?.[0]?.final_grade
-                return (
-                  <div key={s.id} className="bg-slate-50 flex flex-col gap-2.5 items-start justify-start px-6 py-[18px] rounded-[24px] w-full">
-                    <div className="flex items-center justify-between w-full">
-                      <div className="flex items-center gap-3">
-                        <div className="font-medium text-slate-800 text-[18px] leading-[1.6]">
-                          <p>{s.student_name || 'Студент'}</p>
+              {loading ? (
+                // Показываем скелетон карточек во время загрузки
+                <>
+                  <div className="h-16 bg-gray-200 rounded-[24px] animate-pulse w-full" />
+                  <div className="h-16 bg-gray-200 rounded-[24px] animate-pulse w-full" />
+                  <div className="h-16 bg-gray-200 rounded-[24px] animate-pulse w-full" />
+                </>
+              ) : (
+                completedSubs.map((s) => {
+                  const grade = s.evaluation_results?.[0]?.final_grade
+                  return (
+                    <div key={s.id} className="bg-slate-50 flex flex-col gap-2.5 items-start justify-start px-6 py-[18px] rounded-[24px] w-full">
+                      <div className="flex items-center justify-between w-full">
+                        <div className="flex items-center gap-3">
+                          <div className="font-medium text-slate-800 text-[18px] leading-[1.6]">
+                            <p>{s.student_name || 'Студент'}</p>
+                          </div>
                         </div>
+                        {typeof grade === 'number' ? (
+                          <div className="font-extrabold text-[20px] leading-[1.2] text-[#319f43]">
+                            <p>{grade}</p>
+                          </div>
+                        ) : (
+                          <Badge variant="secondary">OK</Badge>
+                        )}
                       </div>
-                      {typeof grade === 'number' ? (
-                        <div className="font-extrabold text-[20px] leading-[1.2] text-[#319f43]">
-                          <p>{grade}</p>
-                        </div>
-                      ) : (
-                        <Badge variant="secondary">OK</Badge>
-                      )}
                     </div>
-                  </div>
-                )
-              })}
+                  )
+                })
+              )}
             </div>
           </div>
         )}
 
-        {/* Пустое состояние - показываем когда нет ни ошибок ни завершенных работ */}
-        {!hasErrors && completedSubs.length === 0 && (
+        {/* Пустое состояние - показываем когда нет ни ошибок ни завершенных работ и не идет загрузка */}
+        {!loading && !hasErrors && completedSubs.length === 0 && (
           <div className="flex-1 flex flex-col items-center justify-center gap-2.5 py-12">
             {/* Illustration */}
             <div className="h-[235px] w-full overflow-hidden relative mb-4">
@@ -515,20 +494,6 @@ export function PostCheckSummary({ checkId, title = 'Контрольная по
         )}
       </div>
 
-      {/* Bottom single button as in Figma */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-[18px] py-3">
-        <button
-          className={`w-full h-14 rounded-[180px] px-[43px] text-[16px] font-medium ${
-            hasErrors 
-              ? 'bg-slate-100 text-slate-800' 
-              : 'bg-[#096ff5] text-white'
-          }`}
-          onClick={() => onOpenCamera?.()}
-        >
-          Загрузить работы
-        </button>
-      </div>
-
-    </div>
+  
   )
 }

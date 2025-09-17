@@ -5,8 +5,10 @@ import { useRouter } from 'next/navigation'
 import { PendingSubmissions } from '@/components/checks/PendingSubmissions'
 import { PostCheckSummary } from '@/components/checks/PostCheckSummary'
 import { CameraWorkInterface } from '@/components/camera/CameraWorkInterface'
+import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
-import { getDraft, getTempFailedNames } from '@/lib/drafts'
+import { getDraft, clearDraft } from '@/lib/drafts'
+import { submitStudents, evaluateAll } from '@/lib/upload-submissions'
 
 interface StudentResult {
   id: string
@@ -30,10 +32,9 @@ export default function CheckPage({ params }: CheckPageProps) {
   const [isLoading, setIsLoading] = useState(true)
   const [checkId, setCheckId] = useState<string>('')
   const [hasDrafts, setHasDrafts] = useState(false)
-  const [submissionCount, setSubmissionCount] = useState<number>(0)
-  const [hasAnySubmissions, setHasAnySubmissions] = useState<boolean>(false)
   const [isCameraOpen, setIsCameraOpen] = useState(false)
   const [cameraKey, setCameraKey] = useState(0)
+  const [isSending, setIsSending] = useState(false)
 
   const handleOpenCamera = () => {
     console.log('[CHECK_PAGE] Opening camera')
@@ -51,6 +52,52 @@ export default function CheckPage({ params }: CheckPageProps) {
     setIsCameraOpen(false)
     toast.success('Фото сохранены в черновики')
   }
+
+  // Глобальная логика отправки на проверку
+  const handleSendAll = useCallback(async () => {
+    const draft = getDraft(checkId)
+    const canSend = draft?.students?.some((s) => s.photos.length > 0) ?? false
+
+    if (!draft || !canSend) {
+      toast.error('Нет работ для отправки')
+      return
+    }
+
+    try {
+      setIsSending(true)
+      const { items } = await submitStudents(checkId, draft.students)
+      // Запускаем проверку, но не блокируем переход
+      evaluateAll(items.map((i) => ({ submissionId: i.submissionId }))).catch((err) => {
+        console.error('Evaluate errors:', err)
+      })
+      clearDraft(checkId)
+      // Уведомляем о завершении upload
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('submissions:uploaded', {
+          detail: { checkId, items }
+        }))
+      }
+      toast.success('Работы отправлены на проверку')
+    } catch (e) {
+      console.error('Submit error:', e)
+      toast.error('Ошибка при отправке работ')
+      // Даже при ошибках уведомляем о завершении
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('submissions:uploaded', {
+          detail: { checkId, items: [] }
+        }))
+      }
+    } finally {
+      setIsSending(false)
+    }
+  }, [checkId])
+
+  // Вычисляем canSend
+  const canSend = useMemo(() => {
+    if (!hasDrafts) return false
+    const draft = getDraft(checkId)
+    return draft?.students?.some((s) => s.photos.length > 0) ?? false
+  }, [hasDrafts, checkId])
 
   // Определяем функции перед их использованием в useEffect
   const loadCheckData = useCallback(async () => {
@@ -73,9 +120,7 @@ export default function CheckPage({ params }: CheckPageProps) {
         title: data.check.title,
         results: results
       })
-      // Aggregate count (может обновляться с лагом)
-      setSubmissionCount(Number(data.submission_count || 0))
-      
+
     } catch (error) {
       console.error('Error loading check data:', error)
       toast.error('Не удалось загрузить данные')
@@ -85,20 +130,6 @@ export default function CheckPage({ params }: CheckPageProps) {
     }
   }, [checkId, router])
 
-  // Быстрый индикатор наличия отправок (не зависит от статистики)
-  const loadHasSubmissions = useCallback(async () => {
-    try {
-      const res = await fetch(`/api/checks/${checkId}/submissions`)
-      if (!res.ok) {
-        setHasAnySubmissions(false)
-        return
-      }
-      const data = await res.json()
-      setHasAnySubmissions(Array.isArray(data.submissions) && data.submissions.length > 0)
-    } catch {
-      setHasAnySubmissions(false)
-    }
-  }, [checkId])
 
   useEffect(() => {
     const getParams = async () => {
@@ -111,9 +142,8 @@ export default function CheckPage({ params }: CheckPageProps) {
   useEffect(() => {
     if (checkId) {
       loadCheckData()
-      loadHasSubmissions()
     }
-  }, [checkId, loadCheckData, loadHasSubmissions])
+  }, [checkId, loadCheckData])
 
   // Detect local drafts for this check and toggle pending view
   useEffect(() => {
@@ -146,9 +176,7 @@ export default function CheckPage({ params }: CheckPageProps) {
   const onSubmissionsUploaded = useCallback(() => {
     console.log('[CHECK_PAGE] Submissions uploaded, updating state')
     setHasDrafts(false)
-    setHasAnySubmissions(true)
-    loadHasSubmissions()
-  }, [loadHasSubmissions])
+  }, [])
 
   const onEvaluationComplete = useCallback(() => {
     console.log('[CHECK_PAGE] Evaluation completed - PostCheckSummary will handle data reload')
@@ -207,17 +235,52 @@ export default function CheckPage({ params }: CheckPageProps) {
   return (
     <div className="min-h-screen bg-white">
       <div className="max-w-md mx-auto">
-        {hasDrafts ? (
-          <PendingSubmissions checkId={checkId} title={checkData.title} onOpenCamera={handleOpenCamera} />
-        ) : (
-          <PostCheckSummary
-            checkId={checkId}
-            title={checkData.title}
-            onOpenCamera={handleOpenCamera}
-          />
+        {/* Всегда показываем результаты проверки */}
+        <PostCheckSummary
+          checkId={checkId}
+          title={checkData.title}
+          onOpenCamera={handleOpenCamera}
+        />
+
+        {/* Дополнительно показываем черновики если они есть */}
+        {hasDrafts && (
+          <div className="mt-6 border-t border-slate-200 pt-6">
+            <PendingSubmissions
+              checkId={checkId}
+              isSecondaryView={true}
+            />
+          </div>
         )}
+
+        {/* Глобальные кнопки внизу страницы */}
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-[18px] py-3">
+          <div className="max-w-md mx-auto">
+            <div className="flex flex-col gap-2">
+              {/* Если есть черновики - показываем кнопку проверки */}
+              {hasDrafts && canSend && (
+                <Button
+                  className="w-full rounded-[180px] h-14"
+                  onClick={handleSendAll}
+                  disabled={isSending}
+                >
+                  {isSending ? 'Отправляем...' : 'Проверить работы'}
+                </Button>
+              )}
+
+              {/* Кнопка загрузки работ - всегда показываем */}
+              <Button
+                className={`w-full rounded-[180px] h-14 ${hasDrafts && canSend ? '' : ''}`}
+                variant={hasDrafts && canSend ? 'secondary' : 'default'}
+                onClick={handleOpenCamera}
+                disabled={isSending}
+              >
+                Загрузить работы
+              </Button>
+            </div>
+          </div>
+        </div>
       </div>
-      
+
       {/* Global Camera Interface - не размонтируется при переключении состояний */}
       <CameraWorkInterface
         key={cameraKey}

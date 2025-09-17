@@ -44,7 +44,7 @@ const CheckItem = React.memo<{
   return (
     <div
       onClick={() => onCheckClick(check.id)}
-      className="bg-slate-50 border-0 rounded-figma-lg p-4 cursor-pointer hover:bg-slate-100 transition-colors active:scale-[0.98]"
+      className="bg-slate-50 border-0 rounded-figma-lg p-6 cursor-pointer hover:bg-slate-100 transition-colors active:scale-[0.98]"
     >
       <div className="flex items-start justify-between">
         <div className="flex-1 min-w-0">
