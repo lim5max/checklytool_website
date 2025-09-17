@@ -7,6 +7,51 @@ interface RouteParams {
 	params: Promise<{ id: string }>
 }
 
+/**
+ * Умная функция сравнения ответов - поддерживает разные форматы выбора вариантов
+ */
+function compareAnswers(studentAnswer: string, correctAnswer: string): boolean {
+	const student = studentAnswer.toLowerCase().trim()
+	const correct = correctAnswer.toLowerCase().trim()
+
+	// 1. Прямое сравнение
+	if (student === correct) {
+		return true
+	}
+
+	// 2. Извлечение номера варианта из ответа типа "1) Принтер"
+	const studentNumberMatch = student.match(/^(\d+)[).]?\s*(.*)$/)
+	const correctNumberMatch = correct.match(/^(\d+)[).]?\s*(.*)$/)
+
+	// Если правильный ответ это просто цифра, а студент указал "цифра) текст"
+	if (/^\d+$/.test(correct) && studentNumberMatch) {
+		return studentNumberMatch[1] === correct
+	}
+
+	// Если оба ответа содержат номера вариантов
+	if (studentNumberMatch && correctNumberMatch) {
+		return studentNumberMatch[1] === correctNumberMatch[1]
+	}
+
+	// 3. Сравнение только текстовой части (убираем номера)
+	const studentText = student.replace(/^\d+[).]?\s*/, '').trim()
+	const correctText = correct.replace(/^\d+[).]?\s*/, '').trim()
+
+	if (studentText && correctText && studentText === correctText) {
+		return true
+	}
+
+	// 4. Сравнение с учетом вариаций пунктуации и пробелов
+	const normalizeText = (text: string) => {
+		return text
+			.replace(/[()\[\].,;:!?]/g, '') // убираем пунктуацию
+			.replace(/\s+/g, ' ') // нормализуем пробелы
+			.trim()
+	}
+
+	return normalizeText(student) === normalizeText(correct)
+}
+
 // POST /api/submissions/[id]/evaluate - Evaluate submission using AI
 export async function POST(
 	request: NextRequest,
@@ -297,8 +342,8 @@ export async function POST(
 
 				let isCorrect = false
 				if (correctAnswer && studentAnswer) {
-					// Simple comparison - can be enhanced with more sophisticated matching
-					isCorrect = studentAnswer.toLowerCase().trim() === correctAnswer.toLowerCase().trim()
+						// Умное сравнение ответов с поддержкой разных форматов
+				isCorrect = compareAnswers(studentAnswer, correctAnswer)
 				}
 
 				if (isCorrect) correctAnswers++
