@@ -4,7 +4,7 @@ import React from "react"
 import { Button } from "@/components/ui/button"
 import { MobileCard } from "@/components/ui/card"
 import { SearchInput } from "@/components/ui/input"
-import { Plus, Search } from "lucide-react"
+// import { Plus, Search } from "lucide-react"
 import MobileHeader from "@/components/MobileHeader"
 
 interface EmptyStateProps {

@@ -11,7 +11,7 @@ const registerSchema = z.object({
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { email, password, fullName } = registerSchema.parse(body)
+    const { email, fullName } = registerSchema.parse(body)
 
     console.log('[REGISTER] Registration attempt:', { email, fullName })
     console.log('[REGISTER] Environment check:')

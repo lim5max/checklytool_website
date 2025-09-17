@@ -50,7 +50,7 @@ export default function CheckCreationStep1({
         handleWorkTypeSelect(testWorkType)
       }
     }
-  }, [])
+  }, [selectedWorkType, workTypes, handleWorkTypeSelect])
 
   const handleContinue = () => {
     onContinue?.()

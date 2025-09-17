@@ -1,9 +1,8 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest, NextResponse } from 'next/server'
 import { getAuthenticatedSupabase } from '@/lib/database'
 
 // Debug endpoint to check variants in database
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     const { supabase, userId } = await getAuthenticatedSupabase()
     

@@ -231,9 +231,11 @@ export default function MobileHeader({
           >
             <div className="flex items-center gap-3">
               {user.image ? (
-                <img
+                <Image
                   src={user.image}
                   alt="Profile"
+                  width={48}
+                  height={48}
                   className="w-12 h-12 rounded-full object-cover"
                 />
               ) : (

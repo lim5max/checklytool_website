@@ -257,7 +257,7 @@ export async function GET(
 		// Get evaluation results separately and merge them
 		if (submissions && submissions.length > 0) {
 			console.log('[SUBMISSIONS GET] Fetching evaluation results...')
-			const submissionIds = submissions.map(s => s.id)
+			const submissionIds = submissions.map((s: any) => s.id)
 
 			const { data: evaluationResults, error: evalError } = await supabase
 				.from('evaluation_results')
@@ -266,9 +266,9 @@ export async function GET(
 
 			if (!evalError && evaluationResults) {
 				// Merge evaluation results with submissions
-				submissions.forEach(submission => {
+				submissions.forEach((submission: any) => {
 					submission.evaluation_results = evaluationResults.filter(
-						result => result.submission_id === submission.id
+						(result: any) => result.submission_id === submission.id
 					)
 				})
 			}

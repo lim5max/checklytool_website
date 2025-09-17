@@ -79,9 +79,11 @@ export default function DesktopHeader({
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-3">
             {user.image ? (
-              <img
+              <Image
                 src={user.image}
                 alt="Profile"
+                width={32}
+                height={32}
                 className="w-8 h-8 rounded-full object-cover"
               />
             ) : (

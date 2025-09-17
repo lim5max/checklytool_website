@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useCallback, useRef, useEffect } from 'react'
+import Image from 'next/image'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -52,13 +53,6 @@ export function SubmissionUploader({
   const [showCameraModal, setShowCameraModal] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
 
-  // Initialize with first student if none exist
-  useEffect(() => {
-    if (students.length === 0) {
-      addStudent('Student 1')
-    }
-  }, [])
-
   const addStudent = useCallback((name: string) => {
     if (students.length >= maxStudents) return
 
@@ -73,6 +67,13 @@ export function SubmissionUploader({
     setNewStudentName('')
     setShowAddStudent(false)
   }, [students.length, maxStudents])
+
+  // Initialize with first student if none exist
+  useEffect(() => {
+    if (students.length === 0) {
+      addStudent('Student 1')
+    }
+  }, [students.length, addStudent])
 
   const removeStudent = useCallback((studentId: string) => {
     setStudents(prev => {
@@ -365,9 +366,11 @@ export function SubmissionUploader({
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                     {activeStudent.photos.map((photo, index) => (
                       <div key={index} className="relative group">
-                        <img
+                        <Image
                           src={photo}
                           alt={`Photo ${index + 1}`}
+                          width={200}
+                          height={128}
                           className="w-full h-32 object-cover rounded-lg border"
                         />
                         <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">

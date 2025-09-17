@@ -1,19 +1,15 @@
 "use client"
 
 import React, { useState, useEffect } from "react"
-import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ArrowLeft, ChevronDown, X, Trash2 } from "lucide-react"
 import { toast } from "sonner"
-import { 
+import {
   type Answer,
   type GradingCriteria,
   type EssayGradingCriteria,
-  type WorkType,
-  getFieldErrorMessage,
-  hasFieldError
+  type WorkType
 } from "@/lib/check-creation-validation"
-import { cn } from "@/lib/utils"
 
 interface Variant {
   id: string
@@ -59,7 +55,7 @@ export default function CheckCreationStep2({
   onEssayGradingCriteriaChange,
   checkingMethod = "manual",
   onCheckingMethodChange,
-  answers = [],
+  // answers = [],
   onAnswersChange,
   variants: variantsProp,
   onVariantsChange,
@@ -67,8 +63,8 @@ export default function CheckCreationStep2({
   onCustomPromptChange,
   onContinue,
   onBack,
-  onAddVariant,
-  validationErrors = {},
+  // onAddVariant,
+  // validationErrors = {},
   isLoading = false
 }: CheckCreationStep2Props) {
   const [isCollapsed, setIsCollapsed] = useState(true)
@@ -81,7 +77,7 @@ export default function CheckCreationStep2({
       answers: []
     }
   ])
-  const [prompt, setPrompt] = useState<string>(customPrompt || "")
+  const [prompt] = useState<string>(customPrompt || "")
   const [showValidation, setShowValidation] = useState(false)
   
   // Check if current work type is essay
@@ -111,9 +107,9 @@ export default function CheckCreationStep2({
     }
   }, [])
   
-  useEffect(() => {
-    setPrompt(customPrompt || "")
-  }, [customPrompt])
+  // useEffect(() => {
+  //   setPrompt(customPrompt || "")
+  // }, [customPrompt])
 
   const updateCriteria = (key: keyof GradingCriteria, value: number) => {
     const newCriteria = { ...criteria, [key]: value }
@@ -121,16 +117,16 @@ export default function CheckCreationStep2({
     onGradingCriteriaChange?.(newCriteria)
   }
 
-  const updateEssayCriteria = (key: keyof EssayGradingCriteria, value: number) => {
-    const newCriteria = { ...essayCriteria, [key]: value }
-    setEssayCriteria(newCriteria)
-    onEssayGradingCriteriaChange?.(newCriteria)
-  }
+  // const updateEssayCriteria = (key: keyof EssayGradingCriteria, value: number) => {
+  //   const newCriteria = { ...essayCriteria, [key]: value }
+  //   setEssayCriteria(newCriteria)
+  //   onEssayGradingCriteriaChange?.(newCriteria)
+  // }
 
-  const updateCustomPrompt = (value: string) => {
-    setPrompt(value)
-    onCustomPromptChange?.(value)
-  }
+  // const updateCustomPrompt = (value: string) => {
+  //   setPrompt(value)
+  //   onCustomPromptChange?.(value)
+  // }
 
   // Notify parent component when variants change
   const notifyVariantsChange = (newVariants: Variant[]) => {

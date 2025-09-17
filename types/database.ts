@@ -135,7 +135,7 @@ export interface Database {
           id: string
           check_id: string
           variant_number: number
-          reference_answers: any | null
+          reference_answers: Record<string, string> | null
           reference_image_urls: string[] | null
           created_at: string
         }
@@ -143,7 +143,7 @@ export interface Database {
           id?: string
           check_id: string
           variant_number: number
-          reference_answers?: any | null
+          reference_answers?: Record<string, string> | null
           reference_image_urls?: string[] | null
           created_at?: string
         }
@@ -151,7 +151,7 @@ export interface Database {
           id?: string
           check_id?: string
           variant_number?: number
-          reference_answers?: any | null
+          reference_answers?: Record<string, string> | null
           reference_image_urls?: string[] | null
         }
       }
@@ -205,8 +205,8 @@ export interface Database {
           percentage_score: number
           final_grade: number
           variant_used: number | null
-          detailed_answers: any | null
-          ai_response: any | null
+          detailed_answers: Record<string, { given: string; correct: string; is_correct: boolean }> | null
+          ai_response: Record<string, unknown> | null
           confidence_score: number | null
           created_at: string
         }
@@ -219,8 +219,8 @@ export interface Database {
           percentage_score: number
           final_grade: number
           variant_used?: number | null
-          detailed_answers?: any | null
-          ai_response?: any | null
+          detailed_answers?: Record<string, { given: string; correct: string; is_correct: boolean }> | null
+          ai_response?: Record<string, unknown> | null
           confidence_score?: number | null
           created_at?: string
         }
@@ -233,8 +233,8 @@ export interface Database {
           percentage_score?: number
           final_grade?: number
           variant_used?: number | null
-          detailed_answers?: any | null
-          ai_response?: any | null
+          detailed_answers?: Record<string, { given: string; correct: string; is_correct: boolean }> | null
+          ai_response?: Record<string, unknown> | null
           confidence_score?: number | null
         }
       }
@@ -245,7 +245,7 @@ export interface Database {
           total_submissions: number
           completed_submissions: number
           average_score: number | null
-          grade_distribution: any | null
+          grade_distribution: Record<string, number> | null
           last_updated: string
         }
         Insert: {
@@ -254,7 +254,7 @@ export interface Database {
           total_submissions?: number
           completed_submissions?: number
           average_score?: number | null
-          grade_distribution?: any | null
+          grade_distribution?: Record<string, number> | null
           last_updated?: string
         }
         Update: {
@@ -263,7 +263,7 @@ export interface Database {
           total_submissions?: number
           completed_submissions?: number
           average_score?: number | null
-          grade_distribution?: any | null
+          grade_distribution?: Record<string, number> | null
           last_updated?: string
         }
       }

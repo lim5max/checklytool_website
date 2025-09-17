@@ -62,7 +62,7 @@ export interface StudentSubmission {
     error_type?: 'inappropriate_content' | 'ai_failure' | 'image_processing' | 'validation_error'
     content_type_detected?: string
     ai_message?: string
-    [key: string]: any
+    [key: string]: string | number | boolean | null | undefined
   }
   created_at: string
   updated_at: string
@@ -82,7 +82,7 @@ export interface EvaluationResult {
     correct: string
     is_correct: boolean
   }>
-  ai_response?: any // Full OpenRouter response
+  ai_response?: OpenRouterResponse // Full OpenRouter response
   confidence_score?: number
   created_at: string
 }
@@ -245,7 +245,7 @@ export interface DashboardStats {
 export interface APIError {
   message: string
   code?: string
-  details?: any
+  details?: Record<string, unknown>
 }
 
 export interface ProcessingError {

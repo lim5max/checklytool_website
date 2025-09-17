@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useRef, useEffect, useCallback } from 'react'
+import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { X, Camera, RotateCcw, ChevronDown, Plus, Upload, Trash2, Edit3, UserPlus } from 'lucide-react'
 import { toast } from 'sonner'
@@ -545,9 +546,11 @@ export function CameraWorkInterface({
               className="mx-auto mb-4 bg-white rounded-[42px] overflow-hidden ring-1 ring-white/10 max-h-[calc(100vh-260px)]"
               style={{ width: 'min(92vw, 560px)', aspectRatio: '2 / 3' }}
             >
-              <img
+              <Image
                 src={currentPhoto.dataUrl}
                 alt="Фотография работы"
+                width={560}
+                height={840}
                 className="w-full h-full object-contain"
               />
             </div>
@@ -565,9 +568,11 @@ export function CameraWorkInterface({
                   onClick={() => setCurrentPhotoIndex(index)}
                   className={`h-[66px] w-[44px] rounded-[8px] overflow-hidden border-2 ${index === currentPhotoIndex ? 'border-white' : 'border-white/40 opacity-60'}`}
                 >
-                  <img
+                  <Image
                     src={photo.dataUrl}
                     alt={`Фото ${index + 1}`}
+                    width={44}
+                    height={66}
                     className="w-full h-full object-cover"
                   />
                 </button>

@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getAuthenticatedSupabase } from '@/lib/database'
 
 // Create a test submission for evaluation testing
-export async function POST(request: NextRequest) {
+export async function POST(_request: NextRequest) {
   try {
     const { supabase, userId, user } = await getAuthenticatedSupabase()
     

@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { auth } from '@/lib/auth'
-import { createClient, setUserContext } from '@/lib/supabase/server'
+import { createClient } from '@/lib/supabase/server'
 import { UserProfile } from '@/types/check'
 import type { User } from 'next-auth'
 
@@ -47,7 +47,7 @@ export async function getAuthenticatedSupabase() {
 
 			try {
 				// Пытаемся установить через set_config для доступа к auth.jwt()
-				const { data, error } = await (supabase as any).rpc('set_config', {
+				const { error } = await (supabase as any).rpc('set_config', {
 					setting_name: 'request.jwt.claims',
 					new_value: JSON.stringify(jwtClaims),
 					is_local: true
