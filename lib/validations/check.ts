@@ -69,17 +69,29 @@ export const createSubmissionSchema = z.object({
 		.min(1, 'Должно быть загружено минимум 1 изображение')
 		.max(20, 'Максимум 20 изображений на работу')
 		.refine(
-			(files) => files.every(file => file instanceof File),
+			(files) => {
+				// Проверяем наличие File конструктора (только в браузере)
+				if (typeof File !== 'undefined') {
+					return files.every(file => file instanceof File)
+				}
+				// На сервере проверяем базовые свойства объекта File
+				return files.every(file =>
+					file && typeof file === 'object' &&
+					typeof file.name === 'string' &&
+					typeof file.size === 'number' &&
+					typeof file.type === 'string'
+				)
+			},
 			'Все элементы должны быть файлами'
 		)
 		.refine(
-			(files) => files.every(file => 
-				['image/jpeg', 'image/png', 'image/webp', 'image/heic'].includes(file.type)
+			(files) => files.every(file =>
+				file.type && ['image/jpeg', 'image/png', 'image/webp', 'image/heic'].includes(file.type)
 			),
 			'Поддерживаются только изображения (JPEG, PNG, WebP, HEIC)'
 		)
 		.refine(
-			(files) => files.every(file => file.size <= 10 * 1024 * 1024), // 10MB
+			(files) => files.every(file => file.size && file.size <= 10 * 1024 * 1024), // 10MB
 			'Размер каждого файла не должен превышать 10 МБ'
 		)
 })
