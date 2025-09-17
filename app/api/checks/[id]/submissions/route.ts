@@ -235,21 +235,12 @@ export async function GET(
 		}
 
 		console.log('[SUBMISSIONS GET] Fetching submissions from database...')
-		// Get submissions with results
+		// Get submissions first
 		const { data: submissions, error } = await supabase
 			.from('student_submissions')
-			.select(`
-				*,
-				evaluation_results(*)
-			`)
+			.select('*')
 			.eq('check_id', checkId)
 			.order('created_at', { ascending: false })
-
-		console.log('[SUBMISSIONS GET] Database query result:', {
-			submissionsCount: submissions?.length || 0,
-			hasError: !!error,
-			error: error ? JSON.stringify(error) : null
-		})
 
 		if (error) {
 			console.error('[SUBMISSIONS GET] Error fetching submissions:', error)
@@ -262,6 +253,32 @@ export async function GET(
 				{ status: 500 }
 			)
 		}
+
+		// Get evaluation results separately and merge them
+		if (submissions && submissions.length > 0) {
+			console.log('[SUBMISSIONS GET] Fetching evaluation results...')
+			const submissionIds = submissions.map(s => s.id)
+
+			const { data: evaluationResults, error: evalError } = await supabase
+				.from('evaluation_results')
+				.select('*')
+				.in('submission_id', submissionIds)
+
+			if (!evalError && evaluationResults) {
+				// Merge evaluation results with submissions
+				submissions.forEach(submission => {
+					submission.evaluation_results = evaluationResults.filter(
+						result => result.submission_id === submission.id
+					)
+				})
+			}
+		}
+
+		console.log('[SUBMISSIONS GET] Database query result:', {
+			submissionsCount: submissions?.length || 0,
+			hasError: !!error,
+			error: error ? JSON.stringify(error) : null
+		})
 
 		console.log('[SUBMISSIONS GET] Returning successful response with', submissions?.length || 0, 'submissions')
 		return NextResponse.json({
