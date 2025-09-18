@@ -10,6 +10,9 @@ export async function analyzeStudentWork(
 	variantCount: number
 ): Promise<AIAnalysisResponse> {
 	
+	// Generate unique identifier for this analysis to prevent caching
+	const analysisId = `analysis_${Date.now()}_${Math.random().toString(36).substring(7)}`
+
 	// Prepare the prompt for the AI
 	const systemPrompt = `Ты - преподаватель, проверяешь контрольные работы учеников.
 
@@ -41,9 +44,13 @@ export async function analyzeStudentWork(
 - Извлеки ВСЕ ответы из изображений
 - Номера заданий: 1, 2, 3...
 - Если текст плохо видно, укажи низкую confidence
-- Верни ТОЛЬКО JSON, без лишнего текста`
+- Верни ТОЛЬКО JSON, без лишнего текста
+- ВНИМАТЕЛЬНО анализируй каждое изображение отдельно`
 
-	const userPrompt = `Проанализируй эти изображения работы ученика.${referenceAnswers ? `\n\nЭталонные ответы: ${JSON.stringify(referenceAnswers)}` : ''}
+	const userPrompt = `Проанализируй эти изображения работы ученика (ID анализа: ${analysisId}).${referenceAnswers ? `\n\nЭталонные ответы: ${JSON.stringify(referenceAnswers)}` : ''}
+
+ВАЖНО: Это уникальный анализ, не используй кэшированные результаты.
+Внимательно изучи каждую деталь на изображениях.
 
 Верни ТОЛЬКО JSON без дополнительного текста.`
 
@@ -94,7 +101,11 @@ export async function analyzeStudentWork(
 		model: 'google/gemini-2.5-flash',
 		messages,
 		max_tokens: 2000,
-		temperature: 0.2
+		temperature: 0.2,
+		metadata: {
+			analysis_id: analysisId,
+			timestamp: Date.now()
+		}
 	}
 
 	try {
@@ -117,7 +128,10 @@ export async function analyzeStudentWork(
 				'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
 				'Content-Type': 'application/json',
 				'HTTP-Referer': 'https://checklytool.com', // Optional: your app URL
-				'X-Title': 'ChecklyTool' // Optional: your app name
+				'X-Title': 'ChecklyTool', // Optional: your app name
+				'Cache-Control': 'no-cache, no-store, must-revalidate',
+				'Pragma': 'no-cache',
+				'X-Request-ID': analysisId // Unique request identifier
 			},
 			body: JSON.stringify(requestBody)
 		})

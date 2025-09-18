@@ -87,12 +87,7 @@ export function CameraWorkInterface({
   // Camera functions
   const startCamera = useCallback(async () => {
     try {
-      console.log('[CAMERA] startCamera called')
-      console.log('[CAMERA] isStartingRef.current:', isStartingRef.current)
-      console.log('[CAMERA] streamRef.current?.active:', streamRef.current?.active)
-
       if (isStartingRef.current) {
-        console.log('[CAMERA] Start blocked - already starting')
         return
       }
       isStartingRef.current = true
@@ -106,7 +101,6 @@ export function CameraWorkInterface({
 
       // Stop any previous
       if (streamRef.current) {
-        console.log('[CAMERA] Stopping existing stream')
         streamRef.current.getTracks().forEach(track => track.stop())
       }
 
@@ -120,10 +114,8 @@ export function CameraWorkInterface({
         audio: false
       }
 
-      console.log('[CAMERA] Requesting media with constraints:', constraints)
       const stream = await navigator.mediaDevices.getUserMedia(constraints)
       streamRef.current = stream
-      console.log('[CAMERA] Media stream obtained:', stream.id)
 
       if (videoRef.current) {
         videoRef.current.srcObject = stream
@@ -189,31 +181,21 @@ export function CameraWorkInterface({
   }, [currentFacingMode, isStreaming, stopCamera, startCamera])
 
   const capturePhoto = useCallback(async () => {
-    console.log('[CAMERA] capturePhoto called, checking conditions...')
-    console.log('[CAMERA] videoRef.current:', !!videoRef.current)
-    console.log('[CAMERA] canvasRef.current:', !!canvasRef.current)
-    console.log('[CAMERA] isCapturing:', isCapturing)
-    console.log('[CAMERA] isStreaming:', isStreaming)
-
     if (!videoRef.current || !canvasRef.current || isCapturing) {
-      console.log('[CAMERA] Capture blocked - missing refs or already capturing')
       return
     }
 
     if (!isStreaming) {
-      console.log('[CAMERA] Capture blocked - camera not streaming')
       toast.error('Камера не готова, попробуйте еще раз')
       return
     }
 
     const activeStudent = students[activeStudentIndex]
     if (activeStudent.photos.length >= maxPhotosPerStudent) {
-      console.log('[CAMERA] Capture blocked - max photos reached')
       toast.error(`Максимум ${maxPhotosPerStudent} фотографий на ученика`)
       return
     }
 
-    console.log('[CAMERA] Starting photo capture...')
     setIsCapturing(true)
 
     try {
@@ -230,7 +212,6 @@ export function CameraWorkInterface({
         throw new Error('Video not ready - width or height is 0')
       }
 
-      console.log('[CAMERA] Video dimensions:', video.videoWidth, 'x', video.videoHeight)
 
       canvas.width = video.videoWidth
       canvas.height = video.videoHeight
@@ -835,6 +816,25 @@ export function CameraWorkInterface({
         onChange={handleFileUpload}
         className="hidden"
       />
+
+      {/* Floating Submit Button - только в режиме камеры */}
+      {viewMode === 'camera' && (() => {
+        const studentsWithPhotos = students.filter(s => s.photos.length > 0)
+        const hasPhotos = studentsWithPhotos.length > 0
+
+        if (!hasPhotos) return null
+
+        return (
+          <div className="fixed bottom-0 left-0 right-0 z-50 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+            <button
+              onClick={() => onSubmit(students)}
+              className="w-full bg-[#096ff5] hover:bg-blue-600 transition-all duration-200 text-white font-inter font-semibold text-[16px] rounded-[24px] h-14 flex items-center justify-center shadow-lg transform hover:scale-[1.02] active:scale-[0.98]"
+            >
+              Отправить {studentsWithPhotos.length} {studentsWithPhotos.length === 1 ? 'работу' : studentsWithPhotos.length < 5 ? 'работы' : 'работ'} на проверку
+            </button>
+          </div>
+        )
+      })()}
     </div>
   )
 }

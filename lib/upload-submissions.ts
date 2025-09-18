@@ -137,14 +137,72 @@ export async function submitStudents(
 }
 
 /**
+ * Checks submission status to avoid re-evaluating already completed work.
+ */
+async function checkSubmissionStatus(submissionId: string): Promise<{ shouldEvaluate: boolean; status?: string }> {
+  try {
+    const res = await fetch(`/api/submissions/${submissionId}`, {
+      method: 'GET',
+    })
+
+    if (!res.ok) {
+      // If we can't check status, assume we should evaluate
+      return { shouldEvaluate: true }
+    }
+
+    const submission = await res.json()
+    const status = submission?.status
+
+    // Don't evaluate if already completed or processing
+    if (status === 'completed' || status === 'processing') {
+      console.log(`[EVALUATE_ALL] Skipping submission ${submissionId} with status: ${status}`)
+      return { shouldEvaluate: false, status }
+    }
+
+    return { shouldEvaluate: true, status }
+  } catch {
+    // If status check fails, assume we should evaluate
+    return { shouldEvaluate: true }
+  }
+}
+
+/**
  * Triggers evaluation for each submission and waits for all to finish (fire-and-wait).
+ * Only evaluates submissions that are not already completed or processing.
  * If any request fails, throws an aggregated error after attempting all.
  */
 export async function evaluateAll(submissions: Array<{ submissionId: string }>): Promise<void> {
   const errors: Array<{ id: string; error: string }> = []
 
+  // First, check status of all submissions to filter out already completed ones
+  const statusChecks = await Promise.all(
+    submissions.map(async (s) => ({
+      submissionId: s.submissionId,
+      ...(await checkSubmissionStatus(s.submissionId))
+    }))
+  )
+
+  // Filter submissions that need evaluation
+  const submissionsToEvaluate = statusChecks.filter(s => s.shouldEvaluate)
+
+  console.log(`[EVALUATE_ALL] Total submissions: ${submissions.length}, Need evaluation: ${submissionsToEvaluate.length}`)
+
+  // If no submissions need evaluation, just dispatch completion event
+  if (submissionsToEvaluate.length === 0) {
+    console.log('[EVALUATE_ALL] All submissions already completed or processing')
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('evaluation:complete', {
+        detail: {
+          submissionIds: submissions.map(s => s.submissionId),
+          errors: []
+        }
+      }))
+    }
+    return
+  }
+
   await Promise.all(
-    submissions.map(async (s) => {
+    submissionsToEvaluate.map(async (s) => {
       try {
         const res = await fetch(`/api/submissions/${s.submissionId}/evaluate`, {
           method: 'POST',
@@ -152,20 +210,26 @@ export async function evaluateAll(submissions: Array<{ submissionId: string }>):
         if (!res.ok) {
           let msg = 'Ошибка при запуске проверки'
           let shouldTreatAsError = true
-          
+
           try {
             const body = await res.json()
             msg = body?.error || msg
-            
+
             // Если это inappropriate_content, это не техническая ошибка, а нормальный результат работы AI
             if (body?.error === 'inappropriate_content') {
               console.log(`[EVALUATE_ALL] AI detected inappropriate content for ${s.submissionId} - this is expected behavior`)
               shouldTreatAsError = false
             }
+
+            // Также игнорируем ошибку "уже проверено" - это нормальное поведение
+            if (body?.error === 'Submission already evaluated') {
+              console.log(`[EVALUATE_ALL] Submission ${s.submissionId} already evaluated - skipping`)
+              shouldTreatAsError = false
+            }
           } catch {
             // ignore JSON parse errors
           }
-          
+
           if (shouldTreatAsError) {
             errors.push({ id: s.submissionId, error: msg })
           }

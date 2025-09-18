@@ -155,6 +155,11 @@ export interface OpenRouterRequest {
   }>
   max_tokens?: number
   temperature?: number
+  metadata?: {
+    analysis_id?: string
+    timestamp?: number
+    [key: string]: unknown
+  }
 }
 
 export interface OpenRouterResponse {

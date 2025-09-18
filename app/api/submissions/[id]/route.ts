@@ -6,6 +6,63 @@ interface RouteParams {
 	params: Promise<{ id: string }>
 }
 
+// GET /api/submissions/[id] - Get submission details
+export async function GET(
+	request: NextRequest,
+	{ params }: RouteParams
+) {
+	try {
+		const { id: submissionId } = await params
+		const { supabase, userId } = await getAuthenticatedSupabase()
+
+		// Get submission details with check ownership verification
+		const { data: submission, error: submissionError } = await supabase
+			.from('student_submissions')
+			.select(`
+				id,
+				status,
+				student_name,
+				student_class,
+				created_at,
+				updated_at,
+				processing_started_at,
+				processing_completed_at,
+				error_message,
+				checks!inner (
+					id,
+					user_id,
+					title
+				)
+			`)
+			.eq('id', submissionId)
+			.eq('checks.user_id', userId)
+			.single()
+
+		if (submissionError || !submission) {
+			return NextResponse.json(
+				{ error: 'Submission not found' },
+				{ status: 404 }
+			)
+		}
+
+		return NextResponse.json(submission)
+
+	} catch (error) {
+		if (error instanceof Error && error.message === 'Unauthorized') {
+			return NextResponse.json(
+				{ error: 'Authentication required' },
+				{ status: 401 }
+			)
+		}
+
+		console.error('Unexpected error:', error)
+		return NextResponse.json(
+			{ error: 'Internal server error' },
+			{ status: 500 }
+		)
+	}
+}
+
 // DELETE /api/submissions/[id] - Delete submission
 export async function DELETE(
 	request: NextRequest,

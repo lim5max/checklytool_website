@@ -221,6 +221,7 @@ export async function POST(
 			console.log('Reference answers available:', !!referenceAnswers)
 			console.log('Reference images available:', !!referenceImages)
 			console.log('Fresh signed URLs created for', refreshedImageUrls.length, 'submission images')
+			console.log('Image URLs being sent to AI:', refreshedImageUrls.map((url, i) => `Image ${i+1}: ${url.substring(0, 100)}...`).join('\n'))
 			
 			// Call OpenRouter API with retry mechanism using refreshed URLs
 			const aiResult = await analyzeWithRetry(
