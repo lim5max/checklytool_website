@@ -105,7 +105,7 @@ export default function CheckPage({ params }: CheckPageProps) {
 		try {
 			const draft = getDraft(checkId)
 			const students = draft?.students || []
-			// Конвертируем DraftStudent[] в нужный формат
+					// Конвертируем DraftStudent[] в нужный формат
 			const validDrafts: DraftStudent[] = students
 				.filter(s => s.photos.length > 0)
 				.map(s => ({
@@ -113,7 +113,7 @@ export default function CheckPage({ params }: CheckPageProps) {
 					photos: s.photos.map(p => p.dataUrl) // Конвертируем DraftPhoto[] в string[]
 				}))
 			setDrafts(validDrafts)
-		} catch {
+		} catch (error) {
 			setDrafts([])
 		}
 	}, [checkId])
@@ -129,7 +129,9 @@ export default function CheckPage({ params }: CheckPageProps) {
 
 	// Обработчики событий
 	useEffect(() => {
-		const handleDraftsUpdate = () => loadDrafts()
+		const handleDraftsUpdate = () => {
+			loadDrafts()
+		}
 		const handleSubmissionsUpload = () => {
 			clearTempFailedNames(checkId)
 			loadSubmissions()
@@ -142,10 +144,23 @@ export default function CheckPage({ params }: CheckPageProps) {
 			}, 2000)
 		}
 
+		// Обработчик фокуса страницы для мобильных устройств
+		const handleVisibilityChange = () => {
+			if (!document.hidden) {
+				loadDrafts()
+			}
+		}
+
+		const handleFocus = () => {
+			loadDrafts()
+		}
+
 		if (typeof window !== 'undefined') {
 			window.addEventListener('drafts:updated', handleDraftsUpdate)
 			window.addEventListener('submissions:uploaded', handleSubmissionsUpload)
 			window.addEventListener('evaluation:complete', handleEvaluationComplete)
+			window.addEventListener('focus', handleFocus)
+			document.addEventListener('visibilitychange', handleVisibilityChange)
 		}
 
 		return () => {
@@ -153,9 +168,25 @@ export default function CheckPage({ params }: CheckPageProps) {
 				window.removeEventListener('drafts:updated', handleDraftsUpdate)
 				window.removeEventListener('submissions:uploaded', handleSubmissionsUpload)
 				window.removeEventListener('evaluation:complete', handleEvaluationComplete)
+				window.removeEventListener('focus', handleFocus)
+				document.removeEventListener('visibilitychange', handleVisibilityChange)
 			}
 		}
 	}, [checkId, loadDrafts, loadSubmissions])
+
+	// Периодическая проверка drafts для мобильных устройств
+	useEffect(() => {
+		if (!checkId) return
+
+		const interval = setInterval(() => {
+			// Проверяем только если камера закрыта
+			if (!isCameraOpen) {
+				loadDrafts()
+			}
+		}, 2000) // Проверяем каждые 2 секунды
+
+		return () => clearInterval(interval)
+	}, [checkId, isCameraOpen, loadDrafts])
 
 	// Мемоизированные состояния
 	const { failedSubs, pendingSubs, completedSubs } = useMemo(() => {
@@ -195,6 +226,10 @@ export default function CheckPage({ params }: CheckPageProps) {
 
 	const handleCloseCamera = () => {
 		setIsCameraOpen(false)
+		// Принудительно обновляем drafts после закрытия камеры (для мобильных устройств)
+		setTimeout(() => {
+			loadDrafts()
+		}, 300)
 	}
 
 	const handleSendAll = async () => {
@@ -304,6 +339,13 @@ export default function CheckPage({ params }: CheckPageProps) {
 						variant="app"
 						className="w-full"
 					/>
+
+					{/* Debug indicator for mobile */}
+					{process.env.NODE_ENV === 'development' && (
+						<div className="fixed top-20 right-4 bg-red-500 text-white text-xs p-2 rounded z-50">
+							Drafts: {drafts.length} | Camera: {isCameraOpen ? 'Open' : 'Closed'}
+						</div>
+					)}
 
 					{/* Navigation + Title */}
 					<div className="flex flex-col gap-4.5 items-start justify-start relative w-full">
