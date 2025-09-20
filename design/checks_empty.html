@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Checks Empty</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Fonts: Used fonts - Nunito (Black for title), Inter (Medium for body text) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&family=Nunito:wght@900&display=swap"
+      rel="stylesheet"
+    />
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    <style>
+      body {
+        font-family: "Inter", sans-serif;
+      }
+      .font-nunito {
+        font-family: "Nunito", sans-serif;
+      }
+    </style>
+  </head>
+  <body class="bg-white min-h-screen">
+    <!-- Main container: Full screen layout with white background, flex column, centered items -->
+    <div
+      class="flex flex-col gap-20 items-center justify-start p-4 relative min-h-screen"
+    >
+      <!-- Header section: Contains logo, menu, navigation, and title -->
+      <div class="flex flex-col gap-8 items-end justify-start relative w-full">
+        <!-- Header row: Logo on left, menu on right -->
+        <div class="flex items-center justify-between relative w-full">
+          <!-- Logo: Checkly logo image from images/logo.png -->
+          <div class="flex gap-1 items-center justify-start relative">
+            <img src="images/logo.png" alt="Logo" class="w-[126] h-[30px]" />
+          </div>
+          <!-- Menu button: Hamburger menu custom icon -->
+          <object data="images/Menu Open.svg" type="image/svg+xml"></object>
+        </div>
+        <!-- Content section: Navigation icons and main title -->
+        <div
+          class="flex flex-col gap-4.5 items-start justify-start relative w-full"
+        >
+          <div
+            class="flex flex-col gap-6 items-start justify-start relative w-full"
+          >
+            <!-- Navigation icons: Left and right chevron icons -->
+            <div class="flex items-center justify-between relative w-full">
+              <i
+                data-lucide="x"
+                class="h-8 w-8 text-slate-600 cursor-pointer"
+              ></i>
+              <i
+                data-lucide="cog"
+                class="h-8 w-8 text-slate-600 cursor-pointer"
+              ></i>
+            </div>
+            <!-- Title: Main heading in Nunito Black font -->
+            <h1
+              class="font-nunito font-black text-3xl text-slate-800 w-full leading-tight"
+            >
+              Контрольная по информатике
+            </h1>
+          </div>
+        </div>
+      </div>
+      <!-- Empty state section: Illustration and message for empty list -->
+      <div
+        class="flex flex-col gap-2.5 items-center justify-start relative w-full"
+      >
+        <!-- Empty illustration: File-X icon from Lucide representing empty state -->
+        <div class="flex justify-center items-center h-60 w-full">
+          <img src="images/empty.png" alt="" />
+        </div>
+        <!-- Empty text: Descriptive message in Inter Medium font -->
+        <p class="font-medium text-base text-center text-slate-500 max-w-xs">
+          Список проверенных работ пуст
+        </p>
+      </div>
+    </div>
+    <!-- Bottom bar: Fixed bottom bar with upload button -->
+    <div
+      class="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-4 py-3 flex items-center justify-center"
+    >
+      <button
+        class="bg-blue-600 hover:bg-blue-700 text-white font-medium text-base px-11 py-3.5 rounded-full h-14 flex items-center justify-center w-full transition-colors"
+      >
+        Загрузить работы
+      </button>
+    </div>
+    <script>
+      lucide.createIcons();
+    </script>
+  </body>
+</html>

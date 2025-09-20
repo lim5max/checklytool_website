@@ -2,295 +2,501 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { PendingSubmissions } from '@/components/checks/PendingSubmissions'
-import { PostCheckSummary } from '@/components/checks/PostCheckSummary'
+import { toast } from 'sonner'
+import { X, Settings, Trash2 } from 'lucide-react'
+import Image from 'next/image'
+
+import MobileHeader from '@/components/MobileHeader'
 import { CameraWorkInterface } from '@/components/camera/CameraWorkInterface'
 import { Button } from '@/components/ui/button'
-import { toast } from 'sonner'
-import { getDraft, clearDraft } from '@/lib/drafts'
+import { getDraft, clearDraft, setDraftStudents, getTempFailedNames, clearTempFailedNames, addTempFailedName } from '@/lib/drafts'
 import { submitStudents, evaluateAll } from '@/lib/upload-submissions'
 
-interface StudentResult {
-  id: string
-  name: string
-  grade: number
+type SubmissionStatus = 'pending' | 'processing' | 'completed' | 'failed'
+
+interface EvaluationResult {
+	id: string
+	final_grade: number
+	percentage_score: number
 }
 
-interface CheckData {
-  id: string
-  title: string
-  results: StudentResult[]
+interface StudentSubmission {
+	id: string
+	student_name?: string
+	student_class?: string
+	submission_images: string[]
+	status: SubmissionStatus
+	evaluation_results?: EvaluationResult[]
+	error_message?: string
+	error_details?: Record<string, unknown>
+}
+
+interface DraftStudent {
+	name: string
+	photos: string[]
+	variant?: number
 }
 
 interface CheckPageProps {
-  params: Promise<{ id: string }>
+	params: Promise<{ id: string }>
 }
 
 export default function CheckPage({ params }: CheckPageProps) {
-  const router = useRouter()
-  const [checkData, setCheckData] = useState<CheckData | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [checkId, setCheckId] = useState<string>('')
-  const [hasDrafts, setHasDrafts] = useState(false)
-  const [isCameraOpen, setIsCameraOpen] = useState(false)
-  const [cameraKey, setCameraKey] = useState(0)
-  const [isSending, setIsSending] = useState(false)
+	const router = useRouter()
+	const [checkId, setCheckId] = useState<string>('')
+	const [checkTitle, setCheckTitle] = useState<string>('Проверочная работа')
+	const [submissions, setSubmissions] = useState<StudentSubmission[]>([])
+	const [isLoading, setIsLoading] = useState(true)
+	const [isCameraOpen, setIsCameraOpen] = useState(false)
+	const [isProcessing, setIsProcessing] = useState(false)
+	const [drafts, setDrafts] = useState<DraftStudent[]>([])
 
-  const handleOpenCamera = () => {
-    console.log('[CHECK_PAGE] Opening camera')
-    setIsCameraOpen(true)
-    setCameraKey(k => k + 1)
-  }
+	// Инициализация checkId из params
+	useEffect(() => {
+		const getParams = async () => {
+			const resolvedParams = await params
+			setCheckId(resolvedParams.id)
+		}
+		getParams()
+	}, [params])
 
-  const handleCloseCamera = () => {
-    console.log('[CHECK_PAGE] Closing camera')
-    setIsCameraOpen(false)
-  }
+	// Загрузка данных проверки
+	const loadCheckData = useCallback(async () => {
+		if (!checkId) return
 
-  const handleCameraSubmit = async () => {
-    console.log('[CHECK_PAGE] Camera submit')
-    setIsCameraOpen(false)
-    toast.success('Фото сохранены в черновики')
-  }
+		try {
+			setIsLoading(true)
+			const response = await fetch(`/api/checks/${checkId}`)
 
-  // Глобальная логика отправки на проверку
-  const handleSendAll = useCallback(async () => {
-    const draft = getDraft(checkId)
-    const canSend = draft?.students?.some((s) => s.photos.length > 0) ?? false
+			if (!response.ok) {
+				throw new Error('Проверочная работа не найдена')
+			}
 
-    if (!draft || !canSend) {
-      toast.error('Нет работ для отправки')
-      return
-    }
+			const data = await response.json()
+			setCheckTitle(data.check.title || 'Проверочная работа')
+		} catch (error) {
+			console.error('Error loading check data:', error)
+			toast.error('Не удалось загрузить данные')
+			router.push('/dashboard')
+		}
+	}, [checkId, router])
 
-    try {
-      setIsSending(true)
-      const { items } = await submitStudents(checkId, draft.students)
-      // Запускаем проверку, но не блокируем переход
-      evaluateAll(items.map((i) => ({ submissionId: i.submissionId }))).catch((err) => {
-        console.error('Evaluate errors:', err)
-      })
-      clearDraft(checkId)
-      // Уведомляем о завершении upload
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('submissions:uploaded', {
-          detail: { checkId, items }
-        }))
-      }
-      toast.success('Работы отправлены на проверку')
-    } catch (e) {
-      console.error('Submit error:', e)
-      toast.error('Ошибка при отправке работ')
-      // Даже при ошибках уведомляем о завершении
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('submissions:uploaded', {
-          detail: { checkId, items: [] }
-        }))
-      }
-    } finally {
-      setIsSending(false)
-    }
-  }, [checkId])
+	// Загрузка submissions
+	const loadSubmissions = useCallback(async () => {
+		if (!checkId) return
 
-  // Вычисляем canSend
-  const canSend = useMemo(() => {
-    if (!hasDrafts) return false
-    const draft = getDraft(checkId)
-    return draft?.students?.some((s) => s.photos.length > 0) ?? false
-  }, [hasDrafts, checkId])
+		try {
+			const res = await fetch(`/api/checks/${checkId}/submissions`)
+			if (!res.ok) throw new Error('Failed to load submissions')
 
-  // Определяем функции перед их использованием в useEffect
-  const loadCheckData = useCallback(async () => {
-    try {
-      setIsLoading(true)
-      
-      const response = await fetch(`/api/checks/${checkId}`)
-      
-      if (!response.ok) {
-        throw new Error('Проверочная работа не найдена')
-      }
+			const data: { submissions: StudentSubmission[] } = await res.json()
+			setSubmissions(data.submissions || [])
+		} catch (error) {
+			console.error('Error loading submissions:', error)
+		} finally {
+			setIsLoading(false)
+		}
+	}, [checkId])
 
-      const data = await response.json()
-      
-      // Check if there are any results from the API
-      const results = data.check.results || []
-      
-      setCheckData({
-        id: data.check.id,
-        title: data.check.title,
-        results: results
-      })
+	// Загрузка черновиков
+	const loadDrafts = useCallback(() => {
+		if (!checkId) return
 
-    } catch (error) {
-      console.error('Error loading check data:', error)
-      toast.error('Не удалось загрузить данные')
-      router.push('/dashboard')
-    } finally {
-      setIsLoading(false)
-    }
-  }, [checkId, router])
+		try {
+			const draft = getDraft(checkId)
+			const students = draft?.students || []
+			// Конвертируем DraftStudent[] в нужный формат
+			const validDrafts: DraftStudent[] = students
+				.filter(s => s.photos.length > 0)
+				.map(s => ({
+					...s,
+					photos: s.photos.map(p => p.dataUrl) // Конвертируем DraftPhoto[] в string[]
+				}))
+			setDrafts(validDrafts)
+		} catch {
+			setDrafts([])
+		}
+	}, [checkId])
 
+	// Эффекты для загрузки данных
+	useEffect(() => {
+		if (checkId) {
+			loadCheckData()
+			loadSubmissions()
+			loadDrafts()
+		}
+	}, [checkId, loadCheckData, loadSubmissions, loadDrafts])
 
-  useEffect(() => {
-    const getParams = async () => {
-      const resolvedParams = await params
-      setCheckId(resolvedParams.id)
-    }
-    getParams()
-  }, [params])
+	// Обработчики событий
+	useEffect(() => {
+		const handleDraftsUpdate = () => loadDrafts()
+		const handleSubmissionsUpload = () => {
+			clearTempFailedNames(checkId)
+			loadSubmissions()
+			loadDrafts()
+		}
+		const handleEvaluationComplete = () => {
+			setTimeout(() => loadSubmissions(), 2000)
+		}
 
-  useEffect(() => {
-    if (checkId) {
-      loadCheckData()
-    }
-  }, [checkId, loadCheckData])
+		if (typeof window !== 'undefined') {
+			window.addEventListener('drafts:updated', handleDraftsUpdate)
+			window.addEventListener('submissions:uploaded', handleSubmissionsUpload)
+			window.addEventListener('evaluation:complete', handleEvaluationComplete)
+		}
 
-  // Detect local drafts for this check and toggle pending view
-  useEffect(() => {
-    if (!isLoading && checkId) {
-      try {
-        const draft = getDraft(checkId)
-        const present = !!(draft && draft.students && draft.students.some((s) => s.photos.length > 0))
-        setHasDrafts(present)
-      } catch {
-        setHasDrafts(false)
-      }
-    }
-  }, [isLoading, checkId])
+		return () => {
+			if (typeof window !== 'undefined') {
+				window.removeEventListener('drafts:updated', handleDraftsUpdate)
+				window.removeEventListener('submissions:uploaded', handleSubmissionsUpload)
+				window.removeEventListener('evaluation:complete', handleEvaluationComplete)
+			}
+		}
+	}, [checkId, loadDrafts, loadSubmissions])
 
-  // Мемоизируем event handlers для предотвращения лишних ререндеров
-  const onDraftsUpdated = useCallback(() => {
-    console.log('[CHECK_PAGE] drafts:updated event received')
-    try {
-      const draft = getDraft(checkId)
-      const present = !!(draft && draft.students && draft.students.some((s) => s.photos.length > 0))
-      console.log('[CHECK_PAGE] Draft present:', present)
-      console.log('[CHECK_PAGE] Draft students count:', draft?.students?.length || 0)
-      setHasDrafts(present)
-    } catch {
-      console.log('[CHECK_PAGE] Error reading drafts, setting to false')
-      setHasDrafts(false)
-    }
-  }, [checkId])
+	// Мемоизированные состояния
+	const { failedSubs, pendingSubs, completedSubs } = useMemo(() => {
+		const failed = submissions.filter(s => s.status === 'failed')
+		const pending = submissions.filter(s => s.status === 'pending' || s.status === 'processing')
+		const completed = submissions.filter(s => s.status === 'completed')
 
-  const onSubmissionsUploaded = useCallback(() => {
-    console.log('[CHECK_PAGE] Submissions uploaded, updating state')
-    setHasDrafts(false)
-  }, [])
+		// Добавляем временные ошибки
+		const tempFailedNames = getTempFailedNames(checkId)
+		const tempFailedSubs: StudentSubmission[] = tempFailedNames.map(name => ({
+			id: `temp-${name}-${Date.now()}`,
+			student_name: name,
+			student_class: '',
+			submission_images: [],
+			status: 'failed' as SubmissionStatus,
+			error_message: 'Ошибка при отправке фотографий на сервер',
+			error_details: { isTemporary: true }
+		}))
 
-  const onEvaluationComplete = useCallback(() => {
-    console.log('[CHECK_PAGE] Evaluation completed - PostCheckSummary will handle data reload')
-  }, [])
+		// Убираем дубли
+		const allFailed = [...failed, ...tempFailedSubs]
+		const uniqueFailed = allFailed.filter((sub, index, self) =>
+			index === self.findIndex(s => s.student_name === sub.student_name)
+		)
 
-  // Live update: react to camera/drafts changes without reload
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      window.addEventListener('drafts:updated', onDraftsUpdated)
-      window.addEventListener('submissions:uploaded', onSubmissionsUploaded)
-      window.addEventListener('evaluation:complete', onEvaluationComplete)
-    }
-    return () => {
-      if (typeof window !== 'undefined') {
-        window.removeEventListener('drafts:updated', onDraftsUpdated)
-        window.removeEventListener('submissions:uploaded', onSubmissionsUploaded)
-        window.removeEventListener('evaluation:complete', onEvaluationComplete)
-      }
-    }
-  }, [onDraftsUpdated, onSubmissionsUploaded, onEvaluationComplete])
+		return {
+			failedSubs: uniqueFailed,
+			pendingSubs: pending,
+			completedSubs: completed
+		}
+	}, [submissions, checkId])
 
+	// Обработчики действий
+	const handleOpenCamera = () => {
+		setIsCameraOpen(true)
+	}
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-white px-4 py-4">
-        <div className="max-w-md mx-auto">
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="h-6 bg-gray-200 rounded animate-pulse w-6" />
-              <div className="h-6 bg-gray-200 rounded animate-pulse w-6" />
-            </div>
-            <div className="h-8 bg-gray-200 rounded animate-pulse w-3/4" />
-            <div className="h-6 bg-gray-200 rounded animate-pulse w-1/2" />
-            <div className="space-y-2">
-              <div className="h-16 bg-gray-200 rounded-[24px] animate-pulse" />
-              <div className="h-16 bg-gray-200 rounded-[24px] animate-pulse" />
-              <div className="h-16 bg-gray-200 rounded-[24px] animate-pulse" />
-            </div>
-          </div>
-        </div>
-      </div>
-    )
-  }
+	const handleCloseCamera = () => {
+		setIsCameraOpen(false)
+	}
 
-  if (!checkData) {
-    return (
-      <div className="flex items-center justify-center min-h-screen px-4 py-4">
-        <div className="text-center">
-          <h2 className="text-xl font-semibold mb-2">Проверочная работа не найдена</h2>
-          <p className="text-gray-600">Возможно, работа была удалена или у вас нет прав доступа</p>
-        </div>
-      </div>
-    )
-  }
+	const handleSendAll = async () => {
+		if (drafts.length === 0) {
+			toast.error('Нет работ для отправки')
+			return
+		}
 
-  return (
-    <div className="min-h-screen bg-white px-4 py-4">
-      <div className="max-w-md mx-auto">
-        {/* Всегда показываем результаты проверки */}
-        <PostCheckSummary
-          checkId={checkId}
-          title={checkData.title}
-          onOpenCamera={handleOpenCamera}
-        />
+		try {
+			setIsProcessing(true)
+			const draft = getDraft(checkId)
+			const { items } = await submitStudents(checkId, draft?.students || [])
 
-        {/* Дополнительно показываем черновики если они есть */}
-        {hasDrafts && (
-          <div className="mt-6 border-t border-slate-200 pt-6">
-            <PendingSubmissions
-              checkId={checkId}
-              isSecondaryView={true}
-            />
-          </div>
-        )}
+			evaluateAll(items.map(i => ({ submissionId: i.submissionId }))).catch(console.error)
+			clearDraft(checkId)
 
-        {/* Глобальные кнопки внизу страницы */}
-        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-[18px] py-3">
-          <div className="max-w-md mx-auto">
-            <div className="flex flex-col gap-2">
-              {/* Если есть черновики - показываем кнопку проверки */}
-              {hasDrafts && canSend && (
-                <Button
-                  className="w-full rounded-[180px] h-14"
-                  onClick={handleSendAll}
-                  disabled={isSending}
-                >
-                  {isSending ? 'Отправляем...' : 'Проверить работы'}
-                </Button>
-              )}
+			if (typeof window !== 'undefined') {
+				window.dispatchEvent(new CustomEvent('submissions:uploaded', {
+					detail: { checkId, items }
+				}))
+			}
 
-              {/* Кнопка загрузки работ - всегда показываем */}
-              <Button
-                className={`w-full rounded-[180px] h-14 ${hasDrafts && canSend ? '' : ''}`}
-                variant={hasDrafts && canSend ? 'secondary' : 'default'}
-                onClick={handleOpenCamera}
-                disabled={isSending}
-              >
-                Загрузить работы
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
+			toast.success('Работы отправлены на проверку')
+		} catch (error) {
+			console.error('Submit error:', error)
+			toast.error('Ошибка при отправке работ')
+		} finally {
+			setIsProcessing(false)
+		}
+	}
 
-      {/* Global Camera Interface - не размонтируется при переключении состояний */}
-      <CameraWorkInterface
-        key={cameraKey}
-        isOpen={isCameraOpen}
-        checkId={checkId}
-        onClose={handleCloseCamera}
-        onSubmit={handleCameraSubmit}
-        checkTitle={checkData.title}
-        maxPhotosPerStudent={5}
-      />
-    </div>
-  )
+	const handleReshoot = () => {
+		const allFailedNames = [
+			...failedSubs.map(s => (s.student_name || '').trim()),
+			...getTempFailedNames(checkId)
+		]
+		const uniqueNames = Array.from(new Set(allFailedNames)).filter(n => n.length > 0)
+
+		clearDraft(checkId)
+		if (uniqueNames.length > 0) {
+			setDraftStudents(checkId, uniqueNames)
+		}
+		clearTempFailedNames(checkId)
+		handleOpenCamera()
+	}
+
+	const handleDeleteFailed = async (submission: StudentSubmission) => {
+		try {
+			const isTemporary = submission.error_details?.isTemporary === true
+
+			if (isTemporary) {
+				const tempFailedNames = getTempFailedNames(checkId)
+				const updatedNames = tempFailedNames.filter(name => name !== submission.student_name)
+				clearTempFailedNames(checkId)
+				updatedNames.forEach(name => addTempFailedName(checkId, name))
+				setSubmissions(prev => prev.filter(s => s.id !== submission.id))
+			} else {
+				const response = await fetch(`/api/submissions/${submission.id}`, { method: 'DELETE' })
+				if (!response.ok) throw new Error('Failed to delete')
+				setSubmissions(prev => prev.filter(s => s.id !== submission.id))
+			}
+
+			toast.success(`Работа "${submission.student_name}" удалена`)
+		} catch (error) {
+			console.error('Error deleting submission:', error)
+			toast.error('Не удалось удалить работу')
+		}
+	}
+
+	const handleDeleteDraft = (studentName: string) => {
+		try {
+			const draft = getDraft(checkId)
+			if (draft?.students) {
+				const updatedStudents = draft.students.filter(s => s.name !== studentName)
+				clearDraft(checkId)
+				if (updatedStudents.length > 0) {
+					setDraftStudents(checkId, updatedStudents.map(s => s.name))
+				}
+				loadDrafts()
+				toast.success(`Работа "${studentName}" удалена`)
+			}
+		} catch (error) {
+			console.error('Error deleting draft:', error)
+			toast.error('Не удалось удалить черновик')
+		}
+	}
+
+	// Вычисляем показывать ли состояние загрузки
+	const showSkeleton = isLoading || isProcessing
+
+	// Проверяем есть ли вообще какой-то контент
+	const hasAnyContent = failedSubs.length > 0 || pendingSubs.length > 0 || completedSubs.length > 0 || drafts.length > 0
+
+	return (
+		<div className="min-h-screen bg-white">
+			<div className="flex flex-col gap-6 items-center justify-start p-4 relative min-h-screen max-w-md mx-auto">
+
+				{/* Header */}
+				<div className="flex flex-col gap-8 items-end justify-start relative w-full">
+					{/* Mobile Header */}
+					<MobileHeader
+						variant="app"
+						className="w-full"
+					/>
+
+					{/* Navigation + Title */}
+					<div className="flex flex-col gap-4.5 items-start justify-start relative w-full">
+						<div className="flex flex-col gap-6 items-start justify-start relative w-full">
+							{/* Navigation icons */}
+							<div className="flex items-center justify-between relative w-full">
+								<button
+									onClick={() => router.push('/dashboard')}
+									className="p-2 -ml-2 rounded-lg hover:bg-gray-100 transition-colors"
+								>
+									<X className="h-8 w-8 text-slate-600 cursor-pointer" />
+								</button>
+								<button className="p-2 -mr-2 rounded-lg hover:bg-gray-100 transition-colors">
+									<Settings className="h-8 w-8 text-slate-600 cursor-pointer" />
+								</button>
+							</div>
+
+							{/* Title */}
+							<h1 className="font-nunito font-black text-3xl text-slate-800 w-full leading-tight">
+								{checkTitle}
+							</h1>
+						</div>
+					</div>
+				</div>
+
+				{/* Content */}
+				<div className="flex-1 w-full space-y-6">
+					{showSkeleton ? (
+						// Skeleton loading
+						<div className="space-y-6">
+							<div className="space-y-4">
+								<div className="h-4 bg-gray-200 rounded w-1/3 animate-pulse" />
+								<div className="space-y-2.5">
+									<div className="h-16 bg-gray-200 rounded-[24px] animate-pulse" />
+									<div className="h-16 bg-gray-200 rounded-[24px] animate-pulse" />
+									<div className="h-16 bg-gray-200 rounded-[24px] animate-pulse" />
+								</div>
+							</div>
+						</div>
+					) : !hasAnyContent ? (
+						// Empty state
+						<div className="flex flex-col gap-2.5 items-center justify-center py-20">
+							<div className="flex justify-center items-center h-60 w-full">
+								<Image
+									src="/images/empty.png"
+									alt="Пустой список"
+									width={200}
+									height={200}
+									className="object-contain"
+								/>
+							</div>
+							<p className="font-medium text-base text-center text-slate-500 max-w-xs">
+								Список проверенных работ пуст
+							</p>
+						</div>
+					) : (
+						// Content sections
+						<div className="space-y-6">
+							{/* Ошибки проверки */}
+							{failedSubs.length > 0 && (
+								<div className="flex flex-col gap-4">
+									<div className="flex items-center justify-between w-full">
+										<h2 className="font-medium text-base text-slate-800">Ошибки проверки</h2>
+										<button
+											className="bg-[#096ff5] hover:bg-blue-700 text-white font-medium text-base px-4 py-2 rounded-full h-9 flex items-center justify-center transition-colors"
+											onClick={handleReshoot}
+										>
+											Переснять
+										</button>
+									</div>
+									<div className="flex flex-col gap-2.5">
+										{failedSubs.map((sub) => (
+											<div key={sub.id} className="flex gap-2 items-center justify-start w-full">
+												<div className="bg-slate-50 rounded-[24px] p-6 flex-1">
+													<div className="flex items-center justify-between w-full">
+														<div className="flex items-center gap-3">
+															<span className="font-medium text-lg text-slate-800">
+																{sub.student_name || 'Студент'}
+															</span>
+														</div>
+														<div className="h-2 w-2 bg-red-500 rounded-full" />
+													</div>
+													{sub.error_message && (
+														<div className="text-sm text-slate-600 mt-2">
+															{sub.error_message}
+														</div>
+													)}
+												</div>
+												<button
+													onClick={() => handleDeleteFailed(sub)}
+													className="p-3 rounded-xl hover:bg-red-100 active:bg-red-200 transition-colors"
+												>
+													<Trash2 className="h-6 w-6 text-red-500" />
+												</button>
+											</div>
+										))}
+									</div>
+								</div>
+							)}
+
+							{/* Работы к проверке */}
+							{drafts.length > 0 && (
+								<div className="flex flex-col gap-4">
+									<h2 className="font-medium text-base text-slate-800">Работы к проверке</h2>
+									<div className="flex flex-col gap-2.5">
+										{drafts.map((student, index) => (
+											<div key={`${student.name}-${index}`} className="flex gap-2 items-center justify-start w-full">
+												<div className="bg-slate-50 rounded-[24px] p-6 flex-1">
+													<div className="flex items-center justify-between w-full">
+														<div className="flex items-center gap-3">
+															<span className="font-medium text-lg text-slate-800">
+																{student.name}
+															</span>
+															{student.variant && (
+																<span className="bg-blue-600 text-white font-extrabold text-sm rounded-xl px-1.5 py-0.5 h-5 flex items-center justify-center">
+																	{student.variant}
+																</span>
+															)}
+														</div>
+														<div className="h-2 w-2 bg-orange-500 rounded-full" />
+													</div>
+												</div>
+												<button
+													onClick={() => handleDeleteDraft(student.name)}
+													className="p-3 rounded-xl hover:bg-red-100 active:bg-red-200 transition-colors"
+												>
+													<Trash2 className="h-6 w-6 text-red-500" />
+												</button>
+											</div>
+										))}
+									</div>
+								</div>
+							)}
+
+							{/* Успешно проверенные */}
+							{completedSubs.length > 0 && (
+								<div className="flex flex-col gap-4">
+									<h2 className="font-medium text-base text-slate-800">
+										Успешно проверенные
+									</h2>
+									<div className="flex flex-col gap-2.5">
+										{completedSubs.map((sub) => {
+											const grade = sub.evaluation_results?.[0]?.final_grade
+											return (
+												<div key={sub.id} className="bg-slate-50 rounded-[24px] p-6 w-full">
+													<div className="flex items-center justify-between w-full">
+														<span className="font-medium text-lg text-slate-800">
+															{sub.student_name || 'Студент'}
+														</span>
+														{typeof grade === 'number' && (
+															<span className="font-extrabold text-xl text-green-600">
+																{grade}
+															</span>
+														)}
+													</div>
+												</div>
+											)
+										})}
+									</div>
+								</div>
+							)}
+						</div>
+					)}
+				</div>
+
+				{/* Spacer для bottom bar */}
+				<div className="h-20" />
+			</div>
+
+			{/* Bottom bar */}
+			<div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-4 py-3">
+				<div className="max-w-md mx-auto">
+					<div className="flex flex-col gap-2">
+						{drafts.length > 0 && (
+							<Button
+								className="bg-blue-600 hover:bg-blue-700 text-white font-medium text-base px-11 py-3.5 rounded-full h-14 flex items-center justify-center w-full transition-colors"
+								onClick={handleSendAll}
+								disabled={isProcessing}
+							>
+								{isProcessing ? 'Отправляем...' : 'Проверить работы'}
+							</Button>
+						)}
+						<Button
+							className={`${drafts.length > 0 ? 'bg-slate-100 hover:bg-slate-200 text-slate-800' : 'bg-blue-600 hover:bg-blue-700 text-white'} font-medium text-base px-11 py-3.5 rounded-full h-14 flex items-center justify-center w-full transition-colors`}
+							onClick={handleOpenCamera}
+							disabled={isProcessing}
+						>
+							Загрузить работы
+						</Button>
+					</div>
+				</div>
+			</div>
+
+			{/* Camera Interface */}
+			<CameraWorkInterface
+				isOpen={isCameraOpen}
+				checkId={checkId}
+				onClose={handleCloseCamera}
+				checkTitle={checkTitle}
+				maxPhotosPerStudent={5}
+			/>
+		</div>
+	)
 }

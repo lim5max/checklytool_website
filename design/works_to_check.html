@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Works to Check</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Fonts: Used fonts - Nunito (Black for title, ExtraBold for badges), Inter (Medium for body text) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&family=Nunito:wght@900&display=swap"
+      rel="stylesheet"
+    />
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    <style>
+      body {
+        font-family: "Inter", sans-serif;
+      }
+      .font-nunito {
+        font-family: "Nunito", sans-serif;
+      }
+      .font-nunito-extrabold {
+        font-family: "Nunito", sans-serif;
+        font-weight: 800;
+      }
+    </style>
+  </head>
+  <body class="bg-white min-h-screen">
+    <!-- Main container: Full screen layout with white background, flex column, centered items -->
+    <div
+      class="flex flex-col gap-6 items-center justify-start p-4 relative min-h-screen"
+    >
+      <!-- Header section: Contains logo, menu, navigation, and title -->
+      <div class="flex flex-col gap-8 items-end justify-start relative w-full">
+        <!-- Header row: Logo on left, menu on right -->
+        <div class="flex items-center justify-between relative w-full">
+          <!-- Logo: Checkly logo image from images/logo.png -->
+          <div class="flex gap-1 items-center justify-start relative">
+            <img src="images/logo.png" alt="Logo" class="w-[126px] h-[30px]" />
+          </div>
+          <!-- Menu button: Hamburger menu custom icon -->
+          <object data="images/Menu Open.svg" type="image/svg+xml"></object>
+        </div>
+        <!-- Content section: Navigation icons and main title -->
+        <div
+          class="flex flex-col gap-4.5 items-start justify-start relative w-full"
+        >
+          <div
+            class="flex flex-col gap-6 items-start justify-start relative w-full"
+          >
+            <!-- Navigation icons: Left and right icons -->
+            <div class="flex items-center justify-between relative w-full">
+              <i
+                data-lucide="x"
+                class="h-8 w-8 text-slate-600 cursor-pointer"
+              ></i>
+              <i
+                data-lucide="cog"
+                class="h-8 w-8 text-slate-600 cursor-pointer"
+              ></i>
+            </div>
+            <!-- Title: Main heading in Nunito Black font -->
+            <h1
+              class="font-nunito font-black text-3xl text-slate-800 w-full leading-tight"
+            >
+              Контрольная по информатике
+            </h1>
+          </div>
+        </div>
+      </div>
+      <!-- Works to check section: List of student works -->
+      <div
+        class="flex flex-col gap-4 items-start justify-start relative w-full"
+      >
+        <!-- Section title -->
+        <h2 class="font-medium text-base text-slate-800">Работы к проверке</h2>
+        <!-- List of works -->
+        <div
+          class="flex flex-col gap-2.5 items-center justify-start relative w-full"
+        >
+          <!-- Work item 1 -->
+          <div class="flex gap-2 items-center justify-start w-full">
+            <div class="bg-slate-50 rounded-3xl p-6 flex-1">
+              <div class="flex items-center justify-between w-full">
+                <div class="flex items-center gap-3">
+                  <span class="font-medium text-lg text-slate-800"
+                    >Алексей М.</span
+                  >
+                  <span
+                    class="bg-blue-600 text-white font-nunito-extrabold text-sm rounded-xl px-1.5 py-0.5 h-5 flex items-center justify-center"
+                    >1</span
+                  >
+                </div>
+                <div class="h-2 w-2 bg-orange-500 rounded-full"></div>
+              </div>
+            </div>
+            <button
+              class="p-3 rounded-xl hover:bg-red-100 active:bg-red-200 transition-colors"
+            >
+              <i data-lucide="trash-2" class="h-6 w-6 text-red-500"></i>
+            </button>
+          </div>
+          <!-- Work item 2 -->
+          <div class="flex gap-2 items-center justify-start w-full">
+            <div class="bg-slate-50 rounded-3xl p-6 flex-1">
+              <div class="flex items-center justify-between w-full">
+                <div class="flex items-center gap-3">
+                  <span class="font-medium text-lg text-slate-800"
+                    >Дмитрий С.</span
+                  >
+                  <span
+                    class="bg-blue-600 text-white font-nunito-extrabold text-sm rounded-xl px-1.5 py-0.5 h-5 flex items-center justify-center"
+                    >2</span
+                  >
+                </div>
+                <div class="h-2 w-2 bg-orange-500 rounded-full"></div>
+              </div>
+            </div>
+            <button
+              class="p-3 rounded-xl hover:bg-red-100 active:bg-red-200 transition-colors"
+            >
+              <i data-lucide="trash-2" class="h-6 w-6 text-red-500"></i>
+            </button>
+          </div>
+          <!-- Work item 3 -->
+          <div class="flex gap-2 items-center justify-start w-full">
+            <div class="bg-slate-50 rounded-3xl p-6 flex-1">
+              <div class="flex items-center justify-between w-full">
+                <div class="flex items-center gap-3">
+                  <span class="font-medium text-lg text-slate-800"
+                    >Александр П.</span
+                  >
+                  <span
+                    class="bg-blue-600 text-white font-nunito-extrabold text-sm rounded-xl px-1.5 py-0.5 h-5 flex items-center justify-center"
+                    >1</span
+                  >
+                </div>
+                <div class="h-2 w-2 bg-orange-500 rounded-full"></div>
+              </div>
+            </div>
+            <button
+              class="p-3 rounded-xl hover:bg-red-100 active:bg-red-200 transition-colors"
+            >
+              <i data-lucide="trash-2" class="h-6 w-6 text-red-500"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Bottom bar: Fixed bottom bar with two buttons -->
+    <div
+      class="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-4 py-3 flex flex-col gap-2 items-center justify-center"
+    >
+      <button
+        class="bg-blue-600 hover:bg-blue-700 text-white font-medium text-base px-11 py-3.5 rounded-full h-14 flex items-center justify-center w-full transition-colors"
+      >
+        Проверить работы
+      </button>
+      <button
+        class="bg-slate-100 hover:bg-slate-200 text-slate-800 font-medium text-base px-11 py-3.5 rounded-full h-14 flex items-center justify-center w-full transition-colors"
+      >
+        Загрузить работы
+      </button>
+    </div>
+    <script>
+      lucide.createIcons();
+    </script>
+  </body>
+</html>

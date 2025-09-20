@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
-import { X, Camera, RotateCcw, ChevronDown, Plus, Upload, Trash2, Edit3, UserPlus } from 'lucide-react'
+import { X, Camera, ChevronUp, Plus, Trash2, UserPlus, ImagePlus } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   getDraft,
@@ -31,7 +31,6 @@ interface CameraWorkInterfaceProps {
   isOpen: boolean
   checkId: string
   onClose: () => void
-  onSubmit: (students: Student[]) => void
   checkTitle?: string
   maxPhotosPerStudent?: number
 }
@@ -53,12 +52,11 @@ export function CameraWorkInterface({
   isOpen,
   checkId,
   onClose,
-  onSubmit,
   maxPhotosPerStudent = 5
 }: CameraWorkInterfaceProps) {
   // Camera state
   const [isStreaming, setIsStreaming] = useState(false)
-  const [currentFacingMode, setCurrentFacingMode] = useState<'user' | 'environment'>('environment')
+  const [currentFacingMode] = useState<'user' | 'environment'>('environment')
   const [error, setError] = useState<string | null>(null)
   const [isCapturing, setIsCapturing] = useState(false)
 
@@ -79,8 +77,6 @@ export function CameraWorkInterface({
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   // Students strip: center active item
-  const navRef = useRef<HTMLDivElement>(null)
-  const itemRefs = useRef<Array<HTMLDivElement | null>>([])
   // Serialize camera starts to avoid double inits on view switch
   const isStartingRef = useRef(false)
 
@@ -170,15 +166,6 @@ export function CameraWorkInterface({
     // Не скрываем сообщение об ошибке здесь — пусть остается если было
   }, [])
 
-  const switchCamera = useCallback(() => {
-    const newFacingMode = currentFacingMode === 'user' ? 'environment' : 'user'
-    setCurrentFacingMode(newFacingMode)
-
-    if (isStreaming) {
-      stopCamera()
-      setTimeout(() => startCamera(), 100)
-    }
-  }, [currentFacingMode, isStreaming, stopCamera, startCamera])
 
   const capturePhoto = useCallback(async () => {
     if (!videoRef.current || !canvasRef.current || isCapturing) {
@@ -408,47 +395,6 @@ export function CameraWorkInterface({
     // Don't open review mode if no photos - user should take photos first
   }, [students, activeStudentIndex])
 
-  // Keep active student centered in horizontal strip
-  useEffect(() => {
-    if (!navRef.current || !itemRefs.current[activeStudentIndex]) return
-    const container = navRef.current
-    const item = itemRefs.current[activeStudentIndex]!
-
-    const center = () => {
-      try {
-        // Force layout recalculation for mobile
-        container.offsetHeight
-        item.offsetLeft
-        
-        // Get container's scroll area (without padding)
-        const containerWidth = container.clientWidth
-        const scrollWidth = container.scrollWidth
-        
-        // Calculate item position relative to scroll area
-        const itemCenter = item.offsetLeft + (item.offsetWidth / 2)
-        
-        // Target: put item center at container center
-        const targetScroll = itemCenter - (containerWidth / 2)
-        
-        // Apply scroll with bounds checking
-        const maxScroll = scrollWidth - containerWidth
-        const finalScroll = Math.max(0, Math.min(targetScroll, maxScroll))
-        
-        // Use both methods for better mobile compatibility
-        container.scrollLeft = finalScroll
-        container.scrollTo({ left: finalScroll, behavior: 'smooth' })
-      } catch (error) {
-        console.warn('[CAMERA] Centering error:', error)
-      }
-    }
-
-    // Multiple attempts for different browser timing and slow devices
-    requestAnimationFrame(() => {
-      center()
-      setTimeout(center, 100)
-      setTimeout(center, 300) // Extra delay for slow mobile devices
-    })
-  }, [activeStudentIndex, students.length, isOpen, viewMode])
 
 
 
@@ -466,11 +412,11 @@ export function CameraWorkInterface({
 
     return (
       <div className="fixed inset-0 bg-black z-50 flex flex-col min-h-screen overflow-y-auto" style={{ minHeight: '100dvh', height: '100dvh' }}>
-        {/* Header - Name pill centered; Done text on top-right */}
-        <div className="flex items-center justify-between gap-3 p-4 pt-[env(safe-area-inset-top)]">
-          {/* Name pill — слева, занимает всю доступную ширину, не перекрывает «Готово» */}
-          <div className="flex-1 min-w-0">
-            <div className="rounded-[52px] px-4 py-2 border-2 border-[#4f4f4f] bg-transparent">
+        {/* Photo area: Gray background representing photo, full screen */}
+        <div className="bg-gray-500 h-screen relative flex-1">
+          {/* Header overlaid at top */}
+          <div className="absolute top-6 left-3 right-3 flex items-center justify-between">
+            <div className="flex items-center justify-between px-6 py-2.5 rounded-full border-2 border-slate-200 w-full">
               {editingName ? (
                 <input
                   type="text"
@@ -486,130 +432,74 @@ export function CameraWorkInterface({
                       setEditingName(false)
                     }
                   }}
-                  className="bg-transparent text-white text-[20px] font-extrabold outline-none w-full text-left truncate"
+                  className="bg-transparent font-extrabold text-xl text-white opacity-50 outline-none flex-1"
                   autoFocus
                 />
               ) : (
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className="text-white text-[20px] font-extrabold truncate">
-                    {activeStudent.name}
-                  </span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      setEditName(activeStudent.name)
-                      setEditingName(true)
-                    }}
-                    className="text-white hover:bg-white/20 h-auto p-1 flex-shrink-0"
-                    aria-label="Редактировать имя"
-                  >
-                    <Edit3 className="w-4 h-4" strokeWidth={2.25} />
-                  </Button>
-                </div>
+                <input
+                  type="text"
+                  value={activeStudent.name}
+                  readOnly
+                  className="bg-transparent font-extrabold text-xl text-white opacity-50 outline-none flex-1"
+                  onClick={() => {
+                    setEditName(activeStudent.name)
+                    setEditingName(true)
+                  }}
+                />
               )}
+              <ChevronUp className="h-[18px] w-[18px] text-white opacity-50" />
             </div>
+            <span className="font-extrabold text-base text-white ml-3" onClick={() => setViewMode('camera')}>Готово</span>
           </div>
 
-          {/* Готово — справа, в обычном потоке */}
-          <button
-            className="text-white text-lg font-semibold flex-shrink-0"
-            onClick={() => {
-              setViewMode('camera')
-            }}
-            aria-label="Готово"
-          >
-            Готово
-          </button>
-        </div>
-
-        {/* Photo display */}
-        <div className="px-4 pt-4">
+          {/* Photo display */}
           {currentPhoto && (
-            <div
-              className="mx-auto mb-4 bg-white rounded-[42px] overflow-hidden ring-1 ring-white/10 max-h-[calc(100vh-260px)]"
-              style={{ width: 'min(92vw, 560px)', aspectRatio: '2 / 3' }}
-            >
+            <div className="w-full h-full flex items-center justify-center">
               <Image
                 src={currentPhoto.dataUrl}
                 alt="Фотография работы"
                 width={560}
                 height={840}
-                className="w-full h-full object-contain"
+                className="max-w-full max-h-full object-contain"
               />
             </div>
           )}
 
-        </div>
-
-        {/* Photo thumbnails */}
-        {activeStudent.photos.length > 0 && (
-          <div className="px-4 pb-28">
-            <div className="flex items-center justify-center gap-2">
+          {/* Photo thumbnails overlaid at bottom */}
+          {activeStudent.photos.length > 0 && (
+            <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex items-center gap-3">
               {activeStudent.photos.map((photo, index) => (
                 <button
                   key={photo.id}
                   onClick={() => setCurrentPhotoIndex(index)}
-                  className={`h-[66px] w-[44px] rounded-[8px] overflow-hidden border-2 ${index === currentPhotoIndex ? 'border-white' : 'border-white/40 opacity-60'}`}
+                  className={`${index === currentPhotoIndex ? 'w-16 h-20 bg-gray-300 rounded-lg border-2 border-white' : 'w-12 h-16 bg-gray-300 rounded-lg opacity-60'}`}
                 >
                   <Image
                     src={photo.dataUrl}
                     alt={`Фото ${index + 1}`}
-                    width={44}
-                    height={66}
-                    className="w-full h-full object-cover"
+                    width={index === currentPhotoIndex ? 64 : 48}
+                    height={index === currentPhotoIndex ? 80 : 64}
+                    className="w-full h-full object-cover rounded-lg"
                   />
                 </button>
               ))}
             </div>
+          )}
+        </div>
+
+        {/* Bottom controls bar */}
+        <div className="bg-black px-[18px] py-[12px] flex items-center justify-center gap-9">
+          <div className="flex flex-col items-center gap-1 w-20">
+            <Camera className="w-6 h-6 text-white cursor-pointer" strokeWidth={1.5} onClick={() => setViewMode('camera')} />
+            <span className="font-medium text-sm text-white text-center">Переснять</span>
           </div>
-        )}
-
-        {/* Bottom controls */}
-        <div className="sticky bottom-0 bg-black px-7 py-[calc(1.5rem+env(safe-area-inset-bottom))] z-10 flex-shrink-0">
-          <div className="flex items-center justify-between">
-            {/* Переснять */}
-            <div className="flex flex-col items-center gap-1 w-[75px]">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="text-white hover:bg-white/20"
-                onClick={() => {
-                  setViewMode('camera')
-                }}
-              >
-                <Camera className="size-8" style={{ width: 32, height: 32 }} strokeWidth={3} />
-              </Button>
-              <span className="text-white text-[14px] font-medium">Переснять</span>
-            </div>
-
-            {/* Center: Еще страница */}
-            <div className="absolute left-1/2 -translate-x-1/2 flex flex-col items-center gap-1 w-[99px]">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="text-white hover:bg-white/20"
-                onClick={() => {
-                  setViewMode('camera')
-                }}
-              >
-                <Plus className="size-8" style={{ width: 32, height: 32 }} strokeWidth={3} />
-              </Button>
-              <span className="text-white text-[14px] font-medium">Еще страница</span>
-            </div>
-
-            {/* Удалить */}
-            <div className="flex flex-col items-center gap-1 w-[58px]">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="text-white hover:bg-white/20"
-                onClick={() => currentPhoto && deletePhoto(currentPhoto.id)}
-              >
-                <Trash2 className="size-8" style={{ width: 32, height: 32 }} strokeWidth={3} />
-              </Button>
-              <span className="text-white text-[14px] font-medium">Удалить</span>
-            </div>
+          <div className="flex flex-col items-center gap-1 w-16">
+            <Trash2 className="w-6 h-6 text-white cursor-pointer" strokeWidth={1.5} onClick={() => currentPhoto && deletePhoto(currentPhoto.id)} />
+            <span className="font-medium text-sm text-white text-center">Удалить</span>
+          </div>
+          <div className="flex flex-col items-center gap-1 w-28">
+            <Plus className="w-6 h-6 text-white cursor-pointer" strokeWidth={1.5} onClick={() => setViewMode('camera')} />
+            <span className="font-medium text-sm text-white text-center">Еще страница</span>
           </div>
         </div>
       </div>
@@ -620,7 +510,7 @@ export function CameraWorkInterface({
   return (
     <div className="fixed inset-0 bg-black z-50 flex flex-col" style={{ minHeight: '100dvh', height: '100dvh' }}>
       {/* Video area with absolute overlay controls (Rotate, Close) */}
-      <div className="relative overflow-hidden" style={{ height: 'calc(100dvh - 160px)' }}>
+      <div className="relative overflow-hidden bg-gray-500 flex-1">
         {error ? (
           <div className="absolute inset-0 flex items-center justify-center bg-black">
             <div className="text-center text-white px-6 py-8">
@@ -652,161 +542,112 @@ export function CameraWorkInterface({
               muted
               playsInline
             />
-            
-            
+
+
             <canvas ref={canvasRef} className="hidden" />
           </>
         )}
 
-        {/* Overlay controls */}
+        {/* Close button in top right */}
         <Button
           variant="ghost"
           size="icon"
-          className="absolute top-[calc(1.5rem+env(safe-area-inset-top))] left-6 text-white hover:bg-white/20 w-14 h-14"
-          onClick={switchCamera}
-          disabled={!isStreaming}
-          aria-label="Переключить камеру"
-        >
-          <RotateCcw className="size-8" style={{ width: 32, height: 32 }} strokeWidth={3} />
-        </Button>
-
-        <Button
-          variant="ghost"
-          size="icon"
-          className="absolute top-[calc(1.5rem+env(safe-area-inset-top))] right-7 text-white hover:bg-white/20 w-14 h-14"
+          className="absolute top-6 right-7 text-white hover:bg-white/20 w-8 h-8"
           onClick={onClose}
           aria-label="Закрыть"
         >
-          <X className="size-8" style={{ width: 32, height: 32 }} strokeWidth={3} />
+          <X className="w-10 h-10" strokeWidth={1.5} />
         </Button>
-      </div>
 
-      {/* Bottom controls and navigation adjusted per Figma */}
-      <div className="bg-black px-4 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))] flex-shrink-0" style={{ minHeight: '100px' }}>
-        {/* Bottom controls - centered trio */}
-        <div className="flex items-center justify-center gap-10 mt-1">
-          {/* Upload from gallery */}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="w-14 h-14 rounded-full text-white hover:bg-white/20"
-            onClick={() => fileInputRef.current?.click()}
-            aria-label="Загрузить из галереи"
-          >
-            <Upload className="size-8" style={{ width: 32, height: 32 }} strokeWidth={3} />
-          </Button>
-
-          {/* Capture button (center) - circular without icon */}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="w-16 h-16 rounded-full bg-white hover:bg-white disabled:opacity-50 ring-2 ring-[#f8bd00]"
-            onClick={(e) => {
-              console.log('[CAMERA] Capture button clicked')
-              e.preventDefault()
-              e.stopPropagation()
-              capturePhoto()
-            }}
-            disabled={!isStreaming || isCapturing || !canAddMorePhotos}
-            aria-label="Сделать снимок"
-          >
-            <span className="sr-only">Сделать снимок</span>
-          </Button>
-
-          {/* Add student */}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="w-14 h-14 rounded-full text-white hover:bg-white/20"
-            onClick={addStudent}
-            aria-label="Добавить ученика"
-          >
-            <UserPlus className="size-8" style={{ width: 32, height: 32 }} strokeWidth={3} />
-          </Button>
-        </div>
-
-        {/* Status text */}
-        {!canAddMorePhotos && (
-          <div className="text-center mt-4">
-            <p className="text-white text-sm opacity-60">
-              Достигнуто максимальное количество фотографий для {activeStudent?.name}
-            </p>
-          </div>
-        )}
-      </div>
-
-      {/* Student navigation moved to very bottom; arrow integrated with each student block */}
-      <div className="bg-black px-4 pt-3 pb-[calc(0.5rem+env(safe-area-inset-bottom))] flex-shrink-0" style={{ minHeight: '70px' }}>
-        <div className="relative w-full overflow-hidden">
-          <div
-            ref={navRef}
-            className="flex items-start gap-4 overflow-x-auto no-scrollbar scroll-smooth"
-            style={{ 
-              paddingLeft: 'calc(50vw - 60px)',
-              paddingRight: 'calc(50vw - 60px)',
-              scrollBehavior: 'smooth',
-              WebkitOverflowScrolling: 'touch',
-              touchAction: 'pan-x'
-            }}
-          >
-            {students.map((student, index) => (
-              <div
-                key={student.id}
-                ref={(el) => { itemRefs.current[index] = el }}
-                className="relative flex-shrink-0 flex flex-col items-center justify-start"
-                style={{ 
-                  minWidth: 'max-content',
-                  padding: '0 6px'
-                }}
+        {/* User info at bottom of video area */}
+        <div className="absolute bottom-4 left-0 right-0 px-4 flex justify-between items-end">
+          {/* Left student */}
+          <div className="flex-1 flex justify-start">
+            {students[Math.max(0, activeStudentIndex - 1)] && activeStudentIndex > 0 ? (
+              <button
+                className="flex items-center gap-1 opacity-50"
+                onClick={() => setActiveStudentIndex(activeStudentIndex - 1)}
               >
-                <button
-                  className="flex items-center justify-center"
-                  style={{ gap: '3px', whiteSpace: 'nowrap', alignItems: 'center' }}
-                  onClick={() => setActiveStudentIndex(index)}
-                  aria-label={`Выбрать ${student.name}`}
-                >
-                  <span 
-                    className={`text-[18px] leading-[22px] font-extrabold font-nunito tracking-tight ${
-                      index === activeStudentIndex ? 'text-white' : 'text-white/40'
-                    }`}
-                    style={{ 
-                      maxWidth: '120px', 
-                      overflow: 'hidden', 
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap'
-                    }}
-                  >
-                    {student.name}
-                  </span>
-                  <span
-                    className={`inline-flex items-center justify-center rounded-[8px] h-4 w-4 text-[9px] font-bold ${
-                      index === activeStudentIndex ? 'bg-[#096ff5] text-white' : 'bg-white text-black/70 opacity-40'
-                    }`}
-                    style={{ flexShrink: 0, lineHeight: '1' }}
-                  >
-                    {student.photos.length}
-                  </span>
-                </button>
-                <div style={{ height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Button
-                    variant="ghost"
-                    className={`p-0 w-8 h-8 rounded-full flex items-center justify-center transition-opacity ${
-                      activeStudentIndex === index 
-                        ? 'text-white hover:bg-white/20 opacity-100' 
-                        : 'opacity-0 pointer-events-none'
-                    }`}
-                    onClick={activeStudentIndex === index ? handlePhotoClick : undefined}
-                    aria-label="Открыть просмотр и редактирование"
-                  >
-                    <ChevronDown className="size-6" style={{ width: 24, height: 24 }} strokeWidth={3} />
-                  </Button>
-                </div>
-              </div>
-            ))}
+                <span className="font-extrabold text-lg text-white">
+                  {students[activeStudentIndex - 1].name}
+                </span>
+                <span className="bg-slate-100 text-slate-950 font-extrabold text-xs rounded-lg px-1.5 py-0.5 h-4.5 flex items-center justify-center">
+                  {students[activeStudentIndex - 1].photos.length}
+                </span>
+              </button>
+            ) : (
+              <div></div>
+            )}
+          </div>
+
+          {/* Center - active student with up arrow (всегда по центру) */}
+          <div className="flex flex-col items-center absolute left-1/2 transform -translate-x-1/2">
+            <div className="flex items-center justify-center h-6 w-6">
+              <ChevronUp className="h-6 w-6 text-white" />
+            </div>
+            <button
+              className="flex items-center gap-1"
+              onClick={handlePhotoClick}
+            >
+              <span className="font-extrabold text-lg text-white">
+                {activeStudent?.name || 'Ученик'}
+              </span>
+              <span className="bg-blue-600 text-white font-extrabold text-xs rounded-lg px-1.5 py-0.5 h-4.5 flex items-center justify-center">
+                {activeStudent?.photos.length || 0}
+              </span>
+            </button>
+          </div>
+
+          {/* Right student */}
+          <div className="flex-1 flex justify-end">
+            {students[activeStudentIndex + 1] ? (
+              <button
+                className="flex items-center gap-1 opacity-50"
+                onClick={() => setActiveStudentIndex(activeStudentIndex + 1)}
+              >
+                <span className="font-extrabold text-lg text-white">
+                  {students[activeStudentIndex + 1].name}
+                </span>
+                <span className="bg-slate-100 text-slate-950 font-extrabold text-xs rounded-lg px-1.5 py-0.5 h-4.5 flex items-center justify-center">
+                  {students[activeStudentIndex + 1].photos.length}
+                </span>
+              </button>
+            ) : (
+              <div></div>
+            )}
           </div>
         </div>
       </div>
 
+      {/* Bottom controls */}
+      <div className="bg-black px-[18px] py-[12px] flex items-center justify-center gap-9">
+        {/* Upload from gallery */}
+        <ImagePlus className="h-8 w-8 text-white cursor-pointer" onClick={() => fileInputRef.current?.click()} />
+
+        {/* Capture button - white circle with orange border */}
+        <div className="w-16 h-16 border-2 border-orange-500 rounded-full p-0.5 cursor-pointer"
+          onClick={(e) => {
+            console.log('[CAMERA] Capture button clicked')
+            e.preventDefault()
+            e.stopPropagation()
+            capturePhoto()
+          }}
+        >
+          <div className="w-full h-full bg-white rounded-full"></div>
+        </div>
+
+        {/* Add student */}
+        <UserPlus className="h-8 w-8 text-white cursor-pointer" onClick={addStudent} />
+      </div>
+
+      {/* Status text */}
+      {!canAddMorePhotos && (
+        <div className="text-center mt-4">
+          <p className="text-white text-sm opacity-60">
+            Достигнуто максимальное количество фотографий для {activeStudent?.name}
+          </p>
+        </div>
+      )}
       {/* Hidden file input */}
       <input
         ref={fileInputRef}
@@ -817,24 +658,6 @@ export function CameraWorkInterface({
         className="hidden"
       />
 
-      {/* Floating Submit Button - только в режиме камеры */}
-      {viewMode === 'camera' && (() => {
-        const studentsWithPhotos = students.filter(s => s.photos.length > 0)
-        const hasPhotos = studentsWithPhotos.length > 0
-
-        if (!hasPhotos) return null
-
-        return (
-          <div className="fixed bottom-0 left-0 right-0 z-50 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
-            <button
-              onClick={() => onSubmit(students)}
-              className="w-full bg-[#096ff5] hover:bg-blue-600 transition-all duration-200 text-white font-inter font-semibold text-[16px] rounded-[24px] h-14 flex items-center justify-center shadow-lg transform hover:scale-[1.02] active:scale-[0.98]"
-            >
-              Отправить {studentsWithPhotos.length} {studentsWithPhotos.length === 1 ? 'работу' : studentsWithPhotos.length < 5 ? 'работы' : 'работ'} на проверку
-            </button>
-          </div>
-        )
-      })()}
     </div>
   )
 }
