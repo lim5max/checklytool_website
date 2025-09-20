@@ -136,7 +136,10 @@ export default function CheckPage({ params }: CheckPageProps) {
 			loadDrafts()
 		}
 		const handleEvaluationComplete = () => {
-			setTimeout(() => loadSubmissions(), 2000)
+			setTimeout(() => {
+				loadSubmissions()
+				setIsProcessing(false) // Сбрасываем флаг обработки после завершения всех проверок
+			}, 2000)
 		}
 
 		if (typeof window !== 'undefined') {
@@ -163,7 +166,7 @@ export default function CheckPage({ params }: CheckPageProps) {
 		// Добавляем временные ошибки
 		const tempFailedNames = getTempFailedNames(checkId)
 		const tempFailedSubs: StudentSubmission[] = tempFailedNames.map(name => ({
-			id: `temp-${name}-${Date.now()}`,
+			id: `temp-${name}`,
 			student_name: name,
 			student_class: '',
 			submission_images: [],
@@ -205,6 +208,8 @@ export default function CheckPage({ params }: CheckPageProps) {
 			const draft = getDraft(checkId)
 			const { items } = await submitStudents(checkId, draft?.students || [])
 
+			// Запускаем проверку, но не дожидаемся ее завершения
+			// isProcessing будет сброшен через событие evaluation:complete
 			evaluateAll(items.map(i => ({ submissionId: i.submissionId }))).catch(console.error)
 			clearDraft(checkId)
 
@@ -218,7 +223,7 @@ export default function CheckPage({ params }: CheckPageProps) {
 		} catch (error) {
 			console.error('Submit error:', error)
 			toast.error('Ошибка при отправке работ')
-		} finally {
+			// Только при ошибке отправки сбрасываем сразу
 			setIsProcessing(false)
 		}
 	}
@@ -240,14 +245,17 @@ export default function CheckPage({ params }: CheckPageProps) {
 
 	const handleDeleteFailed = async (submission: StudentSubmission) => {
 		try {
-			const isTemporary = submission.error_details?.isTemporary === true
+			const isTemporary = submission.error_details?.isTemporary === true || submission.id.startsWith('temp-')
 
 			if (isTemporary) {
+				// Удаляем из временного списка
 				const tempFailedNames = getTempFailedNames(checkId)
 				const updatedNames = tempFailedNames.filter(name => name !== submission.student_name)
 				clearTempFailedNames(checkId)
 				updatedNames.forEach(name => addTempFailedName(checkId, name))
-				setSubmissions(prev => prev.filter(s => s.id !== submission.id))
+
+				// Принудительно перезагружаем данные
+				loadSubmissions()
 			} else {
 				const response = await fetch(`/api/submissions/${submission.id}`, { method: 'DELETE' })
 				if (!response.ok) throw new Error('Failed to delete')
@@ -323,19 +331,7 @@ export default function CheckPage({ params }: CheckPageProps) {
 
 				{/* Content */}
 				<div className="flex-1 w-full space-y-6">
-					{showSkeleton ? (
-						// Skeleton loading
-						<div className="space-y-6">
-							<div className="space-y-4">
-								<div className="h-4 bg-gray-200 rounded w-1/3 animate-pulse" />
-								<div className="space-y-2.5">
-									<div className="h-16 bg-gray-200 rounded-[24px] animate-pulse" />
-									<div className="h-16 bg-gray-200 rounded-[24px] animate-pulse" />
-									<div className="h-16 bg-gray-200 rounded-[24px] animate-pulse" />
-								</div>
-							</div>
-						</div>
-					) : !hasAnyContent ? (
+					{!hasAnyContent && !isLoading && !isProcessing ? (
 						// Empty state
 						<div className="flex flex-col gap-2.5 items-center justify-center py-20">
 							<div className="flex justify-center items-center h-60 w-full">
@@ -397,35 +393,55 @@ export default function CheckPage({ params }: CheckPageProps) {
 							)}
 
 							{/* Работы к проверке */}
-							{drafts.length > 0 && (
+							{(drafts.length > 0 || showSkeleton) && (
 								<div className="flex flex-col gap-4">
-									<h2 className="font-medium text-base text-slate-800">Работы к проверке</h2>
+									<h2 className="font-medium text-base text-slate-800">
+										{showSkeleton ? 'Проверяем работы' : 'Работы к проверке'}
+									</h2>
 									<div className="flex flex-col gap-2.5">
-										{drafts.map((student, index) => (
-											<div key={`${student.name}-${index}`} className="flex gap-2 items-center justify-start w-full">
-												<div className="bg-slate-50 rounded-[24px] p-6 flex-1">
+										{showSkeleton ? (
+											// Скелетоны для проверяющихся работ
+											Array.from({ length: Math.max(3, drafts.length) }).map((_, i) => (
+												<div key={i} className="bg-slate-50 rounded-[24px] p-6 w-full">
 													<div className="flex items-center justify-between w-full">
 														<div className="flex items-center gap-3">
-															<span className="font-medium text-lg text-slate-800">
-																{student.name}
-															</span>
-															{student.variant && (
-																<span className="bg-blue-600 text-white font-extrabold text-sm rounded-xl px-1.5 py-0.5 h-5 flex items-center justify-center">
-																	{student.variant}
-																</span>
-															)}
+															<div className="h-5 bg-gray-200 rounded w-20 animate-pulse" />
+															<div className="w-6 h-5 bg-gray-200 rounded-xl animate-pulse" />
 														</div>
-														<div className="h-2 w-2 bg-orange-500 rounded-full" />
+														<div className="h-2 w-2 bg-blue-500 rounded-full animate-pulse" />
+													</div>
+													<div className="mt-2 text-sm text-blue-600 animate-pulse">
+														Проверяется...
 													</div>
 												</div>
-												<button
-													onClick={() => handleDeleteDraft(student.name)}
-													className="p-3 rounded-xl hover:bg-red-100 active:bg-red-200 transition-colors"
-												>
-													<Trash2 className="h-6 w-6 text-red-500" />
-												</button>
-											</div>
-										))}
+											))
+										) : (
+											drafts.map((student, index) => (
+												<div key={`${student.name}-${index}`} className="flex gap-2 items-center justify-start w-full">
+													<div className="bg-slate-50 rounded-[24px] p-6 flex-1">
+														<div className="flex items-center justify-between w-full">
+															<div className="flex items-center gap-3">
+																<span className="font-medium text-lg text-slate-800">
+																	{student.name}
+																</span>
+																{student.variant && (
+																	<span className="bg-blue-600 text-white font-extrabold text-sm rounded-xl px-1.5 py-0.5 h-5 flex items-center justify-center">
+																		{student.variant}
+																	</span>
+																)}
+															</div>
+															<div className="h-2 w-2 bg-orange-500 rounded-full" />
+														</div>
+													</div>
+													<button
+														onClick={() => handleDeleteDraft(student.name)}
+														className="p-3 rounded-xl hover:bg-red-100 active:bg-red-200 transition-colors"
+													>
+														<Trash2 className="h-6 w-6 text-red-500" />
+													</button>
+												</div>
+											))
+										)}
 									</div>
 								</div>
 							)}
