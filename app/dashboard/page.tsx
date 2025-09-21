@@ -51,49 +51,39 @@ const CheckItem = React.memo(function CheckItem({
   return (
     <div
       onClick={() => onCheckClick(check.id)}
-      className="bg-slate-50 rounded-figma-lg p-4 cursor-pointer hover:bg-slate-100 transition-colors"
+      className="bg-slate-50 rounded-[42px] p-7 cursor-pointer hover:bg-slate-100 transition-colors w-full"
     >
-      <div className="flex items-start justify-between mb-2">
-        <h3 className="font-nunito font-bold text-[16px] leading-[1.3] text-slate-800 flex-1 pr-2">
+      <div className="flex items-start justify-between mb-2.5">
+        <h2 className="font-nunito font-extrabold text-xl text-slate-700 flex-1">
           {check.title}
-        </h3>
-        <ChevronRight className="w-5 h-5 text-slate-400 flex-shrink-0 mt-0.5" />
+        </h2>
+        <ChevronRight className="w-6 h-6 text-slate-600 flex-shrink-0" />
       </div>
 
-      <div className="flex items-center gap-2 mb-2 text-slate-600">
-        {check.subject && (
+      <div className="flex gap-2 items-center mb-2.5">
+        {check.statistics && check.statistics.average_score && (
           <>
-            <span className="font-inter font-medium text-[12px]">
-              {check.subject}
-            </span>
+            <div className="flex gap-1.5 items-center">
+              <span className="font-medium text-base text-slate-500">Средний балл</span>
+              <span className="font-medium text-base text-slate-800">
+                {check.statistics.average_score.toFixed(1)}
+              </span>
+            </div>
             <div className="w-1 h-1 bg-slate-400 rounded-full"></div>
           </>
         )}
 
-        {check.class_level && (
-          <>
-            <span className="font-inter font-medium text-[12px]">
-              {check.class_level}
-            </span>
-            <div className="w-1 h-1 bg-slate-400 rounded-full"></div>
-          </>
-        )}
-
-        <span className="font-inter font-medium text-[12px]">
-          {check.variant_count} вар.
-        </span>
-      </div>
-
-      <div className="flex items-center gap-2">
-        {check.statistics && (
-          <span className="font-inter font-medium text-[12px] text-slate-500">
-            {check.statistics.total_submissions} работ
+        <div className="flex gap-1.5 items-center">
+          <span className="font-medium text-base text-slate-500">Учеников</span>
+          <span className="font-medium text-base text-slate-800">
+            {check.statistics?.total_submissions || 0}
           </span>
-        )}
-        <span className="font-inter font-medium text-[12px] text-slate-500">
-          {formatDate(check.created_at)}
-        </span>
+        </div>
       </div>
+
+      <p className="font-medium text-sm text-slate-600">
+        {formatDate(check.created_at)}
+      </p>
     </div>
   )
 })
@@ -146,29 +136,20 @@ function useDebounce<T>(value: T, delay: number): T {
 
 export default function DashboardPage() {
   const router = useRouter()
-  const [checks, setChecks] = useState<Check[]>([])
+  const [allChecks, setAllChecks] = useState<Check[]>([]) // Все проверки
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [subjectFilter, setSubjectFilter] = useState<string>('')
   const [sortBy, setSortBy] = useState<'created_at' | 'title' | 'updated_at'>('created_at')
 
-  // Debounce search query to prevent excessive API calls
-  const debouncedSearchQuery = useDebounce(searchQuery, 500)
-
-  // Мемоизируем загрузку данных для предотвращения лишних запросов
-  const loadDashboardData = useCallback(async () => {
+  // Загрузка начальных данных без фильтров
+  const loadInitialData = useCallback(async () => {
     try {
       setIsLoading(true)
 
-      const params = new URLSearchParams()
-      if (debouncedSearchQuery) params.append('search', debouncedSearchQuery)
-      if (subjectFilter) params.append('subject', subjectFilter)
-      params.append('sort_by', sortBy)
-      params.append('sort_order', 'desc')
-
       const [checksResponse, statsResponse] = await Promise.all([
-        fetch(`/api/checks?${params}`),
+        fetch('/api/checks?sort_by=created_at&sort_order=desc'),
         fetch('/api/dashboard/stats')
       ])
 
@@ -185,7 +166,7 @@ export default function DashboardPage() {
       const checksData = await checksResponse.json()
       const statsData = await statsResponse.json()
 
-      setChecks(checksData.checks || [])
+      setAllChecks(checksData.checks || [])
       setStats(statsData.stats || null)
 
     } catch (error) {
@@ -194,12 +175,12 @@ export default function DashboardPage() {
     } finally {
       setIsLoading(false)
     }
-  }, [debouncedSearchQuery, subjectFilter, sortBy])
+  }, [])
 
-  // Загрузка данных
+  // Загрузка данных только один раз
   useEffect(() => {
-    loadDashboardData()
-  }, [loadDashboardData])
+    loadInitialData()
+  }, [loadInitialData])
 
   // Мемоизируем форматирование даты
   const formatDate = useCallback((dateString: string) => {
@@ -226,9 +207,40 @@ export default function DashboardPage() {
     router.push('/dashboard/checks/create')
   }, [router])
 
-  // Мемоизируем фильтрованный и обработанный список проверок
-  const checksWithStats = useMemo(() => {
-    return checks.map(check => ({
+  // Клиентская фильтрация и сортировка
+  const filteredAndSortedChecks = useMemo(() => {
+    let filtered = [...allChecks]
+
+    // Фильтрация по поисковому запросу
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim()
+      filtered = filtered.filter(check =>
+        check.title.toLowerCase().includes(query) ||
+        check.description?.toLowerCase().includes(query) ||
+        check.subject?.toLowerCase().includes(query)
+      )
+    }
+
+    // Фильтрация по предмету
+    if (subjectFilter) {
+      filtered = filtered.filter(check => check.subject === subjectFilter)
+    }
+
+    // Сортировка
+    filtered.sort((a, b) => {
+      switch (sortBy) {
+        case 'title':
+          return a.title.localeCompare(b.title)
+        case 'updated_at':
+          return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+        case 'created_at':
+        default:
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      }
+    })
+
+    // Добавляем статистику
+    return filtered.map(check => ({
       ...check,
       statistics: check.statistics || {
         total_submissions: 0,
@@ -237,15 +249,15 @@ export default function DashboardPage() {
         failed_submissions: 0
       }
     }))
-  }, [checks])
+  }, [allChecks, searchQuery, subjectFilter, sortBy])
 
   // Мемоизируем уникальные предметы
   const uniqueSubjects = useMemo(() => {
-    const subjects = checks
+    const subjects = allChecks
       .map(check => check.subject)
       .filter(Boolean) as string[]
     return [...new Set(subjects)]
-  }, [checks])
+  }, [allChecks])
 
   // Состояние загрузки
   if (isLoading) {
@@ -293,7 +305,7 @@ export default function DashboardPage() {
   }
 
   // Пустое состояние - онбординг как в дизайне
-  if (!isLoading && checks.length === 0 && !searchQuery) {
+  if (!isLoading && allChecks.length === 0 && !searchQuery) {
     return (
       <div className="p-4 space-y-8">
         {/* Онбординг блок */}
@@ -443,10 +455,10 @@ export default function DashboardPage() {
 
       {/* Список работ */}
       <div className="space-y-3">
-        {checksWithStats.length === 0 ? (
+        {filteredAndSortedChecks.length === 0 ? (
           <EmptySearchState searchQuery={searchQuery} />
         ) : (
-          checksWithStats.map((check) => (
+          filteredAndSortedChecks.map((check) => (
             <CheckItem
               key={check.id}
               check={check}

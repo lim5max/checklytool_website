@@ -1,135 +1,64 @@
-'use client';
-
-import { useState } from "react";
+import { Suspense } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { motion } from "framer-motion";
 import StructuredData from "../components/StructuredData";
-import TeachersRepetitorsBlock from "../components/TeachersRepetitorsBlock";
-import HowItWorksSection from "../components/HowItWorksSection";
-import WaitlistModal from "../components/WaitlistModal";
 import MobileHeader from "../components/MobileHeader";
 import DesktopHeader from "../components/DesktopHeader";
+import HeroSection from "../components/HeroSection";
 
+// Ленивая загрузка тяжелых компонентов
+import dynamic from "next/dynamic";
 
+const TeachersRepetitorsBlock = dynamic(() => import("../components/TeachersRepetitorsBlock"), {
+  loading: () => <div className="h-[424px] bg-slate-50 rounded-3xl animate-pulse" />
+});
+
+const HowItWorksSection = dynamic(() => import("../components/HowItWorksSection"), {
+  loading: () => <div className="h-96 bg-slate-50 rounded-lg animate-pulse" />
+});
+
+const CTASection = dynamic(() => import("../components/CTASection"), {
+  loading: () => <div className="h-64 bg-slate-50 rounded-lg animate-pulse" />
+});
 
 export default function Home() {
-  const [isModalOpen, setIsModalOpen] = useState(false);
-
-  const openModal = () => setIsModalOpen(true);
-  const closeModal = () => setIsModalOpen(false);
-
   return (
     <>
       <StructuredData />
       <div className="bg-white">
-        <div className="box-border flex flex-col gap-10 items-start justify-start px-4  py-4 relative min-h-screen max-w-[1082px] mx-auto">
-          
+        <div className="box-border flex flex-col gap-10 items-start justify-start px-4 py-4 relative min-h-screen max-w-[1082px] mx-auto">
+
           <header className="relative w-full">
-            <MobileHeader 
-              variant="landing"
-              onOpenModal={openModal}
-            />
-            <DesktopHeader variant="landing" />
+            <Suspense fallback={<div className="h-16 bg-slate-50 rounded animate-pulse" />}>
+              <MobileHeader variant="landing" />
+              <DesktopHeader variant="landing" />
+            </Suspense>
           </header>
 
           <main className="flex flex-col gap-32 items-center justify-start relative w-full">
-            
-            <motion.section 
-              className="flex flex-col gap-16 items-center justify-start text-center w-full"
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.8 }}
-            >
-              <motion.div 
-                className="flex flex-col gap-6 items-center justify-start"
-                initial={{ opacity: 0, y: 40 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.8, delay: 0.2 }}
-              >
-                <div className="flex flex-col gap-2.5 items-center">
-                  <motion.h1 
-                    className="font-nunito font-black leading-tight text-4xl sm:text-5xl lg:text-6xl text-slate-900 tracking-tight"
-                    initial={{ opacity: 0, y: 50 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 0.8, delay: 0.4 }}
-                  >
-                    <span className="block">Быстрая Проверка</span>
-                    <span className="block">Работ Школьников</span>
-                  </motion.h1>
-                  <motion.p 
-                    className="font-inter text-lg text-slate-800 max-w-md leading-relaxed"
-                    initial={{ opacity: 0, y: 30 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 0.6, delay: 0.6 }}
-                  >
-                    Приложение проверит, подсчитает баллы и оценит работу за тебя. Пока ты пьешь чай :)
-                  </motion.p>
-                </div>
-                <motion.div 
-                  className="flex flex-col gap-2 items-center"
-                  initial={{ opacity: 0, y: 30 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.6, delay: 0.8 }}
-                >
-                  <motion.button
-                    onClick={openModal}
-                    className="bg-[#096ff5] hover:bg-blue-600 transition-colors text-white font-inter font-medium text-base px-6 py-3.5 rounded-full shadow-lg inline-block"
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    transition={{ type: "spring", stiffness: 400, damping: 17 }}
-                  >
-                    Начать работу
-                  </motion.button>
-                  <p className="font-inter font-medium text-xs text-slate-900">
-                    Всего 200 ₽ в мес.
-                  </p>
-                </motion.div>
-              </motion.div>
-              <motion.div 
-                className="-mx-4 md:mx-0 w-full"
-                initial={{ opacity: 0, y: 50 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.8, delay: 0.2 }}
-              >
-                <TeachersRepetitorsBlock />
-              </motion.div>
-            </motion.section>
 
-            <HowItWorksSection />
+            {/* Hero секция - критичная для LCP */}
+            <HeroSection />
 
-            <motion.section 
-              className="flex flex-col gap-10 items-center justify-start w-full"
-              initial={{ opacity: 0 }}
-              whileInView={{ opacity: 1 }}
-              viewport={{ once: true, margin: "-100px" }}
-              transition={{ duration: 0.8 }}
-            >
-              <motion.h2 
-                className="font-nunito font-black text-4xl sm:text-5xl text-center text-slate-900 tracking-tight"
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.6, delay: 0.2 }}
-              >
+            {/* Ленивая загрузка остальных секций */}
+            <Suspense fallback={<div className="h-[424px] bg-slate-50 rounded-3xl animate-pulse w-full" />}>
+              <TeachersRepetitorsBlock />
+            </Suspense>
+
+            <Suspense fallback={<div className="h-96 bg-slate-50 rounded-lg animate-pulse w-full" />}>
+              <HowItWorksSection />
+            </Suspense>
+
+            {/* Статическая секция с проблемами */}
+            <section className="flex flex-col gap-10 items-center justify-start w-full">
+              <h2 className="font-nunito font-black text-4xl sm:text-5xl text-center text-slate-900 tracking-tight">
                 Какие проблемы решаем
-              </motion.h2>
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                whileInView={{ opacity: 1, scale: 1 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.6, delay: 0.4 }}
-              >
-                <Image 
-                  src="/images/problem-illustration.png" 
-                  alt="Problems we solve" 
-                  width={732} 
+              </h2>
+              <div>
+                <Image
+                  src="/images/problem-illustration.png"
+                  alt="Problems we solve"
+                  width={732}
                   height={490}
                   loading="lazy"
                   placeholder="blur"
@@ -138,96 +67,20 @@ export default function Home() {
                   className="object-cover rounded-lg w-full h-auto max-w-3xl"
                   decoding="async"
                 />
-              </motion.div>
-            </motion.section>
+              </div>
+            </section>
 
-            <motion.section 
-              className="flex flex-col md:flex-row gap-16 items-center justify-center w-full"
-              initial={{ opacity: 0 }}
-              whileInView={{ opacity: 1 }}
-              viewport={{ once: true, margin: "-100px" }}
-              transition={{ duration: 0.8 }}
-            >
-              <motion.div 
-                className="hidden md:block w-full max-w-[464px] aspect-square rounded-[48px] bg-slate-50"
-                initial={{ opacity: 0, y: 40 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.8, delay: 0.2 }}
-              >
-                <Image 
-                  src="/images/cta-illustration.png" 
-                  alt="CTA illustration" 
-                  width={464} 
-                  height={485}
-                  loading="lazy"
-                  sizes="(max-width: 768px) 0px, 464px"
-                  className="object-cover w-full h-auto"
-                />
-              </motion.div>
-              <motion.div 
-                className="flex flex-col gap-8 items-center md:items-start w-full text-center md:text-left"
-                initial={{ opacity: 0, y: 50 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.8, delay: 0.4 }}
-              >
-                <div className="flex flex-col gap-4">
-                  <motion.h2 
-                    className="font-nunito font-black leading-tight text-4xl sm:text-5xl text-slate-900 tracking-tight"
-                    initial={{ opacity: 0, y: 20 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 0.6, delay: 0.6 }}
-                  >
-                    <span className="block">Cокращай время</span>
-                    <span className="block">проверки в <span className="text-[#096ff5]">5 раз</span></span>
-                  </motion.h2>
-                  <motion.p 
-                    className="font-inter text-lg md:max-w-full max-w-sm md:text-xl  text-slate-800  leading-relaxed"
-                    initial={{ opacity: 0, y: 20 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 0.6, delay: 0.8 }}
-                  >
-                    Оформи подписку на сервис за 200 ₽ в месяц, <br className="hidden md:inline" />пока мы запускаемся. Потом станет дороже)
-                  </motion.p>
-                </div>
-                <motion.div 
-                  className="flex flex-col gap-4 w-full"
-                  initial={{ opacity: 0, y: 30 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.6, delay: 1.0 }}
-                >
-                  <motion.button
-                    onClick={openModal}
-                    className="bg-[#096ff5] hover:bg-blue-600 transition-colors w-full text-white font-inter font-medium text-2xl px-5 py-8 rounded-full shadow-lg h-[172px] flex items-center justify-center"
-                    whileHover={{ scale: 1.02, boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)" }}
-                    whileTap={{ scale: 0.98 }}
-                  >
-                    Начать сейчас
-                  </motion.button>
-                  
-                  <motion.button
-                    onClick={openModal}
-                    className="bg-white hover:bg-gray-50 border-2 border-[#096ff5] transition-colors w-full text-[#096ff5] font-inter font-medium text-lg px-6 py-4 rounded-full shadow-md"
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                  >
-                    Оставить заявку
-                  </motion.button>
-                </motion.div>
-              </motion.div>
-            </motion.section>
+            <Suspense fallback={<div className="h-64 bg-slate-50 rounded-lg animate-pulse w-full" />}>
+              <CTASection />
+            </Suspense>
 
           </main>
 
           <footer className="flex flex-col sm:flex-row items-center justify-between gap-4 w-full pt-8 mt-16 border-t border-slate-200 text-sm text-slate-600">
             <p>©2025 ChecklyTool. Все права защищены.</p>
-            <Link 
-              href="https://www.rusprofile.ru/ip/321508100625381" 
-              target="_blank" 
+            <Link
+              href="https://www.rusprofile.ru/ip/321508100625381"
+              target="_blank"
               rel="noopener noreferrer"
               className="hover:text-slate-900 transition-colors"
             >
@@ -237,8 +90,6 @@ export default function Home() {
 
         </div>
       </div>
-
-      <WaitlistModal isOpen={isModalOpen} onClose={closeModal} />
     </>
   );
 }

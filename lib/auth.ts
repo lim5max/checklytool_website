@@ -74,7 +74,11 @@ export const authOptions: NextAuthConfig = {
     signIn: '/auth/login',
     error: '/auth/error',
   },
-  trustHost: true, // Required for custom domains/IPs in development
+  session: {
+    strategy: "jwt",
+    maxAge: 48 * 60 * 60, // 48 hours
+  },
+  trustHost: true,
   callbacks: {
     async signIn({ user, account, profile }) {
       // Auto-create user profile on first login
