@@ -200,24 +200,6 @@ export default function MobileHeader({
                 <p className="leading-[1.2]">Главная</p>
               </Link>
             </motion.div>
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3, delay: 0.3 }}
-            >
-              <Link href="/dashboard/checks" onClick={closeMenu}>
-                <p className="leading-[1.2]">Работы</p>
-              </Link>
-            </motion.div>
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3, delay: 0.4 }}
-            >
-              <Link href="/dashboard/profile" onClick={closeMenu}>
-                <p className="leading-[1.2]">Профиль</p>
-              </Link>
-            </motion.div>
           </motion.div>
         </div>
         

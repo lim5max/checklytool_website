@@ -7,14 +7,65 @@ export async function analyzeStudentWork(
 	submissionImages: string[],
 	referenceAnswers: Record<string, string> | null,
 	referenceImages: string[] | null,
-	variantCount: number
+	variantCount: number,
+	checkType: 'test' | 'essay' = 'test',
+	essayCriteria?: Array<{ grade: number; title: string; description: string; min_errors?: number; max_errors?: number }>
 ): Promise<AIAnalysisResponse> {
 	
 	// Generate unique identifier for this analysis to prevent caching
 	const analysisId = `analysis_${Date.now()}_${Math.random().toString(36).substring(7)}`
 
-	// Prepare the prompt for the AI
-	const systemPrompt = `Ты - преподаватель, проверяешь контрольные работы учеников.
+	// Prepare the prompt for the AI based on check type
+	const systemPrompt = checkType === 'essay' ? `Ты - преподаватель русского языка, проверяешь сочинения учеников.
+
+ВАЖНО: Сначала проверь, подходят ли изображения для анализа:
+- ✅ ПОДХОДЯЩИЙ КОНТЕНТ: письменные сочинения, изложения, эссе, тексты учеников, рукописный текст
+- ❌ НЕПОДХОДЯЩИЙ КОНТЕНТ: фотографии лиц людей, селфи, случайные предметы, пустые страницы, неразборчивые изображения
+
+Если изображения содержат НЕПОДХОДЯЩИЙ КОНТЕНТ, верни JSON с ошибкой:
+{
+  "error": "inappropriate_content",
+  "error_message": "Загружены неподходящие изображения. Пожалуйста, сфотографируйте именно сочинение ученика - рукописный текст, тетрадь с работой.",
+  "content_type_detected": "лица людей/селфи/прочее"
+}
+
+Если изображения ПОДХОДЯЩИЕ, проанализируй сочинение и верни JSON:
+{
+  "variant_detected": 1,
+  "confidence_score": 0.95,
+  "student_name": null,
+  "total_questions": 1,
+  "essay_analysis": {
+    "structure": {"has_introduction": true, "has_body": true, "has_conclusion": true, "score": 0.9},
+    "logic": {"coherent": true, "clear_arguments": true, "score": 0.8},
+    "errors": {
+      "grammar_errors": 2,
+      "syntax_errors": 1,
+      "total_errors": 3,
+      "examples": ["ошибка 1: описание", "ошибка 2: описание"]
+    },
+    "content_quality": "хорошее раскрытие темы, примеры уместны",
+    "final_grade": 4
+  },
+  "answers": {
+    "1": {"detected_answer": "полный текст сочинения", "confidence": 0.95}
+  },
+  "additional_notes": "комментарии к работе"
+}
+
+КРИТЕРИИ ОЦЕНКИ СОЧИНЕНИЙ:
+${essayCriteria?.map(c => `${c.grade} баллов — ${c.description}`).join('\n') ||
+'5 баллов — структура соблюдена, логика ясная, ошибок мало или совсем нет (не более двух грамматических ошибок)\n4 балла — структура есть, логика в целом понятна, ошибок немного (от 3 до 6 грамматических и синтаксических)\n3 балла — структура нарушена, логика местами сбивается, ошибок достаточно много (более 6 ошибок)\n2 балла — структура отсутствует, логики почти нет, ошибок очень много, текст трудно читать'}
+
+Требования к анализу сочинений:
+- Внимательно прочитай весь текст сочинения
+- Оцени структуру: есть ли вступление, основная часть, заключение
+- Оцени логику изложения и связность текста
+- Подсчитай грамматические и синтаксические ошибки
+- Выбери подходящую оценку согласно критериям
+- Предоставь конструктивные комментарии
+- Верни ТОЛЬКО JSON, без лишнего текста
+- ВНИМАТЕЛЬНО анализируй каждое изображение отдельно` : `Ты - преподаватель, проверяешь контрольные работы учеников.
 
 ВАЖНО: Сначала проверь, подходят ли изображения для анализа:
 - ✅ ПОДХОДЯЩИЙ КОНТЕНТ: письменные работы, тетради, листы с решениями, математические задачи, тексты, схемы, рисунки заданий
@@ -25,7 +76,7 @@ export async function analyzeStudentWork(
   "error": "inappropriate_content",
   "error_message": "Загружены неподходящие изображения. Пожалуйста, сфотографируйте именно работу ученика - тетрадь, листы с решениями, письменные ответы.",
   "content_type_detected": "лица людей/селфи/прочее"
-}
+}`
 
 Если изображения ПОДХОДЯЩИЕ, проанализируй работу и верни JSON:
 {
@@ -223,14 +274,16 @@ export async function analyzeWithRetry(
 	referenceAnswers: Record<string, string> | null,
 	referenceImages: string[] | null,
 	variantCount: number,
-	maxRetries: number = 3
+	maxRetries: number = 3,
+	checkType: 'test' | 'essay' = 'test',
+	essayCriteria?: Array<{ grade: number; title: string; description: string; min_errors?: number; max_errors?: number }>
 ): Promise<AIAnalysisResponse> {
 	let lastError: Error
 	
 	for (let attempt = 1; attempt <= maxRetries; attempt++) {
 		try {
 			console.log(`AI Analysis attempt ${attempt}/${maxRetries}`)
-			return await analyzeStudentWork(submissionImages, referenceAnswers, referenceImages, variantCount)
+			return await analyzeStudentWork(submissionImages, referenceAnswers, referenceImages, variantCount, checkType, essayCriteria)
 		} catch (error) {
 			lastError = error as Error
 			console.error(`Analysis attempt ${attempt} failed:`, error)

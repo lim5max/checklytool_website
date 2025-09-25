@@ -26,6 +26,7 @@ export interface Check {
   subject?: string
   class_level?: string
   total_questions?: number
+  check_type: 'test' | 'essay'
   created_at: string
   updated_at: string
 }
@@ -35,6 +36,17 @@ export interface GradingCriteria {
   check_id: string
   grade: 2 | 3 | 4 | 5
   min_percentage: number
+  created_at: string
+}
+
+export interface EssayGradingCriteria {
+  id: string
+  check_id: string | null
+  grade: 2 | 3 | 4 | 5
+  title: string
+  description: string
+  min_errors?: number
+  max_errors?: number
   created_at: string
 }
 
@@ -84,6 +96,27 @@ export interface EvaluationResult {
   }>
   ai_response?: OpenRouterResponse // Full OpenRouter response
   confidence_score?: number
+  essay_metadata?: {
+    structure: {
+      has_introduction: boolean
+      has_body: boolean
+      has_conclusion: boolean
+      score: number
+    }
+    logic: {
+      coherent: boolean
+      clear_arguments: boolean
+      score: number
+    }
+    errors: {
+      grammar_errors: number
+      syntax_errors: number
+      total_errors: number
+      examples: string[]
+    }
+    content_quality: string
+    final_grade: number
+  }
   created_at: string
 }
 
@@ -191,7 +224,30 @@ export interface AIAnalysisResponse {
   total_questions?: number
   student_name?: string
   additional_notes?: string
-  
+
+  // Дополнительные данные для сочинений
+  essay_analysis?: {
+    structure: {
+      has_introduction: boolean
+      has_body: boolean
+      has_conclusion: boolean
+      score: number
+    }
+    logic: {
+      coherent: boolean
+      clear_arguments: boolean
+      score: number
+    }
+    errors: {
+      grammar_errors: number
+      syntax_errors: number
+      total_errors: number
+      examples: string[]
+    }
+    content_quality: string
+    final_grade: number
+  }
+
   // Ошибка неподходящего контента
   error?: 'inappropriate_content'
   error_message?: string

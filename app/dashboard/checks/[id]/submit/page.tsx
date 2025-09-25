@@ -229,37 +229,44 @@ export default function SubmissionPage({ params }: SubmissionPageProps) {
       }
 
       const result = await response.json()
-      
-      setUploadProgress(100)
-      
+
+      setUploadProgress(90)
+
       toast.success('Работа успешно загружена!')
-      
-      // Start processing
-      setTimeout(async () => {
-        try {
-          console.log('Starting evaluation for submission:', result.submission.id)
-          
-          const evalResponse = await fetch(`/api/submissions/${result.submission.id}/evaluate`, {
-            method: 'POST'
-          })
-          
-          if (evalResponse.ok) {
-            const evalResult = await evalResponse.json()
-            console.log('Evaluation completed:', evalResult)
-            toast.success('Обработка работы завершена')
+
+      // Start processing immediately without timeout
+      try {
+        console.log('Starting evaluation for submission:', result.submission.id)
+
+        const evalResponse = await fetch(`/api/submissions/${result.submission.id}/evaluate`, {
+          method: 'POST'
+        })
+
+        setUploadProgress(100)
+
+        if (evalResponse.ok) {
+          const evalResult = await evalResponse.json()
+          console.log('Evaluation completed:', evalResult)
+          toast.success('Обработка работы завершена')
+          // Плавный переход через состояние загрузки
+          setTimeout(() => {
             router.push(`/dashboard/checks/${checkId}/results?highlight=${result.submission.id}`)
-          } else {
-            const errorData = await evalResponse.json()
-            console.error('Evaluation failed:', errorData)
-            toast.error(`Ошибка при обработке: ${errorData.error || 'Неизвестная ошибка'}`)
+          }, 500)
+        } else {
+          const errorData = await evalResponse.json()
+          console.error('Evaluation failed:', errorData)
+          toast.error(`Ошибка при обработке: ${errorData.error || 'Неизвестная ошибка'}`)
+          setTimeout(() => {
             router.push(`/dashboard/checks/${checkId}`)
-          }
-        } catch (evalError) {
-          console.error('Error starting evaluation:', evalError)
-          toast.error('Не удалось запустить обработку работы')
-          router.push(`/dashboard/checks/${checkId}`)
+          }, 500)
         }
-      }, 1000)
+      } catch (evalError) {
+        console.error('Error starting evaluation:', evalError)
+        toast.error('Не удалось запустить обработку работы')
+        setTimeout(() => {
+          router.push(`/dashboard/checks/${checkId}`)
+        }, 500)
+      }
       
     } catch (error) {
       console.error('Error submitting work:', error)

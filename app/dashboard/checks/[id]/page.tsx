@@ -7,6 +7,7 @@ import { X, Settings, Trash2 } from 'lucide-react'
 import Image from 'next/image'
 
 import MobileHeader from '@/components/MobileHeader'
+import DesktopHeader from '@/components/DesktopHeader'
 import { CameraWorkInterface } from '@/components/camera/CameraWorkInterface'
 import { Button } from '@/components/ui/button'
 import { getDraft, clearDraft, setDraftStudents, getTempFailedNames, clearTempFailedNames, addTempFailedName } from '@/lib/drafts'
@@ -43,6 +44,8 @@ interface CheckPageProps {
 
 export default function CheckPage({ params }: CheckPageProps) {
 	const router = useRouter()
+	const [user, setUser] = useState<{ name?: string; email?: string; image?: string } | null>(null)
+	const [isUserLoading, setIsUserLoading] = useState(true)
 	const [checkId, setCheckId] = useState<string>('')
 	const [checkTitle, setCheckTitle] = useState<string>('Проверочная работа')
 	const [submissions, setSubmissions] = useState<StudentSubmission[]>([])
@@ -50,6 +53,29 @@ export default function CheckPage({ params }: CheckPageProps) {
 	const [isCameraOpen, setIsCameraOpen] = useState(false)
 	const [isProcessing, setIsProcessing] = useState(false)
 	const [drafts, setDrafts] = useState<DraftStudent[]>([])
+
+	// Загружаем данные пользователя
+	useEffect(() => {
+		setIsUserLoading(true)
+		fetch('/api/auth/session')
+			.then(res => res.json())
+			.then(data => {
+				if (data?.user) {
+					setUser(data.user)
+				} else {
+					// Если нет пользователя, перенаправить на страницу входа
+					router.push('/auth/login')
+					return
+				}
+			})
+			.catch(console.error)
+			.finally(() => setIsUserLoading(false))
+	}, [router])
+
+	const handleSignOut = async () => {
+		// Используем window.location для выхода, так как у нас серверная аутентификация
+		window.location.href = '/api/auth/signout'
+	}
 
 	// Инициализация checkId из params
 	useEffect(() => {
@@ -330,14 +356,25 @@ export default function CheckPage({ params }: CheckPageProps) {
 
 	return (
 		<div className="min-h-screen bg-white">
-			<div className="flex flex-col gap-6 items-center justify-start p-4 relative min-h-screen max-w-md mx-auto">
+			{/* Desktop Header */}
+			<div className="hidden md:block max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+				<DesktopHeader
+					variant="dashboard"
+					user={user}
+					onSignOut={handleSignOut}
+				/>
+			</div>
+
+			<div className="flex flex-col gap-6 items-center justify-start p-4 relative min-h-screen max-w-md mx-auto md:max-w-6xl">
 
 				{/* Header */}
 				<div className="flex flex-col gap-8 items-end justify-start relative w-full">
 					{/* Mobile Header */}
 					<MobileHeader
-						variant="app"
-						className="w-full"
+						variant="dashboard"
+						user={user}
+						onSignOut={handleSignOut}
+						className="w-full md:hidden"
 					/>
 
 					{/* Debug indicator for mobile */}
