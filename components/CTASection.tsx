@@ -55,14 +55,6 @@ export default function CTASection() {
               Начать сейчас
             </motion.button>
 
-            <motion.button
-              onClick={openModal}
-              className="bg-white hover:bg-gray-50 border-2 border-[#096ff5] transition-colors w-full text-[#096ff5] font-inter font-medium text-lg px-6 py-4 rounded-full shadow-md"
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-            >
-              Оставить заявку
-            </motion.button>
           </div>
         </div>
       </motion.section>

@@ -71,7 +71,7 @@ export interface StudentSubmission {
   processing_completed_at?: string
   error_message?: string
   error_details?: {
-    error_type?: 'inappropriate_content' | 'ai_failure' | 'image_processing' | 'validation_error'
+    error_type?: 'inappropriate_content' | 'unsupported_test_format' | 'ai_failure' | 'image_processing' | 'validation_error'
     content_type_detected?: string
     ai_message?: string
     [key: string]: string | number | boolean | null | undefined
@@ -225,6 +225,10 @@ export interface AIAnalysisResponse {
   student_name?: string
   additional_notes?: string
 
+  // Дополнительные данные для ChecklyTool тестов
+  checkly_tool_test?: boolean
+  test_identifier?: string
+
   // Дополнительные данные для сочинений
   essay_analysis?: {
     structure: {
@@ -248,8 +252,8 @@ export interface AIAnalysisResponse {
     final_grade: number
   }
 
-  // Ошибка неподходящего контента
-  error?: 'inappropriate_content'
+  // Ошибки
+  error?: 'inappropriate_content' | 'unsupported_test_format'
   error_message?: string
   content_type_detected?: string
 }

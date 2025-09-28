@@ -280,6 +280,43 @@ export async function POST(
 				)
 			}
 
+			// Проверяем, является ли это неподдерживаемым форматом теста
+			if (aiResult.error === 'unsupported_test_format') {
+				console.log('[EVALUATE] Unsupported test format detected by AI')
+
+				// Обновляем статус submission как failed
+				const updateData: any = {
+					status: 'failed',
+					processing_completed_at: new Date().toISOString(),
+					error_message: aiResult.error_message || 'Неподдерживаемый формат теста',
+					error_details: {
+						error_type: 'unsupported_test_format',
+						content_type_detected: aiResult.content_type_detected,
+						ai_response: aiResult
+					}
+				}
+
+				console.log('[EVALUATE] Updating submission with failed status')
+
+				await (supabase as any)
+					.from('student_submissions')
+					.update(updateData)
+					.eq('id', submissionId)
+
+				return NextResponse.json(
+					{
+						error: 'unsupported_test_format',
+						message: aiResult.error_message || 'Мы можем проверять только тесты, созданные в конструкторе ChecklyTool',
+						details: {
+							content_type: aiResult.content_type_detected,
+							help: 'Используйте наш конструктор тестов для создания проверяемых работ. Перейдите в раздел "Создать тест" в дашборде.'
+						},
+						submission_id: submissionId
+					},
+					{ status: 400 } // 400 Bad Request для неподдерживаемого формата
+				)
+			}
+
 			// Проверяем наличие обязательных полей для успешного анализа
 			if (!aiResult.answers || !aiResult.total_questions) {
 				throw new Error('AI analysis incomplete - missing answers or total_questions')
@@ -289,10 +326,54 @@ export async function POST(
 			const detectedVariant = aiResult.variant_detected || 1
 			console.log('Detected variant:', detectedVariant, 'Available variants:', checkData.check_variants.length)
 
-			// Get correct answers for the detected variant from variant_answers table
+			// Get correct answers - different logic for ChecklyTool tests vs regular checks
 			let correctAnswersMap: Record<string, string> = {}
 
-			if (detectedVariant <= checkData.variant_count) {
+			// Check if this is a ChecklyTool test
+			if (aiResult.checkly_tool_test && aiResult.test_identifier) {
+				console.log('[EVALUATE] ChecklyTool test detected, loading answers from generated_tests')
+
+				// Extract test ID from identifier (remove #CT prefix)
+				const testId = aiResult.test_identifier.replace('#CT', '')
+
+				// Load test from generated_tests table
+				const { data: generatedTest, error: testError } = await supabase
+					.from('generated_tests')
+					.select('questions')
+					.ilike('id', `%${testId}%`)
+					.single()
+
+				if (testError) {
+					console.error('Error loading generated test:', testError)
+					throw new Error(`Не удалось найти тест ChecklyTool с идентификатором ${aiResult.test_identifier}`)
+				}
+
+				if (generatedTest && generatedTest.questions) {
+					// Extract correct answers from questions JSON
+					const questions = generatedTest.questions as Array<{
+						options: Array<{ text: string; isCorrect: boolean }>
+					}>
+
+					questions.forEach((question, index) => {
+						// Find the correct option(s)
+						const correctOptions = question.options
+							.map((option, optIndex) => ({ option, index: optIndex + 1 }))
+							.filter(({ option }) => option.isCorrect)
+
+						if (correctOptions.length > 0) {
+							// For single choice questions, use the first correct option number
+							correctAnswersMap[(index + 1).toString()] = correctOptions[0].index.toString()
+						}
+					})
+
+					console.log('Loaded correct answers from ChecklyTool test:', correctAnswersMap)
+				} else {
+					throw new Error('Тест ChecklyTool не найден или не содержит вопросов')
+				}
+			} else {
+				console.log('[EVALUATE] Regular check, loading answers from variant_answers table')
+
+				if (detectedVariant <= checkData.variant_count) {
 				// Find the variant in database
 				const targetVariant = checkData.check_variants.find(v => v.variant_number === detectedVariant)
 				if (targetVariant) {
@@ -335,6 +416,7 @@ export async function POST(
 						console.log('Fallback to variant 1 answers:', correctAnswersMap)
 					}
 				}
+			}
 			}
 
 			// Count correct answers

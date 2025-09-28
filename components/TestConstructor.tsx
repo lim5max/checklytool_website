@@ -303,7 +303,7 @@ export default function TestConstructor({
   }
 
   return (
-    <div className={`space-y-6 ${className}`}>
+    <div className={`space-y-6 px-4 ${className}`}>
       {/* Заголовок и основная информация */}
       <Card className="border-2">
         <CardHeader className="pb-3">
@@ -346,7 +346,7 @@ export default function TestConstructor({
             </div>
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-1">
             <label htmlFor="test-description" className="text-sm font-semibold text-slate-700">
               Описание
             </label>
@@ -360,7 +360,7 @@ export default function TestConstructor({
               }))}
               placeholder="Краткое описание теста (необязательно)"
               rows={3}
-              className="resize-none"
+              className="resize-none border-slate-100 bg-slate-50 font-inter font-medium text-[16px] placeholder:text-slate-500 px-[21px] py-4"
             />
           </div>
         </CardContent>
@@ -368,17 +368,9 @@ export default function TestConstructor({
 
       {/* Вопросы */}
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xl font-nunito font-bold text-slate-900">
-            Вопросы теста
-          </h2>
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-slate-500">
-              {test.questions.length} {test.questions.length === 1 ? 'вопрос' :
-                test.questions.length < 5 ? 'вопроса' : 'вопросов'}
-            </span>
-          </div>
-        </div>
+        <h2 className="text-xl font-nunito font-bold text-slate-900">
+          Вопросы теста
+        </h2>
 
         {test.questions.map((question, questionIndex) => (
           <Card key={question.id} className="border-2">
@@ -414,7 +406,7 @@ export default function TestConstructor({
             </CardHeader>
 
             <CardContent className="space-y-4">
-              <div className="space-y-2">
+              <div className="space-y-1">
                 <label htmlFor={`question-${question.id}`} className="text-sm font-semibold text-slate-700">
                   Текст вопроса *
                 </label>
@@ -423,7 +415,7 @@ export default function TestConstructor({
                   value={question.question}
                   onChange={(e) => updateQuestion(question.id, { question: e.target.value })}
                   placeholder="Введите текст вопроса"
-                  className="min-h-[80px] resize-none"
+                  className="min-h-[80px] resize-none border-slate-100 bg-slate-50 font-inter font-medium text-[16px] placeholder:text-slate-500 px-[21px] py-4"
                   rows={3}
                 />
               </div>
@@ -573,24 +565,6 @@ export default function TestConstructor({
               )}
             </div>
 
-            <div className="flex items-center gap-4 text-sm text-slate-600">
-              {test.questions.length === 0 && (
-                <div className="flex items-center gap-2 text-amber-600">
-                  <AlertCircle className="w-4 h-4" />
-                  <span>Добавьте вопросы для активации функций</span>
-                </div>
-              )}
-
-              {test.questions.length > 0 && (
-                <div className="flex items-center gap-2">
-                  <FileText className="w-4 h-4" />
-                  <span className="font-medium">
-                    {test.questions.length} {test.questions.length === 1 ? 'вопрос' :
-                      test.questions.length < 5 ? 'вопроса' : 'вопросов'}
-                  </span>
-                </div>
-              )}
-            </div>
           </div>
         </CardContent>
       </Card>

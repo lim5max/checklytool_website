@@ -361,17 +361,17 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <div className="space-y-4">
+        <div className="space-y-2">
           <button
             onClick={handleCreateCheck}
-            className="w-full bg-[#096ff5] hover:bg-blue-600 transition-colors text-white font-inter font-medium text-[18px] rounded-[180px] h-20 flex items-center justify-center"
+            className="w-full bg-[#096ff5] hover:bg-blue-600 transition-colors text-white font-inter font-medium text-[18px] rounded-[180px] h-[72px] flex items-center justify-center"
           >
             Создать проверку
           </button>
 
           <button
             onClick={() => router.push('/dashboard/test-builder')}
-            className="w-full bg-green-600 hover:bg-green-700 transition-colors text-white font-inter font-medium text-[18px] rounded-[180px] h-20 flex items-center justify-center gap-2"
+            className="w-full bg-green-600 hover:bg-green-700 transition-colors text-white font-inter font-medium text-[18px] rounded-[180px] h-[72px] flex items-center justify-center gap-2"
           >
             <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
               <path fillRule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zm0 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V8zm0 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1v-2z" clipRule="evenodd" />
@@ -407,12 +407,21 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <button
-            onClick={handleCreateCheck}
-            className="w-full bg-[#096ff5] hover:bg-blue-600 transition-colors text-white font-inter font-medium text-[18px] rounded-[180px] h-28 flex items-center justify-center"
-          >
-            Создать проверку
-          </button>
+          <div className="space-y-2">
+            <button
+              onClick={handleCreateCheck}
+              className="w-full bg-[#096ff5] hover:bg-blue-600 transition-colors text-white font-inter font-medium text-[18px] rounded-[180px] h-[72px] flex items-center justify-center"
+            >
+              Создать проверку
+            </button>
+
+            <button
+              onClick={() => router.push('/dashboard/test-builder')}
+              className="w-full bg-green-600 hover:bg-green-700 transition-colors text-white font-inter font-medium text-[18px] rounded-[180px] h-[72px] flex items-center justify-center"
+            >
+              Создать тест
+            </button>
+          </div>
         </div>
       )}
 
