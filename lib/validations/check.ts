@@ -23,6 +23,7 @@ export const createCheckSchema = z.object({
 		.min(1, 'Должен быть минимум 1 вопрос')
 		.max(100, 'Максимум 100 вопросов')
 		.optional(),
+	check_type: z.enum(['test', 'essay']).optional(),
 	grading_criteria: z.array(z.object({
 		grade: z.union([z.literal(2), z.literal(3), z.literal(4), z.literal(5)]),
 		min_percentage: z.number()
@@ -32,7 +33,27 @@ export const createCheckSchema = z.object({
 	}))
 	.min(1, 'Должен быть указан минимум 1 критерий оценки')
 	.max(4, 'Максимум 4 критерия (по одному на каждую оценку)')
-})
+	.optional(),
+	essay_grading_criteria: z.array(z.object({
+		grade: z.union([z.literal(2), z.literal(3), z.literal(4), z.literal(5)]),
+		title: z.string().min(1, 'Название критерия обязательно'),
+		description: z.string().min(1, 'Описание критерия обязательно')
+	}))
+	.min(1, 'Должен быть указан минимум 1 критерий оценки')
+	.max(4, 'Максимум 4 критерия (по одному на каждую оценку)')
+	.optional()
+}).refine((data) => {
+	// Either grading_criteria or essay_grading_criteria should be provided, but not both
+	const hasGradingCriteria = data.grading_criteria && data.grading_criteria.length > 0
+	const hasEssayGradingCriteria = data.essay_grading_criteria && data.essay_grading_criteria.length > 0
+
+	if (data.check_type === 'essay') {
+		return hasEssayGradingCriteria && !hasGradingCriteria
+	} else {
+		// For tests or when check_type is not specified, require grading_criteria
+		return hasGradingCriteria && !hasEssayGradingCriteria
+	}
+}, 'Для сочинений используйте essay_grading_criteria, для тестов - grading_criteria')
 
 export type CreateCheckFormData = z.infer<typeof createCheckSchema>
 

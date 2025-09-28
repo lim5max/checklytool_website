@@ -6,8 +6,7 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import StructuredData from "../../components/StructuredData";
 import WaitlistModal from "../../components/WaitlistModal";
-import MobileHeader from "../../components/MobileHeader";
-import DesktopHeader from "../../components/DesktopHeader";
+import Header from "../../components/Header";
 
 const teamMembers = [
   {
@@ -47,11 +46,10 @@ export default function About() {
         <div className="box-border flex flex-col gap-10 items-start justify-start px-4 py-4 relative min-h-screen max-w-[1082px] mx-auto">
           
           <header className="relative w-full">
-            <MobileHeader 
-              variant="landing"
+            <Header
+              variant="about"
               onOpenModal={openModal}
             />
-            <DesktopHeader variant="about" />
           </header>
 
           <main className="flex flex-col gap-16 items-center justify-start relative w-full">

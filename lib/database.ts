@@ -4,6 +4,11 @@ import { createClient } from '@/lib/supabase/server'
 import { UserProfile } from '@/types/check'
 import type { User } from 'next-auth'
 
+// Get Supabase service client for API routes
+export async function getSupabaseServiceClient() {
+	return await createClient()
+}
+
 // Get authenticated Supabase client with user context
 export async function getAuthenticatedSupabase() {
 	const session = await auth()

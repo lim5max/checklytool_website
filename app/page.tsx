@@ -2,8 +2,7 @@ import { Suspense } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import StructuredData from "../components/StructuredData";
-import MobileHeader from "../components/MobileHeader";
-import DesktopHeader from "../components/DesktopHeader";
+import Header from "../components/Header";
 import HeroSection from "../components/HeroSection";
 
 // Ленивая загрузка тяжелых компонентов
@@ -30,8 +29,7 @@ export default function Home() {
 
           <header className="relative w-full">
             <Suspense fallback={<div className="h-16 bg-slate-50 rounded animate-pulse" />}>
-              <MobileHeader variant="landing" />
-              <DesktopHeader variant="landing" />
+              <Header variant="landing" />
             </Suspense>
           </header>
 

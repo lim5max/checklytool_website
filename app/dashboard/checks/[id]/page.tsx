@@ -1,13 +1,12 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { toast } from 'sonner'
 import { X, Settings, Trash2 } from 'lucide-react'
 import Image from 'next/image'
 
-import MobileHeader from '@/components/MobileHeader'
-import DesktopHeader from '@/components/DesktopHeader'
+import Header from '@/components/Header'
 import { CameraWorkInterface } from '@/components/camera/CameraWorkInterface'
 import { Button } from '@/components/ui/button'
 import { getDraft, clearDraft, setDraftStudents, getTempFailedNames, clearTempFailedNames, addTempFailedName } from '@/lib/drafts'
@@ -44,10 +43,15 @@ interface CheckPageProps {
 
 export default function CheckPage({ params }: CheckPageProps) {
 	const router = useRouter()
-	const [user, setUser] = useState<{ name?: string; email?: string; image?: string } | null>(null)
+	const searchParams = useSearchParams()
+	const [user, setUser] = useState<{ name?: string | null; email?: string | null; image?: string | null } | null>(null)
 	const [isUserLoading, setIsUserLoading] = useState(true)
 	const [checkId, setCheckId] = useState<string>('')
-	const [checkTitle, setCheckTitle] = useState<string>('Проверочная работа')
+	const [checkTitle, setCheckTitle] = useState<string>(() => {
+		// Инициализируем из URL параметров если есть
+		const titleFromUrl = searchParams.get('title')
+		return titleFromUrl ? decodeURIComponent(titleFromUrl) : 'Проверочная работа'
+	})
 	const [submissions, setSubmissions] = useState<StudentSubmission[]>([])
 	const [isLoading, setIsLoading] = useState(true)
 	const [isCameraOpen, setIsCameraOpen] = useState(false)
@@ -139,7 +143,7 @@ export default function CheckPage({ params }: CheckPageProps) {
 					photos: s.photos.map(p => p.dataUrl) // Конвертируем DraftPhoto[] в string[]
 				}))
 			setDrafts(validDrafts)
-		} catch (error) {
+		} catch {
 			setDrafts([])
 		}
 	}, [checkId])
@@ -356,11 +360,12 @@ export default function CheckPage({ params }: CheckPageProps) {
 
 	return (
 		<div className="min-h-screen bg-white">
-			{/* Desktop Header */}
-			<div className="hidden md:block max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-				<DesktopHeader
+			{/* Unified Header */}
+			<div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+				<Header
 					variant="dashboard"
 					user={user}
+					isUserLoading={isUserLoading}
 					onSignOut={handleSignOut}
 				/>
 			</div>
@@ -369,13 +374,6 @@ export default function CheckPage({ params }: CheckPageProps) {
 
 				{/* Header */}
 				<div className="flex flex-col gap-8 items-end justify-start relative w-full">
-					{/* Mobile Header */}
-					<MobileHeader
-						variant="dashboard"
-						user={user}
-						onSignOut={handleSignOut}
-						className="w-full md:hidden"
-					/>
 
 					{/* Debug indicator for mobile */}
 					{process.env.NODE_ENV === 'development' && (

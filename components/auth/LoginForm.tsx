@@ -41,7 +41,7 @@ export default function LoginForm() {
         router.push(callbackUrl)
         router.refresh()
       }
-    } catch (error: unknown) {
+    } catch {
       setError('Произошла ошибка при входе')
     } finally {
       setIsLoading(false)

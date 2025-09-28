@@ -8,6 +8,8 @@ import {
   type Answer,
   type GradingCriteria,
   type EssayGradingCriteria,
+  type EssayAspects,
+  type EssayDescriptiveCriteria,
   type WorkType
 } from "@/lib/check-creation-validation"
 
@@ -23,6 +25,10 @@ interface CheckCreationStep2Props {
   onGradingCriteriaChange?: (criteria: GradingCriteria) => void
   essayGradingCriteria?: EssayGradingCriteria
   onEssayGradingCriteriaChange?: (criteria: EssayGradingCriteria) => void
+  essayAspects?: EssayAspects
+  onEssayAspectsChange?: (aspects: EssayAspects) => void
+  essayDescriptiveCriteria?: EssayDescriptiveCriteria
+  onEssayDescriptiveCriteriaChange?: (criteria: EssayDescriptiveCriteria) => void
   checkingMethod?: "manual" | "ai"
   onCheckingMethodChange?: (method: "manual" | "ai") => void
   answers?: Answer[]
@@ -36,6 +42,13 @@ interface CheckCreationStep2Props {
   onAddVariant?: () => void
   validationErrors?: Record<string, string[]>
   isLoading?: boolean
+  selectedTest?: {
+    id: string
+    title: string
+    description?: string
+    created_at: string
+    question_count: number
+  } | null
 }
 
 export default function CheckCreationStep2({
@@ -52,24 +65,37 @@ export default function CheckCreationStep2({
     spelling: 30,
     punctuation: 30
   },
-  onEssayGradingCriteriaChange,
+  essayAspects = {
+    grammar: true,
+    spelling: true,
+    punctuation: true,
+    structure: true,
+    logic: true,
+    style: false
+  },
+  onEssayAspectsChange,
+  essayDescriptiveCriteria = {
+    excellent: "Структура соблюдена, логика ясная, ошибок мало или совсем нет",
+    good: "Структура есть, логика в целом понятна, ошибок немного",
+    satisfactory: "Структура нарушена, логика местами сбивается, ошибок достаточно много",
+    unsatisfactory: "Структура отсутствует, логики почти нет, ошибок очень много"
+  },
   checkingMethod = "manual",
   onCheckingMethodChange,
   // answers = [],
   onAnswersChange,
   variants: variantsProp,
   onVariantsChange,
-  customPrompt = "",
-  onCustomPromptChange,
   onContinue,
   onBack,
   // onAddVariant,
   // validationErrors = {},
-  isLoading = false
+  isLoading = false,
+  selectedTest = null
 }: CheckCreationStep2Props) {
   const [isCollapsed, setIsCollapsed] = useState(true)
   const [criteria, setCriteria] = useState<GradingCriteria>(gradingCriteria)
-  const [essayCriteria, setEssayCriteria] = useState<EssayGradingCriteria>(essayGradingCriteria || { grammar: 40, spelling: 30, punctuation: 30 })
+  const [, setEssayCriteria] = useState<EssayGradingCriteria>(essayGradingCriteria || { grammar: 40, spelling: 30, punctuation: 30 })
   const [variants, setVariants] = useState<Variant[]>(variantsProp || [
     {
       id: "variant-1",
@@ -77,11 +103,11 @@ export default function CheckCreationStep2({
       answers: []
     }
   ])
-  const [prompt] = useState<string>(customPrompt || "")
   const [showValidation, setShowValidation] = useState(false)
   
-  // Check if current work type is essay
+  // Check if current work type is essay or test
   const isEssay = workType?.id === 'essay'
+  const isTest = workType?.id === 'test'
   
   // Sync internal state with props
   useEffect(() => {
@@ -105,7 +131,7 @@ export default function CheckCreationStep2({
           : variant
       ))
     }
-  }, [])
+  }, [variants])
   
   // useEffect(() => {
   //   setPrompt(customPrompt || "")
@@ -205,10 +231,15 @@ export default function CheckCreationStep2({
     if (isEssay && method === "manual") {
       return
     }
-    
+
+    // For selected tests, only AI method is allowed
+    if (selectedTest && method === "manual") {
+      return
+    }
+
     // Reset validation state when method changes
     setShowValidation(false)
-    
+
     onCheckingMethodChange?.(method)
     // Auto-collapse criteria section when AI is selected
     if (method === "ai") {
@@ -294,6 +325,73 @@ export default function CheckCreationStep2({
             </div>
           </div>
 
+        {/* Selected Test Information */}
+        {selectedTest && (
+          <div className="bg-green-50 border border-green-200 rounded-[32px] p-6 w-full">
+            <div className="flex items-start gap-4">
+              <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                ✓
+              </div>
+              <div className="flex-1 space-y-3">
+                <h3 className="font-nunito font-bold text-lg text-green-900">
+                  Выбранный тест: {selectedTest.title}
+                </h3>
+                <div className="text-green-800 space-y-1">
+                  {selectedTest.description && (
+                    <p className="text-sm">{selectedTest.description}</p>
+                  )}
+                  <div className="flex items-center gap-4 text-sm">
+                    <span>Вопросов: {selectedTest.question_count || 'Неизвестно'}</span>
+                    {selectedTest.created_at && (
+                      <span>Создан: {new Date(selectedTest.created_at).toLocaleDateString('ru-RU')}</span>
+                    )}
+                  </div>
+                </div>
+                <div className="text-sm text-green-700">
+                  ✨ Проверка будет автоматически выполнена с помощью ИИ
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Essay Aspects Section - Show only for essays */}
+        {isEssay && (
+          <div className="content-stretch flex flex-col gap-4 items-start justify-start relative shrink-0 w-full">
+            <div className="content-stretch flex gap-2.5 items-center justify-start relative shrink-0 w-full">
+              <div className="font-nunito font-extrabold leading-[0] relative shrink-0 text-[20px] text-nowrap text-slate-700">
+                <p className="leading-[1.2] whitespace-pre">Аспекты проверки</p>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-2 w-full">
+              {Object.entries({
+                grammar: 'Грамматика',
+                spelling: 'Орфография',
+                punctuation: 'Пунктуация',
+                structure: 'Структура',
+                logic: 'Логика изложения',
+                style: 'Стиль изложения'
+              }).map(([key, label]) => (
+                <button
+                  key={key}
+                  onClick={() => {
+                    const newAspects = { ...essayAspects, [key]: !essayAspects[key as keyof EssayAspects] }
+                    onEssayAspectsChange?.(newAspects)
+                  }}
+                  className={`${
+                    essayAspects[key as keyof EssayAspects]
+                      ? "bg-[#096ff5] text-white"
+                      : "bg-slate-100 text-slate-700"
+                  } px-4 py-2 rounded-full text-sm font-medium transition-colors`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Grading Criteria Section */}
         <div className="bg-slate-50 box-border content-stretch flex flex-col gap-2.5 items-start justify-start px-6 py-7 relative rounded-[32px] shrink-0 w-full">
           <div className="content-stretch flex flex-col gap-4 items-start justify-start relative shrink-0 w-full">
@@ -316,92 +414,149 @@ export default function CheckCreationStep2({
             {/* Criteria content - only show when not collapsed */}
             {!isCollapsed && (
               <div className="space-y-3 md:space-y-4 w-full">
-                {/* Excellent (5) */}
-                <div className="flex items-center gap-4">
-                  <div className="font-inter font-medium text-[16px] leading-[1.6] text-slate-800 w-28">
-                    Отлично (5):
-                  </div>
-                  <div className="flex-1 relative">
-                    <Input
-                      type="number"
-                      min="0"
-                      max="100"
-                      value={criteria.excellent}
-                      onChange={(e) => updateCriteria("excellent", parseInt(e.target.value) || 0)}
-                      className="w-full h-14 rounded-[27px] border-slate-100 bg-white pr-12"
-                    />
-                    <div className="absolute right-[21px] top-1/2 transform -translate-y-1/2 font-inter font-medium text-[16px] text-slate-900">
-                      %
+                {isEssay ? (
+                  // Descriptive criteria for essays
+                  <>
+                    {/* Excellent (5) */}
+                    <div className="space-y-2">
+                      <div className="font-inter font-semibold text-[16px] leading-[1.6] text-slate-800">
+                        Отлично (5 баллов):
+                      </div>
+                      <div className="bg-white rounded-[20px] p-4 border border-slate-100">
+                        <p className="font-inter text-[14px] leading-[1.6] text-slate-700">
+                          {essayDescriptiveCriteria?.excellent}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                </div>
 
-                {/* Good (4) */}
-                <div className="flex items-center gap-4">
-                  <div className="font-inter font-medium text-[16px] leading-[1.6] text-slate-800 w-28">
-                    Хорошо (4):
-                  </div>
-                  <div className="flex-1 relative">
-                    <Input
-                      type="number"
-                      min="0"
-                      max="100"
-                      value={criteria.good}
-                      onChange={(e) => updateCriteria("good", parseInt(e.target.value) || 0)}
-                      className="w-full h-14 rounded-[27px] border-slate-100 bg-white pr-12"
-                    />
-                    <div className="absolute right-[21px] top-1/2 transform -translate-y-1/2 font-inter font-medium text-[16px] text-slate-900">
-                      %
+                    {/* Good (4) */}
+                    <div className="space-y-2">
+                      <div className="font-inter font-semibold text-[16px] leading-[1.6] text-slate-800">
+                        Хорошо (4 балла):
+                      </div>
+                      <div className="bg-white rounded-[20px] p-4 border border-slate-100">
+                        <p className="font-inter text-[14px] leading-[1.6] text-slate-700">
+                          {essayDescriptiveCriteria?.good}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                </div>
 
-                {/* Satisfactory (3) */}
-                <div className="flex items-center gap-4">
-                  <div className="font-inter font-medium text-[16px] leading-[1.6] text-slate-800 w-28">
-                    Удовл. (3):
-                  </div>
-                  <div className="flex-1 relative">
-                    <Input
-                      type="number"
-                      min="0"
-                      max="100"
-                      value={criteria.satisfactory}
-                      onChange={(e) => updateCriteria("satisfactory", parseInt(e.target.value) || 0)}
-                      className="w-full h-14 rounded-[27px] border-slate-100 bg-white pr-12"
-                    />
-                    <div className="absolute right-[21px] top-1/2 transform -translate-y-1/2 font-inter font-medium text-[16px] text-slate-900">
-                      %
+                    {/* Satisfactory (3) */}
+                    <div className="space-y-2">
+                      <div className="font-inter font-semibold text-[16px] leading-[1.6] text-slate-800">
+                        Удовлетворительно (3 балла):
+                      </div>
+                      <div className="bg-white rounded-[20px] p-4 border border-slate-100">
+                        <p className="font-inter text-[14px] leading-[1.6] text-slate-700">
+                          {essayDescriptiveCriteria?.satisfactory}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                </div>
 
-                {/* Unsatisfactory (2) */}
-                <div className="flex items-center gap-4">
-                  <div className="font-inter font-medium text-[16px] leading-[1.6] text-slate-800 w-28">
-                    Неудовл (2):
-                  </div>
-                  <div className="flex-1 relative">
-                    <Input
-                      type="number"
-                      min="0"
-                      max="100"
-                      value={criteria.unsatisfactory}
-                      onChange={(e) => updateCriteria("unsatisfactory", parseInt(e.target.value) || 0)}
-                      className="w-full h-14 rounded-[27px] border-slate-100 bg-white pr-12"
-                    />
-                    <div className="absolute right-[21px] top-1/2 transform -translate-y-1/2 font-inter font-medium text-[16px] text-slate-900">
-                      %
+                    {/* Unsatisfactory (2) */}
+                    <div className="space-y-2">
+                      <div className="font-inter font-semibold text-[16px] leading-[1.6] text-slate-800">
+                        Неудовлетворительно (2 балла):
+                      </div>
+                      <div className="bg-white rounded-[20px] p-4 border border-slate-100">
+                        <p className="font-inter text-[14px] leading-[1.6] text-slate-700">
+                          {essayDescriptiveCriteria?.unsatisfactory}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                </div>
+                  </>
+                ) : (
+                  // Percentage-based criteria for tests
+                  <>
+                    {/* Excellent (5) */}
+                    <div className="flex items-center gap-4">
+                      <div className="font-inter font-medium text-[16px] leading-[1.6] text-slate-800 w-28">
+                        Отлично (5):
+                      </div>
+                      <div className="flex-1 relative">
+                        <Input
+                          type="number"
+                          min="0"
+                          max="100"
+                          value={criteria.excellent}
+                          onChange={(e) => updateCriteria("excellent", parseInt(e.target.value) || 0)}
+                          className="w-full h-14 rounded-[27px] border-slate-100 bg-white pr-12"
+                        />
+                        <div className="absolute right-[21px] top-1/2 transform -translate-y-1/2 font-inter font-medium text-[16px] text-slate-900">
+                          %
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Good (4) */}
+                    <div className="flex items-center gap-4">
+                      <div className="font-inter font-medium text-[16px] leading-[1.6] text-slate-800 w-28">
+                        Хорошо (4):
+                      </div>
+                      <div className="flex-1 relative">
+                        <Input
+                          type="number"
+                          min="0"
+                          max="100"
+                          value={criteria.good}
+                          onChange={(e) => updateCriteria("good", parseInt(e.target.value) || 0)}
+                          className="w-full h-14 rounded-[27px] border-slate-100 bg-white pr-12"
+                        />
+                        <div className="absolute right-[21px] top-1/2 transform -translate-y-1/2 font-inter font-medium text-[16px] text-slate-900">
+                          %
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Satisfactory (3) */}
+                    <div className="flex items-center gap-4">
+                      <div className="font-inter font-medium text-[16px] leading-[1.6] text-slate-800 w-28">
+                        Удовл. (3):
+                      </div>
+                      <div className="flex-1 relative">
+                        <Input
+                          type="number"
+                          min="0"
+                          max="100"
+                          value={criteria.satisfactory}
+                          onChange={(e) => updateCriteria("satisfactory", parseInt(e.target.value) || 0)}
+                          className="w-full h-14 rounded-[27px] border-slate-100 bg-white pr-12"
+                        />
+                        <div className="absolute right-[21px] top-1/2 transform -translate-y-1/2 font-inter font-medium text-[16px] text-slate-900">
+                          %
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Unsatisfactory (2) */}
+                    <div className="flex items-center gap-4">
+                      <div className="font-inter font-medium text-[16px] leading-[1.6] text-slate-800 w-28">
+                        Неудовл (2):
+                      </div>
+                      <div className="flex-1 relative">
+                        <Input
+                          type="number"
+                          min="0"
+                          max="100"
+                          value={criteria.unsatisfactory}
+                          onChange={(e) => updateCriteria("unsatisfactory", parseInt(e.target.value) || 0)}
+                          className="w-full h-14 rounded-[27px] border-slate-100 bg-white pr-12"
+                        />
+                        <div className="absolute right-[21px] top-1/2 transform -translate-y-1/2 font-inter font-medium text-[16px] text-slate-900">
+                          %
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
             )}
           </div>
         </div>
 
-        {/* Checking Method Section */}
-        <div className="content-stretch flex flex-col gap-2 items-start justify-start relative shrink-0 w-full">
+        {/* Checking Method Section - Hide when test is selected or essay is selected */}
+        {!selectedTest && !isEssay && (
+          <div className="content-stretch flex flex-col gap-2 items-start justify-start relative shrink-0 w-full">
           <div className="content-stretch flex gap-2.5 items-center justify-start relative shrink-0 w-full">
             <div className="font-nunito font-extrabold leading-[0] relative shrink-0 text-[20px] text-nowrap text-slate-700">
               <p className="leading-[1.2] whitespace-pre">Проверка через</p>
@@ -410,13 +565,13 @@ export default function CheckCreationStep2({
           <div className="content-stretch flex gap-1.5 items-start justify-start relative shrink-0 w-full">
             <button
               onClick={() => handleMethodChange("manual")}
-              disabled={isEssay}
+              disabled={isEssay || !!selectedTest}
               className={`${
-                checkingMethod === "manual" 
-                  ? "bg-[#096ff5]" 
+                checkingMethod === "manual"
+                  ? "bg-[#096ff5]"
                   : "bg-slate-50"
               } box-border content-stretch flex flex-col gap-2.5 h-12 items-start justify-center overflow-clip px-[21px] py-[11px] relative rounded-[27px] shrink-0 ${
-                isEssay ? "opacity-50 cursor-not-allowed" : ""
+                (isEssay || selectedTest) ? "opacity-50 cursor-not-allowed" : ""
               }`}
             >
               <div className="content-stretch flex gap-2 items-center justify-start relative shrink-0">
@@ -445,12 +600,51 @@ export default function CheckCreationStep2({
             </button>
           </div>
         </div>
+        )}
 
-        {/* Variant Section - Only show when manual method is selected */}
-        {checkingMethod === "manual" && (
+        {/* Test Information Section - Show only for tests and NOT when selectedTest */}
+        {isTest && !selectedTest && (
+          <div className="bg-blue-50 border border-blue-200 rounded-[32px] p-6 w-full">
+            <div className="flex items-start gap-4">
+              <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                ℹ
+              </div>
+              <div className="flex-1 space-y-3">
+                <h3 className="font-nunito font-bold text-lg text-blue-900">
+                  Используйте стандартный бланк теста
+                </h3>
+                <div className="text-blue-800 space-y-2">
+                  <p>
+                    Для точной проверки ИИ создавайте тесты в <strong>Конструкторе тестов</strong> и скачивайте стандартизированные PDF бланки.
+                  </p>
+                  <div className="text-sm space-y-1">
+                    <p>• Стандартные поля для ответов (A, B, C, D)</p>
+                    <p>• Четкая нумерация вопросов</p>
+                    <p>• Оптимальный формат для распознавания ИИ</p>
+                  </div>
+                </div>
+                <div className="pt-2">
+                  <a
+                    href="/dashboard/test-builder"
+                    target="_blank"
+                    className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-full text-sm font-medium transition-colors"
+                  >
+                    Открыть Конструктор тестов
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                    </svg>
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Variant Section - Only show when manual method is selected and not a test */}
+        {checkingMethod === "manual" && !isTest && (
           <>
             {/* All Variants */}
-            {variants.map((variant, variantIndex) => (
+            {variants.map((variant) => (
               <div key={variant.id} className="content-stretch flex flex-col gap-4 items-start justify-start relative shrink-0 w-full">
                 <div className="content-stretch flex flex-col gap-3 items-start justify-start relative shrink-0 w-full">
                   <div className="content-stretch flex gap-2.5 items-center justify-between relative shrink-0 w-full">

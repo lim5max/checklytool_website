@@ -17,9 +17,7 @@ import {
   ChevronRight,
   FileImage,
   Trash2,
-  RotateCcw
 } from 'lucide-react'
-import { CameraScanner } from './CameraScanner'
 import { ImageUpload } from './ImageUpload'
 import { FullscreenCameraModal } from './FullscreenCameraModal'
 import { cn } from '@/lib/utils'
@@ -116,11 +114,6 @@ export function SubmissionUploader({
     }))
   }, [])
 
-  const handleCameraCapture = useCallback((photoDataUrl: string) => {
-    if (students[activeStudentIndex]) {
-      addPhotoToStudent(activeStudentIndex, photoDataUrl)
-    }
-  }, [activeStudentIndex, addPhotoToStudent, students])
 
   const scrollToStudent = useCallback((direction: 'left' | 'right') => {
     if (!scrollRef.current) return
@@ -142,7 +135,6 @@ export function SubmissionUploader({
 
   const activeStudent = students[activeStudentIndex]
   const canAddMoreStudents = students.length < maxStudents
-  const canAddMorePhotos = activeStudent?.photos.length < maxPhotosPerStudent
 
   // Closed view - initial state
   if (viewMode === 'closed') {

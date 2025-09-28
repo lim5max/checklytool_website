@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { signOut } from 'next-auth/react'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -14,7 +13,6 @@ interface DashboardNavbarProps {
 }
 
 export default function DashboardNavbar({ session }: DashboardNavbarProps) {
-  const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const user = session.user

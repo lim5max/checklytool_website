@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest, NextResponse } from 'next/server'
 import { getAuthenticatedSupabase } from '@/lib/database'
-import { analyzeWithRetry, calculateGrade } from '@/lib/openrouter'
+import { analyzeWithRetry, calculateGrade, calculateEssayGrade } from '@/lib/openrouter'
 
 interface RouteParams {
 	params: Promise<{ id: string }>
@@ -73,7 +73,8 @@ export async function POST(
 				checks!inner (
 					*,
 					check_variants (id, variant_number, reference_answers, reference_image_urls),
-					grading_criteria (*)
+					grading_criteria (*),
+					essay_grading_criteria (*)
 				)
 			`)
 			.eq('id', submissionId)
@@ -95,6 +96,7 @@ export async function POST(
 			checks: {
 				id: string
 				variant_count: number
+				check_type?: string
 				check_variants: Array<{
 					id: string
 					variant_number: number
@@ -104,6 +106,11 @@ export async function POST(
 				grading_criteria: Array<{
 					grade: number
 					min_percentage: number
+				}>
+				essay_grading_criteria?: Array<{
+					grade: number
+					title: string
+					description: string
 				}>
 			}
 		}
@@ -228,7 +235,10 @@ export async function POST(
 				refreshedImageUrls,
 				referenceAnswers || null,
 				referenceImages || null,
-				checkData.variant_count
+				checkData.variant_count,
+				3, // maxRetries
+				(checkData.check_type || 'test') as 'test' | 'essay',
+				checkData.essay_grading_criteria || undefined
 			)
 
 			console.log('AI analysis completed:', aiResult)
@@ -357,28 +367,55 @@ export async function POST(
 				}
 			})
 			
-			// Calculate grade
-			const { grade, percentage } = calculateGrade(
-				correctAnswers,
-				aiResult.total_questions,
-				checkData.grading_criteria
-			)
+			// Calculate grade based on check type
+			let grade: number
+			let percentage: number
+
+			if (checkData.check_type === 'essay' && checkData.essay_grading_criteria) {
+				// For essays, use AI's grade directly from essay_analysis
+				const aiGrade = aiResult.essay_analysis?.final_grade || 2
+				const gradeResult = calculateEssayGrade(aiGrade, checkData.essay_grading_criteria)
+				grade = gradeResult.grade
+				percentage = gradeResult.percentage
+			} else {
+				// For tests, use traditional percentage-based calculation
+				const gradeResult = calculateGrade(
+					correctAnswers,
+					aiResult.total_questions,
+					checkData.grading_criteria
+				)
+				grade = gradeResult.grade
+				percentage = gradeResult.percentage
+			}
 			
 			// Save evaluation results
+			const evaluationData: any = {
+				submission_id: submissionId,
+				total_questions: aiResult.total_questions,
+				// For essays, correct_answers should represent grade quality, not comparison
+				correct_answers: checkData.check_type === 'essay' ? grade : correctAnswers,
+				incorrect_answers: checkData.check_type === 'essay' ? (5 - grade) : (aiResult.total_questions - correctAnswers),
+				percentage_score: percentage,
+				final_grade: grade,
+				variant_used: aiResult.variant_detected || 1,
+				detailed_answers: detailedAnswers,
+				ai_response: aiResult,
+				confidence_score: aiResult.confidence_score
+			}
+
+			// Add essay metadata if this is an essay
+			if (checkData.check_type === 'essay' && aiResult.essay_analysis) {
+				evaluationData.essay_metadata = {
+					structure: aiResult.essay_analysis.structure,
+					logic: aiResult.essay_analysis.logic,
+					errors: aiResult.essay_analysis.errors,
+					content_quality: aiResult.essay_analysis.content_quality
+				}
+			}
+
 			const { data: evaluationResult, error: evaluationError } = await (supabase as any)
 				.from('evaluation_results')
-				.insert({
-					submission_id: submissionId,
-					total_questions: aiResult.total_questions,
-					correct_answers: correctAnswers,
-					incorrect_answers: aiResult.total_questions - correctAnswers,
-					percentage_score: percentage,
-					final_grade: grade,
-					variant_used: aiResult.variant_detected || 1,
-					detailed_answers: detailedAnswers,
-					ai_response: aiResult,
-					confidence_score: aiResult.confidence_score
-				})
+				.insert(evaluationData)
 				.select()
 				.single()
 			

@@ -96,9 +96,25 @@ export async function POST(request: NextRequest) {
 		console.log('[API] Authentication successful, userId:', userId)
 		
 		const body = await request.json()
-		console.log('[API] Request body:', body)
-		const validatedData = createCheckSchema.parse(body)
-		console.log('[API] Data validation successful')
+		console.log('[API] Request body:', JSON.stringify(body, null, 2))
+
+		let validatedData
+		try {
+			validatedData = createCheckSchema.parse(body)
+			console.log('[API] Data validation successful:', JSON.stringify(validatedData, null, 2))
+		} catch (validationError) {
+			console.error('[API] Validation error:', validationError)
+			if (validationError instanceof Error) {
+				return NextResponse.json(
+					{ error: 'Validation failed', details: validationError.message },
+					{ status: 400 }
+				)
+			}
+			return NextResponse.json(
+				{ error: 'Validation failed' },
+				{ status: 400 }
+			)
+		}
 		
 		// Start transaction
 		console.log('[API] Creating check in database...')
@@ -111,7 +127,8 @@ export async function POST(request: NextRequest) {
 				variant_count: validatedData.variant_count,
 				subject: validatedData.subject,
 				class_level: validatedData.class_level,
-				total_questions: validatedData.total_questions
+				total_questions: validatedData.total_questions,
+				check_type: validatedData.check_type || 'test'
 			})
 			.select()
 			.single()
@@ -127,29 +144,57 @@ export async function POST(request: NextRequest) {
 		const checkResult = check as { id: string; [key: string]: unknown }
 		console.log('[API] Check created successfully:', checkResult.id)
 		
-		// Create grading criteria
+		// Create grading criteria (different tables for tests vs essays)
 		console.log('[API] Creating grading criteria...')
-		const criteriaData = validatedData.grading_criteria.map(criteria => ({
-			check_id: checkResult.id,
-			grade: criteria.grade,
-			min_percentage: criteria.min_percentage
-		}))
-		
-		const { error: criteriaError } = await (supabase as any)
-			.from('grading_criteria')
-			.insert(criteriaData)
-		
-		if (criteriaError) {
-			console.error('[API] Error creating grading criteria:', criteriaError)
-			// Clean up check if criteria creation fails
-			await supabase.from('checks').delete().eq('id', checkResult.id)
-			return NextResponse.json(
-				{ error: 'Failed to create grading criteria' },
-				{ status: 500 }
-			)
+
+		if (validatedData.check_type === 'essay' && validatedData.essay_grading_criteria) {
+			// Create essay grading criteria
+			const essayCriteriaData = validatedData.essay_grading_criteria.map(criteria => ({
+				check_id: checkResult.id,
+				grade: criteria.grade,
+				title: criteria.title,
+				description: criteria.description
+			}))
+
+			const { error: essayCriteriaError } = await (supabase as any)
+				.from('essay_grading_criteria')
+				.insert(essayCriteriaData)
+
+			if (essayCriteriaError) {
+				console.error('[API] Error creating essay grading criteria:', essayCriteriaError)
+				// Clean up check if criteria creation fails
+				await supabase.from('checks').delete().eq('id', checkResult.id)
+				return NextResponse.json(
+					{ error: 'Failed to create essay grading criteria' },
+					{ status: 500 }
+				)
+			}
+
+			console.log('[API] Essay grading criteria created successfully')
+		} else if (validatedData.grading_criteria) {
+			// Create regular grading criteria for tests
+			const criteriaData = validatedData.grading_criteria.map(criteria => ({
+				check_id: checkResult.id,
+				grade: criteria.grade,
+				min_percentage: criteria.min_percentage
+			}))
+
+			const { error: criteriaError } = await (supabase as any)
+				.from('grading_criteria')
+				.insert(criteriaData)
+
+			if (criteriaError) {
+				console.error('[API] Error creating grading criteria:', criteriaError)
+				// Clean up check if criteria creation fails
+				await supabase.from('checks').delete().eq('id', checkResult.id)
+				return NextResponse.json(
+					{ error: 'Failed to create grading criteria' },
+					{ status: 500 }
+				)
+			}
+
+			console.log('[API] Grading criteria created successfully')
 		}
-		
-		console.log('[API] Grading criteria created successfully')
 		
 		// Create default variants if needed
 		console.log('[API] Creating variants...')

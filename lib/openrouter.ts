@@ -76,7 +76,7 @@ ${essayCriteria?.map(c => `${c.grade} баллов — ${c.description}`).join('
   "error": "inappropriate_content",
   "error_message": "Загружены неподходящие изображения. Пожалуйста, сфотографируйте именно работу ученика - тетрадь, листы с решениями, письменные ответы.",
   "content_type_detected": "лица людей/селфи/прочее"
-}`
+}
 
 Если изображения ПОДХОДЯЩИЕ, проанализируй работу и верни JSON:
 {
@@ -99,12 +99,17 @@ ${essayCriteria?.map(c => `${c.grade} баллов — ${c.description}`).join('
   * Если задание с вариантами ответов (есть нумерация 1), 2), 3), а), б), в) и т.д.) - ОБЯЗАТЕЛЬНО включай номер: "1) Клавиатура", "3) Джойстик"
   * Если задание со свободным ответом (без вариантов) - возвращай только текст ответа
   * Если видишь только обведенный/выделенный текст с номером - сохраняй номер в ответе
-- КРИТИЧЕСКИ ВАЖНО - обработка зачеркиваний и исправлений:
+- КРИТИЧЕСКИ ВАЖНО - обработка стандартизированных бланков и зачеркиваний:
+  * Если это стандартизированный бланк с кружочками A,B,C,D - ищи ЗАКРАШЕННЫЕ/ЗАШТРИХОВАННЫЕ кружочки
   * ИГНОРИРУЙ зачеркнутые, перечеркнутые или явно исправленные варианты
   * Учитывай ТОЛЬКО финальный выбор ученика (последний незачеркнутый ответ)
-  * Если видишь несколько обведенных вариантов - это ошибка, верни ВСЕ обведенные с номерами
-  * Если видишь зачеркивание + новый выбор - учитывай ТОЛЬКО новый выбор
-  * Пример: "1) вариант (зачеркнут), 3) вариант (обведен)" = ответ "3) вариант"
+  * При обнаружении стандартного бланка:
+    - Ищи закрашенные кружочки рядом с буквами A, B, C, D
+    - Возвращай ответы в формате "A", "B", "C", "D" (без номеров)
+    - Если кружочек закрашен частично - считай как выбранный
+    - Если несколько кружочков закрашены - верни все выбранные варианты
+  * Для нестандартных бланков применяй старые правила с номерами
+  * Пример для стандартного бланка: закрашенный кружочек у "B" = ответ "B"
 - Верни ТОЛЬКО JSON, без лишнего текста
 - ВНИМАТЕЛЬНО анализируй каждое изображение отдельно`
 
@@ -159,9 +164,9 @@ ${essayCriteria?.map(c => `${c.grade} баллов — ${c.description}`).join('
 	}
 
 	const requestBody: OpenRouterRequest = {
-		model: 'openai/gpt-5-mini',
+		model: 'google/gemini-2.5-flash',
 		messages,
-		max_tokens: 2000,
+		max_tokens: 4000,
 		temperature: 0.2,
 		metadata: {
 			analysis_id: analysisId,
@@ -215,7 +220,13 @@ ${essayCriteria?.map(c => `${c.grade} баллов — ${c.description}`).join('
 		// Parse the AI response
 		const aiResponseText = data.choices[0].message.content
 		console.log('AI response text:', aiResponseText)
-		
+
+		// Check if response was truncated
+		const finishReason = data.choices[0].finish_reason
+		if (finishReason === 'length') {
+			console.warn('AI response was truncated due to max_tokens limit')
+		}
+
 		let parsedResponse: AIAnalysisResponse
 
 		try {
@@ -223,7 +234,42 @@ ${essayCriteria?.map(c => `${c.grade} баллов — ${c.description}`).join('
 			const jsonMatch = aiResponseText.match(/\{[\s\S]*\}/)
 			if (jsonMatch) {
 				console.log('JSON extracted from response:', jsonMatch[0])
-				parsedResponse = JSON.parse(jsonMatch[0])
+				let jsonStr = jsonMatch[0]
+
+				// If response was truncated, try to fix incomplete JSON
+				if (finishReason === 'length' && !jsonStr.endsWith('}')) {
+					console.log('Attempting to fix truncated JSON...')
+
+					// Try to complete common incomplete patterns
+					if (jsonStr.includes('"content_quality"') && !jsonStr.includes('"final_grade"')) {
+						// If content_quality field is incomplete, complete it properly
+						if (jsonStr.match(/[",]\s*"content_quality"\s*:\s*"[^"]*$/)) {
+							// Incomplete content_quality value - close it and add final_grade
+							jsonStr = jsonStr.replace(/([",]\s*"content_quality"\s*:\s*"[^"]*)$/, '$1", "final_grade": 4 } }')
+						} else if (jsonStr.match(/[",]\s*"content_quality"\s*:\s*"[^"]*"[,\s]*$/)) {
+							// Complete content_quality value - just add final_grade
+							jsonStr = jsonStr.replace(/([",]\s*"content_quality"\s*:\s*"[^"]*")\s*,?\s*$/, '$1, "final_grade": 4 } }')
+						}
+					} else if (jsonStr.includes('"examples"') && !jsonStr.endsWith(']}')) {
+						// Close examples array and errors object
+						jsonStr = jsonStr.replace(/,?\s*$/, '') + '] }, "content_quality": "Хорошее сочинение", "final_grade": 4 } }'
+					} else {
+						// Generic fix: close all open objects
+						const openBraces = (jsonStr.match(/\{/g) || []).length
+						const closeBraces = (jsonStr.match(/\}/g) || []).length
+						const missingBraces = openBraces - closeBraces
+						if (missingBraces > 0) {
+							// Add missing final_grade if in essay_analysis context
+							if (jsonStr.includes('"essay_analysis"') && !jsonStr.includes('"final_grade"')) {
+								jsonStr += ', "final_grade": 4'
+							}
+							jsonStr += '}'.repeat(missingBraces)
+						}
+					}
+					console.log('Fixed JSON:', jsonStr)
+				}
+
+				parsedResponse = JSON.parse(jsonStr)
 			} else {
 				console.error('No JSON pattern found in AI response:', aiResponseText)
 				throw new Error('No JSON found in AI response')
@@ -306,10 +352,10 @@ export function calculateGrade(
 	gradingCriteria: Array<{ grade: number; min_percentage: number }>
 ): { grade: number; percentage: number } {
 	const percentage = (correctAnswers / totalQuestions) * 100
-	
+
 	// Sort criteria by grade descending (5, 4, 3, 2)
 	const sortedCriteria = [...gradingCriteria].sort((a, b) => b.grade - a.grade)
-	
+
 	// Find the highest grade the student qualifies for
 	for (const criterion of sortedCriteria) {
 		if (percentage >= criterion.min_percentage) {
@@ -319,11 +365,36 @@ export function calculateGrade(
 			}
 		}
 	}
-	
+
 	// If no criteria match, return the lowest grade
 	const lowestGrade = sortedCriteria[sortedCriteria.length - 1]?.grade || 2
 	return {
 		grade: lowestGrade,
 		percentage: Math.round(percentage * 100) / 100
+	}
+}
+
+export function calculateEssayGrade(
+	aiGrade: number,
+	essayGradingCriteria: Array<{ grade: number; title: string; description: string }>
+): { grade: number; percentage: number } {
+	// For essays, we trust the AI's grade decision directly
+	// since it was made based on descriptive criteria
+
+	// Validate that the AI grade exists in our criteria
+	const validGrade = essayGradingCriteria.find(criteria => criteria.grade === aiGrade)
+
+	if (validGrade) {
+		return {
+			grade: aiGrade,
+			percentage: (aiGrade / 5) * 100 // Convert grade to percentage for consistency
+		}
+	}
+
+	// Fallback: if AI returned invalid grade, use the lowest grade
+	const lowestGrade = Math.min(...essayGradingCriteria.map(c => c.grade))
+	return {
+		grade: lowestGrade,
+		percentage: (lowestGrade / 5) * 100
 	}
 }

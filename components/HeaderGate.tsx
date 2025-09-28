@@ -16,7 +16,9 @@ export default function HeaderGate({ children }: PropsWithChildren) {
   const pathname = usePathname()
 
   const hide =
-    /^\/dashboard\/checks\/[^/]+(\/results|\/submit)?$/.test(pathname || '')
+    /^\/dashboard\/checks\/[^/]+(\/results|\/submit)?$/.test(pathname || '') ||
+    pathname === '/dashboard/checks/create' ||
+    pathname === '/dashboard/test-builder'
 
   if (hide) return null
   return <>{children}</>

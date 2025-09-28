@@ -8,20 +8,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { 
   FileImage, 
   Upload, 
   X, 
-  Plus, 
+ 
   Save, 
   Eye, 
   EyeOff,
@@ -208,16 +200,16 @@ export function VariantManager({
         throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`)
       }
 
-      const result = await response.json()
-      
+      await response.json()
+
       // Update local state
-      const updatedVariants = variants.map(v => 
-        v.id === variant.id 
+      const updatedVariants = variants.map(v =>
+        v.id === variant.id
           ? { ...v, reference_answers: data.answers }
           : v
       )
       onVariantUpdate(updatedVariants)
-      
+
       toast.success('Эталонные ответы сохранены')
       
     } catch (error) {

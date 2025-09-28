@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
-import { Database } from '@/types/database'
+import { Database } from '@/lib/database.types'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 export async function createClient() {
@@ -28,7 +28,7 @@ export async function createClient() {
 						cookiesToSet.forEach(({ name, value, options }) => {
 							cookieStore.set(name, value, options)
 						})
-					} catch (error) {
+					} catch {
 						// The `setAll` method was called from a Server Component.
 						// This can be ignored if you have middleware refreshing
 						// user sessions.

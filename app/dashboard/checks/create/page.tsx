@@ -10,6 +10,8 @@ import {
   type WorkType,
   type GradingCriteria,
   type EssayGradingCriteria,
+  type EssayAspects,
+  type EssayDescriptiveCriteria,
   type Answer,
   type VariantData,
   validateStep1,
@@ -19,6 +21,8 @@ import {
   mapUIDataToAPI,
   DEFAULT_GRADING_CRITERIA,
   DEFAULT_ESSAY_GRADING_CRITERIA,
+  DEFAULT_ESSAY_ASPECTS,
+  DEFAULT_ESSAY_DESCRIPTIVE_CRITERIA,
   DEFAULT_ANSWERS,
   DEFAULT_ESSAY_PROMPT
 } from "@/lib/check-creation-validation"
@@ -34,11 +38,24 @@ export default function CheckCreationPage() {
     workType: null,
     gradingCriteria: DEFAULT_GRADING_CRITERIA,
     essayGradingCriteria: DEFAULT_ESSAY_GRADING_CRITERIA,
+    essayAspects: DEFAULT_ESSAY_ASPECTS,
+    essayDescriptiveCriteria: DEFAULT_ESSAY_DESCRIPTIVE_CRITERIA,
     checkingMethod: "manual",
     answers: DEFAULT_ANSWERS,
     variants: undefined, // Will be set by CheckCreationStep2
     customPrompt: DEFAULT_ESSAY_PROMPT
   })
+
+  // Selected test data
+  interface SavedTest {
+    id: string
+    title: string
+    description?: string
+    created_at: string
+    question_count: number
+  }
+
+  const [selectedTest, setSelectedTest] = useState<SavedTest | null>(null)
   
   // Validation state
   const [validationErrors, setValidationErrors] = useState<Record<string, string[]>>({})
@@ -74,7 +91,7 @@ export default function CheckCreationPage() {
   const handleWorkTypeSelect = (workType: WorkType) => {
     setCheckData(prev => {
       const newData = { ...prev, workType }
-      
+
       // If selecting essay, set AI method by default and clear answers
       if (workType.id === 'essay') {
         newData.checkingMethod = 'ai'
@@ -83,9 +100,24 @@ export default function CheckCreationPage() {
         // For tests, ensure we have default answers for manual checking
         newData.answers = prev.answers.length === 0 ? DEFAULT_ANSWERS : prev.answers
       }
-      
+
       return newData
     })
+  }
+
+  const handleTestSelect = (test: SavedTest) => {
+    // Устанавливаем данные теста напрямую из переданного объекта
+    setSelectedTest(test)
+
+    // Обновляем данные формы на основе выбранного теста
+    setCheckData(prev => ({
+      ...prev,
+      workTitle: test.title,
+      checkingMethod: 'ai', // Для готовых тестов используем ИИ
+    }))
+
+    // Показываем успешное сообщение
+    toast.success(`Тест "${test.title}" выбран`)
   }
 
   // Step 2 handlers
@@ -147,9 +179,14 @@ export default function CheckCreationPage() {
       })
 
       if (!response.ok) {
-        const error = await response.json()
+        let error
+        try {
+          error = await response.json()
+        } catch {
+          error = { error: `HTTP ${response.status}: ${response.statusText}` }
+        }
         console.error('[UI] API error response:', error)
-        throw new Error(error.error || 'Не удалось создать проверочную работу')
+        throw new Error(error.error || error.details || 'Не удалось создать проверочную работу')
       }
 
       const result = await response.json()
@@ -199,6 +236,14 @@ export default function CheckCreationPage() {
     setCheckData(prev => ({ ...prev, essayGradingCriteria: criteria }))
   }
 
+  const handleEssayAspectsChange = (aspects: EssayAspects) => {
+    setCheckData(prev => ({ ...prev, essayAspects: aspects }))
+  }
+
+  const handleEssayDescriptiveCriteriaChange = (criteria: EssayDescriptiveCriteria) => {
+    setCheckData(prev => ({ ...prev, essayDescriptiveCriteria: criteria }))
+  }
+
   const handleCheckingMethodChange = (method: "manual" | "ai") => {
     setCheckData(prev => ({ ...prev, checkingMethod: method }))
   }
@@ -223,8 +268,10 @@ export default function CheckCreationPage() {
           <CheckCreationStep1
             workTitle={checkData.workTitle}
             selectedWorkType={checkData.workType}
+            selectedTest={selectedTest}
             onWorkTitleChange={handleWorkTitleChange}
             onWorkTypeSelect={handleWorkTypeSelect}
+            onTestSelect={handleTestSelect}
             onContinue={handleStep1Continue}
             onBack={handleStep1Back}
             validationErrors={validationErrors}
@@ -239,6 +286,10 @@ export default function CheckCreationPage() {
             onGradingCriteriaChange={handleGradingCriteriaChange}
             essayGradingCriteria={checkData.essayGradingCriteria}
             onEssayGradingCriteriaChange={handleEssayGradingCriteriaChange}
+            essayAspects={checkData.essayAspects}
+            onEssayAspectsChange={handleEssayAspectsChange}
+            essayDescriptiveCriteria={checkData.essayDescriptiveCriteria}
+            onEssayDescriptiveCriteriaChange={handleEssayDescriptiveCriteriaChange}
             checkingMethod={checkData.checkingMethod}
             onCheckingMethodChange={handleCheckingMethodChange}
             answers={checkData.answers}
@@ -251,6 +302,7 @@ export default function CheckCreationPage() {
             onBack={handleStep2Back}
             validationErrors={validationErrors}
             isLoading={isLoading}
+            selectedTest={selectedTest}
           />
         )
       

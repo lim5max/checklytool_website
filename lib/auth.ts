@@ -1,5 +1,4 @@
 import NextAuth, { DefaultSession } from "next-auth"
-import Google from "next-auth/providers/google"
 import Yandex from "next-auth/providers/yandex"
 import Credentials from "next-auth/providers/credentials"
 import type { NextAuthConfig } from "next-auth"
@@ -21,19 +20,6 @@ declare module "next-auth" {
 
 export const authOptions: NextAuthConfig = {
   providers: [
-    Google({
-      clientId: process.env.AUTH_GOOGLE_ID!,
-      clientSecret: process.env.AUTH_GOOGLE_SECRET!,
-      profile(profile) {
-        return {
-          id: profile.sub,
-          name: profile.name,
-          email: profile.email,
-          image: profile.picture,
-          provider: "google"
-        }
-      }
-    }),
     Yandex({
       clientId: process.env.AUTH_YANDEX_ID!,
       clientSecret: process.env.AUTH_YANDEX_SECRET!,
@@ -80,7 +66,7 @@ export const authOptions: NextAuthConfig = {
   },
   trustHost: true,
   callbacks: {
-    async signIn({ user, account, profile }) {
+    async signIn({ user, account }) {
       // Auto-create user profile on first login
       try {
         if (user && account) {

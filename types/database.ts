@@ -1,6 +1,46 @@
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]
+
 export interface Database {
   public: {
     Tables: {
+      generated_tests: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          questions: Json
+          subject: string | null
+          title: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          questions?: Json
+          subject?: string | null
+          title: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          questions?: Json
+          subject?: string | null
+          title?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+      }
       user_profiles: {
         Row: {
           id: string
@@ -9,13 +49,13 @@ export interface Database {
           name: string | null
           avatar_url: string | null
           provider: string | null
-          role: string
-          first_login_at: string
-          last_login_at: string
-          total_checks: number
-          is_active: boolean
-          created_at: string
-          updated_at: string
+          role: string | null
+          first_login_at: string | null
+          last_login_at: string | null
+          total_checks: number | null
+          is_active: boolean | null
+          created_at: string | null
+          updated_at: string | null
         }
         Insert: {
           id?: string
@@ -24,13 +64,13 @@ export interface Database {
           name?: string | null
           avatar_url?: string | null
           provider?: string | null
-          role?: string
-          first_login_at?: string
-          last_login_at?: string
-          total_checks?: number
-          is_active?: boolean
-          created_at?: string
-          updated_at?: string
+          role?: string | null
+          first_login_at?: string | null
+          last_login_at?: string | null
+          total_checks?: number | null
+          is_active?: boolean | null
+          created_at?: string | null
+          updated_at?: string | null
         }
         Update: {
           id?: string
@@ -39,11 +79,11 @@ export interface Database {
           name?: string | null
           avatar_url?: string | null
           provider?: string | null
-          role?: string
-          last_login_at?: string
-          total_checks?: number
-          is_active?: boolean
-          updated_at?: string
+          role?: string | null
+          last_login_at?: string | null
+          total_checks?: number | null
+          is_active?: boolean | null
+          updated_at?: string | null
         }
       }
       profiles: {

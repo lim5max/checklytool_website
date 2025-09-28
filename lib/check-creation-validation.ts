@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { createCheckSchema, type CreateCheckFormData } from '@/lib/validations/check'
+import { type CreateCheckFormData } from '@/lib/validations/check'
 
 // UI Component Types (what our mobile components use)
 export interface WorkType {
@@ -17,8 +17,26 @@ export interface GradingCriteria {
 // Essay-specific criteria for grammar, spelling, punctuation
 export interface EssayGradingCriteria {
   grammar: number // Weight for grammar errors
-  spelling: number // Weight for spelling errors  
+  spelling: number // Weight for spelling errors
   punctuation: number // Weight for punctuation errors
+}
+
+// Essay aspects that can be checked
+export interface EssayAspects {
+  grammar: boolean     // Грамматика
+  spelling: boolean    // Орфография
+  punctuation: boolean // Пунктуация
+  structure: boolean   // Структура
+  logic: boolean       // Логика изложения
+  style: boolean       // Стиль изложения
+}
+
+// Descriptive grading criteria for essays (instead of percentages)
+export interface EssayDescriptiveCriteria {
+  excellent: string    // 5 баллов
+  good: string         // 4 балла
+  satisfactory: string // 3 балла
+  unsatisfactory: string // 2 балла
 }
 
 export interface Answer {
@@ -30,7 +48,9 @@ export interface CheckCreationData {
   workTitle: string
   workType: WorkType | null
   gradingCriteria: GradingCriteria
-  essayGradingCriteria?: EssayGradingCriteria // For essay type only
+  essayGradingCriteria?: EssayGradingCriteria // For essay type only (old system)
+  essayAspects?: EssayAspects // What aspects to check in essays
+  essayDescriptiveCriteria?: EssayDescriptiveCriteria // Descriptive criteria for essays
   checkingMethod: "manual" | "ai"
   answers: Answer[]
   variants?: VariantData[] // Add variants support
@@ -102,22 +122,50 @@ export type ValidatedCheckCreationData = z.infer<typeof mobileCheckCreationSchem
 
 // Data mapping function: Convert UI data to API format
 export function mapUIDataToAPI(uiData: CheckCreationData, variantCount?: number): CreateCheckFormData {
-  // Map grading criteria from our UI format to API format
-  const gradingCriteriaArray = [
-    { grade: 5 as const, min_percentage: uiData.gradingCriteria.excellent },
-    { grade: 4 as const, min_percentage: uiData.gradingCriteria.good },
-    { grade: 3 as const, min_percentage: uiData.gradingCriteria.satisfactory },
-    { grade: 2 as const, min_percentage: uiData.gradingCriteria.unsatisfactory }
-  ]
+  const isEssay = uiData.workType?.id === 'essay'
 
   const apiData: CreateCheckFormData = {
     title: uiData.workTitle,
-    description: `Проверочная работа: ${uiData.workType?.title || 'Неизвестный тип'}`,
-    variant_count: variantCount || 1, // Use provided variant count or default to 1
+    description: `${isEssay ? 'Сочинение' : 'Проверочная работа'}: ${uiData.workType?.title || 'Неизвестный тип'}`,
+    variant_count: variantCount || 1,
     subject: uiData.workType?.title,
-    class_level: undefined, // Optional field, not collected in mobile UI yet
-    total_questions: uiData.answers.length,
-    grading_criteria: gradingCriteriaArray
+    class_level: undefined,
+    total_questions: uiData.answers?.length || undefined,
+    check_type: isEssay ? 'essay' : 'test'
+  }
+
+  if (isEssay && uiData.essayDescriptiveCriteria) {
+    // For essays, use descriptive criteria from UI
+    apiData.essay_grading_criteria = [
+      {
+        grade: 5 as const,
+        title: 'Отлично (5 баллов)',
+        description: uiData.essayDescriptiveCriteria.excellent
+      },
+      {
+        grade: 4 as const,
+        title: 'Хорошо (4 балла)',
+        description: uiData.essayDescriptiveCriteria.good
+      },
+      {
+        grade: 3 as const,
+        title: 'Удовлетворительно (3 балла)',
+        description: uiData.essayDescriptiveCriteria.satisfactory
+      },
+      {
+        grade: 2 as const,
+        title: 'Неудовлетворительно (2 балла)',
+        description: uiData.essayDescriptiveCriteria.unsatisfactory
+      }
+    ]
+  } else {
+    // For tests, use percentage-based criteria
+    apiData.grading_criteria = [
+      { grade: 5 as const, min_percentage: uiData.gradingCriteria.excellent },
+      { grade: 4 as const, min_percentage: uiData.gradingCriteria.good },
+      { grade: 3 as const, min_percentage: uiData.gradingCriteria.satisfactory },
+      { grade: 2 as const, min_percentage: uiData.gradingCriteria.unsatisfactory }
+    ]
   }
 
   return apiData
@@ -238,7 +286,7 @@ export function validateAPIResponse(response: unknown): {
       isValid: true,
       data: validatedResponse
     }
-  } catch (error) {
+  } catch {
     return {
       isValid: false,
       error: 'Неожиданный формат ответа от сервера'
@@ -273,6 +321,24 @@ export const DEFAULT_ESSAY_GRADING_CRITERIA: EssayGradingCriteria = {
   grammar: 40,
   spelling: 30,
   punctuation: 30
+}
+
+// Default essay aspects (all enabled by default)
+export const DEFAULT_ESSAY_ASPECTS: EssayAspects = {
+  grammar: true,
+  spelling: true,
+  punctuation: true,
+  structure: true,
+  logic: true,
+  style: false // Optional by default
+}
+
+// Default descriptive criteria for essays
+export const DEFAULT_ESSAY_DESCRIPTIVE_CRITERIA: EssayDescriptiveCriteria = {
+  excellent: "Структура соблюдена, логика ясная, ошибок мало или совсем нет (не более двух грамматических ошибок)",
+  good: "Структура есть, логика в целом понятна, ошибок немного (от 3 до 6 грамматических и синтаксических)",
+  satisfactory: "Структура нарушена (например, нет заключения), логика местами сбивается, ошибок достаточно много (более 6 ошибок грамматических и синтаксических)",
+  unsatisfactory: "Структура отсутствует, логики почти нет, ошибок очень много, текст трудно читать"
 }
 
 export const DEFAULT_ANSWERS: Answer[] = [

@@ -62,7 +62,7 @@ export async function GET(
 		return NextResponse.json({
 			check,
 			recent_submissions: recentSubmissions || [],
-			submission_count: (check as { check_statistics?: Array<{ total_submissions: number }> }).check_statistics?.[0]?.total_submissions || 0
+			submission_count: (check as { check_statistics?: { total_submissions: number | null } | null }).check_statistics?.total_submissions || 0
 		})
 		
 	} catch (error) {

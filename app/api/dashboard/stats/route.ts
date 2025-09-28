@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getAuthenticatedSupabase } from '@/lib/database'
 
-export async function GET(_request: Request) {
+export async function GET() {
   try {
     console.log('[DASHBOARD_STATS] Starting stats request...')
     const { supabase, userId, user } = await getAuthenticatedSupabase()

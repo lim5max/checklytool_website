@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from 'next/navigation'
 import { auth, signOut } from '../../lib/auth'
-import MobileHeader from '../../components/MobileHeader'
-import DesktopHeader from '../../components/DesktopHeader'
+import Header from '../../components/Header'
 import HeaderGate from '../../components/HeaderGate'
 
 export const metadata: Metadata = {
@@ -32,17 +31,7 @@ export default async function DashboardLayout({
       <HeaderGate>
         <div className="">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <MobileHeader
-              variant="dashboard"
-              user={{
-                name: session.user?.name,
-                email: session.user?.email,
-                image: session.user?.image
-              }}
-              onSignOut={handleSignOut}
-              className="py-4"
-            />
-            <DesktopHeader
+            <Header
               variant="dashboard"
               user={{
                 name: session.user?.name,

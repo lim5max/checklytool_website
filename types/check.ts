@@ -332,3 +332,45 @@ export interface ImageUploadProgress {
   url?: string
   error?: string
 }
+
+// Test Constructor types
+export interface TestQuestion {
+  id: string
+  question: string
+  type: 'single' | 'multiple'
+  options: TestOption[]
+  explanation?: string
+}
+
+export interface TestOption {
+  id: string
+  text: string
+  isCorrect: boolean
+}
+
+export interface GeneratedTest {
+  id: string
+  title: string
+  description?: string
+  subject?: string
+  class_level?: string
+  questions: TestQuestion[]
+  created_at: string
+  updated_at: string
+}
+
+export interface PDFGenerationRequest {
+  testId: string
+  title: string
+  description?: string
+  questions: TestQuestion[]
+  format: 'A4' | 'Letter'
+  answerType: 'circles' | 'squares'
+  variant: number
+}
+
+export interface PDFGenerationResponse {
+  success: boolean
+  downloadUrl?: string
+  error?: string
+}

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -15,8 +15,7 @@ import {
   Camera,
   CheckCircle,
   AlertCircle,
-  Loader2,
-  Eye
+  Loader2
 } from 'lucide-react'
 import { ImageUpload, type UploadedFile } from '@/components/submission/ImageUpload'
 import { CameraScanner } from '@/components/submission/CameraScanner'
@@ -60,25 +59,19 @@ export default function SubmissionPage({ params }: SubmissionPageProps) {
     getParams()
   }, [params])
 
-  useEffect(() => {
-    if (checkId) {
-      loadCheckInfo()
-    }
-  }, [checkId])
-
-  const loadCheckInfo = async () => {
+  const loadCheckInfo = useCallback(async () => {
     try {
       setIsLoading(true)
-      
+
       const response = await fetch(`/api/checks/${checkId}`)
-      
+
       if (!response.ok) {
         throw new Error('Проверочная работа не найдена')
       }
 
       const data = await response.json()
       setCheckInfo(data.check)
-      
+
     } catch (error) {
       console.error('Error loading check info:', error)
       toast.error('Не удалось загрузить информацию о работе')
@@ -86,7 +79,13 @@ export default function SubmissionPage({ params }: SubmissionPageProps) {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [checkId, router])
+
+  useEffect(() => {
+    if (checkId) {
+      loadCheckInfo()
+    }
+  }, [checkId, loadCheckInfo])
 
   const handleFilesChange = (files: UploadedFile[]) => {
     setUploadedFiles(files)

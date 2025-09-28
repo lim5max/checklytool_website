@@ -31,7 +31,7 @@ export default function ResetPasswordPage() {
       await new Promise(resolve => setTimeout(resolve, 1000))
       
       setSuccess(true)
-    } catch (error: unknown) {
+    } catch {
       setError('Ошибка при отправке письма')
     } finally {
       setIsLoading(false)

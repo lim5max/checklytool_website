@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
-import { X, Camera, RotateCcw, ChevronLeft, ChevronRight } from 'lucide-react'
+import { X, Camera, RotateCcw, ChevronRight } from 'lucide-react'
 import { toast } from 'sonner'
 
 interface Student {

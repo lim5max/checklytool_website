@@ -7,13 +7,11 @@ import { Badge } from '@/components/ui/badge'
 import { 
   Camera, 
   X, 
-  RotateCcw, 
+ 
   Flashlight, 
   FlashlightOff, 
   Download,
-  CheckCircle,
   AlertCircle,
-  Loader2,
   SwitchCamera
 } from 'lucide-react'
 import { toast } from 'sonner'

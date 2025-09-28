@@ -45,12 +45,12 @@ const CheckItem = React.memo(function CheckItem({
   formatDate
 }: {
   check: Check
-  onCheckClick: (id: string) => void
+  onCheckClick: (id: string, title?: string) => void
   formatDate: (date: string) => string
 }) {
   return (
     <div
-      onClick={() => onCheckClick(check.id)}
+      onClick={() => onCheckClick(check.id, check.title)}
       className="bg-slate-50 rounded-[42px] p-7 cursor-pointer hover:bg-slate-100 transition-colors w-full"
     >
       <div className="flex items-start justify-between mb-2.5">
@@ -117,22 +117,6 @@ const EmptySearchState = React.memo(function EmptySearchState({ searchQuery }: {
   )
 })
 
-// Custom hook for debouncing values
-function useDebounce<T>(value: T, delay: number): T {
-  const [debouncedValue, setDebouncedValue] = useState<T>(value)
-
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedValue(value)
-    }, delay)
-
-    return () => {
-      clearTimeout(handler)
-    }
-  }, [value, delay])
-
-  return debouncedValue
-}
 
 export default function DashboardPage() {
   const router = useRouter()
@@ -141,7 +125,7 @@ export default function DashboardPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [subjectFilter, setSubjectFilter] = useState<string>('')
-  const [sortBy, setSortBy] = useState<'created_at' | 'title' | 'updated_at'>('created_at')
+  const [sortBy] = useState<'created_at' | 'title' | 'updated_at'>('created_at')
 
   // Загрузка начальных данных без фильтров
   const loadInitialData = useCallback(async () => {
@@ -199,8 +183,11 @@ export default function DashboardPage() {
     setSubjectFilter(subject === subjectFilter ? '' : subject)
   }, [subjectFilter])
 
-  const handleCheckClick = useCallback((checkId: string) => {
-    router.push(`/dashboard/checks/${checkId}`)
+  const handleCheckClick = useCallback((checkId: string, title?: string) => {
+    const url = title
+      ? `/dashboard/checks/${checkId}?title=${encodeURIComponent(title)}`
+      : `/dashboard/checks/${checkId}`
+    router.push(url)
   }, [router])
 
   const handleCreateCheck = useCallback(() => {
@@ -374,12 +361,24 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <button
-          onClick={handleCreateCheck}
-          className="w-full bg-[#096ff5] hover:bg-blue-600 transition-colors text-white font-inter font-medium text-[18px] rounded-[180px] h-28 flex items-center justify-center"
-        >
-          Создать проверку
-        </button>
+        <div className="space-y-4">
+          <button
+            onClick={handleCreateCheck}
+            className="w-full bg-[#096ff5] hover:bg-blue-600 transition-colors text-white font-inter font-medium text-[18px] rounded-[180px] h-20 flex items-center justify-center"
+          >
+            Создать проверку
+          </button>
+
+          <button
+            onClick={() => router.push('/dashboard/test-builder')}
+            className="w-full bg-green-600 hover:bg-green-700 transition-colors text-white font-inter font-medium text-[18px] rounded-[180px] h-20 flex items-center justify-center gap-2"
+          >
+            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zm0 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V8zm0 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1v-2z" clipRule="evenodd" />
+            </svg>
+            Создать тест
+          </button>
+        </div>
       </div>
     )
   }
