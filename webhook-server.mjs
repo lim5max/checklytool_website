@@ -1,7 +1,7 @@
-const http = require('http');
-const crypto = require('crypto');
-const { exec } = require('child_process');
-const fs = require('fs');
+import http from 'http'
+import crypto from 'crypto'
+import { exec } from 'child_process'
+import fs from 'fs'
 
 const PORT = process.env.WEBHOOK_PORT || 9000;
 const SECRET = process.env.WEBHOOK_SECRET || 'your-webhook-secret';

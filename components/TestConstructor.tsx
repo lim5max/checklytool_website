@@ -48,15 +48,34 @@ export default function TestConstructor({
   const selectedVariant = 1
 
   const addQuestion = useCallback(() => {
+    // Проверка валидации перед добавлением нового вопроса
+    if (test.questions.length > 0) {
+      const lastQuestion = test.questions[test.questions.length - 1]
+
+      if (!lastQuestion.question.trim()) {
+        toast.error('Заполните текст предыдущего вопроса перед добавлением нового')
+        return
+      }
+
+      if (lastQuestion.options.some(opt => !opt.text.trim())) {
+        toast.error('Заполните все варианты ответов предыдущего вопроса')
+        return
+      }
+
+      const correctCount = lastQuestion.options.filter(opt => opt.isCorrect).length
+      if (correctCount === 0) {
+        toast.error('Выберите правильный ответ для предыдущего вопроса')
+        return
+      }
+    }
+
     const newQuestion: TestQuestion = {
       id: `q_${Date.now()}`,
       question: '',
       type: 'single',
       options: [
         { id: `opt_${Date.now()}_1`, text: '', isCorrect: false },
-        { id: `opt_${Date.now()}_2`, text: '', isCorrect: false },
-        { id: `opt_${Date.now()}_3`, text: '', isCorrect: false },
-        { id: `opt_${Date.now()}_4`, text: '', isCorrect: false }
+        { id: `opt_${Date.now()}_2`, text: '', isCorrect: false }
       ],
       explanation: ''
     }
@@ -66,7 +85,7 @@ export default function TestConstructor({
       questions: [...prev.questions, newQuestion],
       updated_at: new Date().toISOString()
     }))
-  }, [])
+  }, [test.questions])
 
   const updateQuestion = useCallback((questionId: string, updates: Partial<TestQuestion>) => {
     setTest(prev => ({
@@ -280,21 +299,21 @@ export default function TestConstructor({
   }, [test, validateTest, onSave, isSaving])
 
   const getOptionLabel = (index: number) => {
-    return String.fromCharCode(65 + index) // A, B, C, D, ...
+    return (index + 1).toString() // 1, 2, 3, 4, ...
   }
 
   return (
-    <div className={`space-y-8 ${className}`}>
+    <div className={`space-y-6 ${className}`}>
       {/* Заголовок и основная информация */}
       <Card className="border-2">
-        <CardHeader className="pb-4">
+        <CardHeader className="pb-3">
           <CardTitle className="text-xl font-nunito font-bold text-slate-900">
             Основная информация
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-3">
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
               <label htmlFor="test-title" className="text-sm font-semibold text-slate-700">
                 Название теста *
               </label>
@@ -307,11 +326,10 @@ export default function TestConstructor({
                   updated_at: new Date().toISOString()
                 }))}
                 placeholder="Введите название теста"
-                className="h-11 border-slate-300 focus:border-blue-500"
               />
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-2">
               <label htmlFor="test-subject" className="text-sm font-semibold text-slate-700">
                 Предмет
               </label>
@@ -324,12 +342,11 @@ export default function TestConstructor({
                   updated_at: new Date().toISOString()
                 }))}
                 placeholder="Математика, Физика, История..."
-                className="h-11 border-slate-300 focus:border-blue-500"
               />
             </div>
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-2">
             <label htmlFor="test-description" className="text-sm font-semibold text-slate-700">
               Описание
             </label>
@@ -343,14 +360,14 @@ export default function TestConstructor({
               }))}
               placeholder="Краткое описание теста (необязательно)"
               rows={3}
-              className="border-slate-300 focus:border-blue-500 resize-none"
+              className="resize-none"
             />
           </div>
         </CardContent>
       </Card>
 
       {/* Вопросы */}
-      <div className="space-y-6">
+      <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-nunito font-bold text-slate-900">
             Вопросы теста
@@ -365,7 +382,7 @@ export default function TestConstructor({
 
         {test.questions.map((question, questionIndex) => (
           <Card key={question.id} className="border-2">
-            <CardHeader className="pb-4">
+            <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-lg font-nunito font-bold text-slate-900">
                   Задание {questionIndex + 1}
@@ -396,8 +413,8 @@ export default function TestConstructor({
               </div>
             </CardHeader>
 
-            <CardContent className="space-y-6">
-              <div className="space-y-3">
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
                 <label htmlFor={`question-${question.id}`} className="text-sm font-semibold text-slate-700">
                   Текст вопроса *
                 </label>
@@ -406,12 +423,12 @@ export default function TestConstructor({
                   value={question.question}
                   onChange={(e) => updateQuestion(question.id, { question: e.target.value })}
                   placeholder="Введите текст вопроса"
-                  className="min-h-[80px] border-slate-300 focus:border-blue-500 resize-none"
+                  className="min-h-[80px] resize-none"
                   rows={3}
                 />
               </div>
 
-              <div className="space-y-4">
+              <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <label className="text-sm font-semibold text-slate-700">
                     Варианты ответов *
@@ -421,7 +438,7 @@ export default function TestConstructor({
                   </span>
                 </div>
 
-                <div className="space-y-3">
+                <div className="space-y-2">
                   {question.options.map((option, optionIndex) => (
                     <div key={option.id} className="flex items-center gap-4 p-3 border rounded-lg bg-slate-50 hover:bg-slate-100 transition-colors">
                       <button
@@ -453,10 +470,10 @@ export default function TestConstructor({
                         value={option.text}
                         onChange={(e) => updateOption(question.id, option.id, { text: e.target.value })}
                         placeholder={`Вариант ${getOptionLabel(optionIndex)}`}
-                        className={`flex-1 border-slate-300 transition-colors ${
+                        className={`flex-1 transition-colors ${
                           option.isCorrect
                             ? 'border-green-400 bg-green-50 focus:border-green-500'
-                            : 'focus:border-blue-500'
+                            : ''
                         }`}
                       />
 

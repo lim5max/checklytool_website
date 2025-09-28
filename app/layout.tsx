@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, Nunito } from "next/font/google";
 import YandexMetrika from "../components/YandexMetrika";
+import { Toaster } from 'sonner';
 import "./globals.css";
 
 const inter = Inter({
@@ -65,6 +66,7 @@ export default function RootLayout({
         suppressHydrationWarning={true}
       >
         {children}
+        <Toaster position="top-right" richColors closeButton />
         <YandexMetrika />
       </body>
     </html>
