@@ -74,11 +74,37 @@ function generateTestHTML({
     <head>
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>${title} - Бланк ответов</title>
+      <title></title>
       <style>
         @page {
           size: A4;
           margin: 15mm;
+        }
+
+        /* Убираем браузерные колонтитулы при печати */
+        @media print {
+          @page {
+            margin: 15mm;
+            margin-top: 10mm;
+            margin-bottom: 10mm;
+          }
+
+          /* Скрываем браузерные элементы */
+          @page :first {
+            margin-top: 10mm;
+          }
+
+          html, body {
+            height: 100%;
+            margin: 0 !important;
+            padding: 0 !important;
+          }
+
+          /* Убираем заголовки и футеры браузера */
+          body::before,
+          body::after {
+            display: none !important;
+          }
         }
 
         body {
@@ -90,22 +116,6 @@ function generateTestHTML({
           padding: 0;
         }
 
-        .header {
-          display: flex;
-          justify-content: space-between;
-          align-items: flex-start;
-          margin-bottom: 5mm;
-          font-size: 10pt;
-        }
-
-        .test-identifier {
-          font-weight: bold;
-          font-size: 12pt;
-          background: #000;
-          color: #fff;
-          padding: 2mm 4mm;
-          border-radius: 2mm;
-        }
 
         .test-title {
           font-size: 18pt;
@@ -118,6 +128,7 @@ function generateTestHTML({
           text-align: center;
           font-size: 11pt;
           margin-bottom: 8mm;
+          font-weight: bold;
         }
 
         .student-info {
@@ -190,15 +201,9 @@ function generateTestHTML({
       </style>
     </head>
     <body>
-      <div class="header">
-        <div class="test-identifier">${testIdentifier}</div>
-      </div>
-
       <div class="test-title">${title}</div>
 
-      <div class="test-info">Вариант: ${variant} | Дата: ${currentDate}</div>
-
-      <hr style="border: 1px solid #000; margin: 8mm 0;">
+      <div class="test-info">Вариант: ${variant} ${testIdentifier}</div>
 
       <div class="student-info">
         <div>

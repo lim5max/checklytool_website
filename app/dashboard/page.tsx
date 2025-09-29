@@ -123,18 +123,43 @@ export default function DashboardPage() {
   const [allChecks, setAllChecks] = useState<Check[]>([]) // Все проверки
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [subjectFilter, setSubjectFilter] = useState<string>('')
   const [sortBy] = useState<'created_at' | 'title' | 'updated_at'>('created_at')
+  const [currentPage, setCurrentPage] = useState(1)
+  const [hasMore, setHasMore] = useState(true)
+  const [totalCount, setTotalCount] = useState(0)
 
-  // Загрузка начальных данных без фильтров
-  const loadInitialData = useCallback(async () => {
+  const ITEMS_PER_PAGE = 5
+
+  // Загрузка данных с пагинацией
+  const loadChecks = useCallback(async (page: number = 1, reset: boolean = false) => {
     try {
-      setIsLoading(true)
+      if (page === 1) {
+        setIsLoading(true)
+      } else {
+        setIsLoadingMore(true)
+      }
+
+      const params = new URLSearchParams({
+        page: page.toString(),
+        per_page: ITEMS_PER_PAGE.toString(),
+        sort_by: sortBy,
+        sort_order: 'desc'
+      })
+
+      if (searchQuery.trim()) {
+        params.set('search', searchQuery.trim())
+      }
+
+      if (subjectFilter) {
+        params.set('subject', subjectFilter)
+      }
 
       const [checksResponse, statsResponse] = await Promise.all([
-        fetch('/api/checks?sort_by=created_at&sort_order=desc'),
-        fetch('/api/dashboard/stats')
+        fetch(`/api/checks?${params.toString()}`),
+        page === 1 ? fetch('/api/dashboard/stats') : Promise.resolve(null)
       ])
 
       if (!checksResponse.ok) {
@@ -142,29 +167,56 @@ export default function DashboardPage() {
         throw new Error(`Ошибка загрузки работ: ${errorData.error || checksResponse.statusText}`)
       }
 
-      if (!statsResponse.ok) {
-        const errorData = await statsResponse.json().catch(() => ({ error: 'Unknown error' }))
-        throw new Error(`Ошибка загрузки статистики: ${errorData.error || statsResponse.statusText}`)
+      const checksData = await checksResponse.json()
+
+      if (page === 1 || reset) {
+        setAllChecks(checksData.checks || [])
+      } else {
+        setAllChecks(prev => [...prev, ...(checksData.checks || [])])
       }
 
-      const checksData = await checksResponse.json()
-      const statsData = await statsResponse.json()
+      setTotalCount(checksData.pagination?.total || 0)
+      setHasMore(page < (checksData.pagination?.total_pages || 1))
+      setCurrentPage(page)
 
-      setAllChecks(checksData.checks || [])
-      setStats(statsData.stats || null)
+      if (page === 1 && statsResponse) {
+        if (!statsResponse.ok) {
+          console.warn('Ошибка загрузки статистики')
+        } else {
+          const statsData = await statsResponse.json()
+          setStats(statsData.stats || null)
+        }
+      }
 
     } catch (error) {
       console.error('Error loading dashboard data:', error)
       toast.error(error instanceof Error ? error.message : 'Не удалось загрузить данные')
     } finally {
       setIsLoading(false)
+      setIsLoadingMore(false)
     }
+  }, [searchQuery, subjectFilter, sortBy, ITEMS_PER_PAGE])
+
+  // Загрузка дополнительных данных
+  const loadMore = useCallback(() => {
+    if (!isLoadingMore && hasMore) {
+      loadChecks(currentPage + 1)
+    }
+  }, [currentPage, hasMore, isLoadingMore, loadChecks])
+
+  // Загрузка начальных данных
+  useEffect(() => {
+    loadChecks(1, true)
   }, [])
 
-  // Загрузка данных только один раз
+  // Перезагрузка при изменении фильтров
   useEffect(() => {
-    loadInitialData()
-  }, [loadInitialData])
+    if (searchQuery !== '' || subjectFilter !== '') {
+      setCurrentPage(1)
+      setHasMore(true)
+      loadChecks(1, true)
+    }
+  }, [searchQuery, subjectFilter, loadChecks])
 
   // Мемоизируем форматирование даты
   const formatDate = useCallback((dateString: string) => {
@@ -194,40 +246,9 @@ export default function DashboardPage() {
     router.push('/dashboard/checks/create')
   }, [router])
 
-  // Клиентская фильтрация и сортировка
-  const filteredAndSortedChecks = useMemo(() => {
-    let filtered = [...allChecks]
-
-    // Фильтрация по поисковому запросу
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase().trim()
-      filtered = filtered.filter(check =>
-        check.title.toLowerCase().includes(query) ||
-        check.description?.toLowerCase().includes(query) ||
-        check.subject?.toLowerCase().includes(query)
-      )
-    }
-
-    // Фильтрация по предмету
-    if (subjectFilter) {
-      filtered = filtered.filter(check => check.subject === subjectFilter)
-    }
-
-    // Сортировка
-    filtered.sort((a, b) => {
-      switch (sortBy) {
-        case 'title':
-          return a.title.localeCompare(b.title)
-        case 'updated_at':
-          return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
-        case 'created_at':
-        default:
-          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      }
-    })
-
-    // Добавляем статистику
-    return filtered.map(check => ({
+  // Добавляем статистику к проверкам (серверная фильтрация уже применена)
+  const processedChecks = useMemo(() => {
+    return allChecks.map(check => ({
       ...check,
       statistics: check.statistics || {
         total_submissions: 0,
@@ -236,7 +257,30 @@ export default function DashboardPage() {
         failed_submissions: 0
       }
     }))
-  }, [allChecks, searchQuery, subjectFilter, sortBy])
+  }, [allChecks])
+
+  // Intersection Observer для infinite scroll
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !isLoadingMore) {
+          loadMore()
+        }
+      },
+      { threshold: 0.1 }
+    )
+
+    const sentinel = document.getElementById('scroll-sentinel')
+    if (sentinel) {
+      observer.observe(sentinel)
+    }
+
+    return () => {
+      if (sentinel) {
+        observer.unobserve(sentinel)
+      }
+    }
+  }, [hasMore, isLoadingMore, loadMore])
 
   // Мемоизируем уникальные предметы
   const uniqueSubjects = useMemo(() => {
@@ -292,7 +336,7 @@ export default function DashboardPage() {
   }
 
   // Пустое состояние - онбординг как в дизайне
-  if (!isLoading && allChecks.length === 0 && !searchQuery) {
+  if (!isLoading && totalCount === 0 && !searchQuery) {
     return (
       <div className="p-4 space-y-8">
         {/* Онбординг блок */}
@@ -463,17 +507,50 @@ export default function DashboardPage() {
 
       {/* Список работ */}
       <div className="space-y-3">
-        {filteredAndSortedChecks.length === 0 ? (
+        {processedChecks.length === 0 ? (
           <EmptySearchState searchQuery={searchQuery} />
         ) : (
-          filteredAndSortedChecks.map((check) => (
-            <CheckItem
-              key={check.id}
-              check={check}
-              onCheckClick={handleCheckClick}
-              formatDate={formatDate}
-            />
-          ))
+          <>
+            {processedChecks.map((check) => (
+              <CheckItem
+                key={check.id}
+                check={check}
+                onCheckClick={handleCheckClick}
+                formatDate={formatDate}
+              />
+            ))}
+
+            {/* Индикатор загрузки дополнительных данных */}
+            {isLoadingMore && (
+              <div className="flex justify-center py-4">
+                <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+              </div>
+            )}
+
+            {/* Sentinel для infinite scroll */}
+            {hasMore && !isLoadingMore && (
+              <div
+                id="scroll-sentinel"
+                className="h-4 flex justify-center items-center text-slate-400 text-sm"
+              >
+                {totalCount > processedChecks.length && (
+                  <span>Показано {processedChecks.length} из {totalCount}</span>
+                )}
+              </div>
+            )}
+
+            {/* Кнопка "Загрузить еще" как fallback */}
+            {hasMore && !isLoadingMore && (
+              <div className="flex justify-center py-4">
+                <button
+                  onClick={loadMore}
+                  className="px-6 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-full font-medium transition-colors"
+                >
+                  Загрузить еще
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

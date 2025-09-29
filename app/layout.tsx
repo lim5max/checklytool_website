@@ -1,19 +1,25 @@
 import type { Metadata } from "next";
 import { Inter, Nunito } from "next/font/google";
+import { Suspense } from "react";
 import YandexMetrika from "../components/YandexMetrika";
 import { Toaster } from 'sonner';
 import "./globals.css";
 
+// Оптимизированная загрузка шрифтов с display: swap
 const inter = Inter({
   variable: "--font-inter",
   subsets: ["latin", "cyrillic"],
   weight: ["400", "500", "600", "700"],
+  display: 'swap', // Предотвращает FOIT
+  preload: true,
 });
 
 const nunito = Nunito({
   variable: "--font-nunito",
   subsets: ["latin", "cyrillic"],
-  weight: ["400", "600", "700", "800", "900"],
+  weight: ["600", "700", "800", "900"], // Убрали 400 - не используется
+  display: 'swap',
+  preload: true,
 });
 
 export const metadata: Metadata = {
@@ -61,13 +67,22 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ru">
+      <head>
+        {/* Preconnect к внешним доменам */}
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
+        {/* Предзагрузка критических ресурсов */}
+        <link rel="preload" href="/images/logo.png" as="image" />
+      </head>
       <body
         className={`${inter.variable} ${nunito.variable} antialiased`}
         suppressHydrationWarning={true}
       >
         {children}
-        <Toaster position="top-right" richColors closeButton />
-        <YandexMetrika />
+        {/* Ленивая загрузка некритических компонентов */}
+        <Suspense fallback={null}>
+          <YandexMetrika />
+          <Toaster position="top-right" richColors closeButton />
+        </Suspense>
       </body>
     </html>
   );

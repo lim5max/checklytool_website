@@ -45,25 +45,20 @@ export default function Header({
 
   const toggleMenu = () => setIsMenuOpen(!isMenuOpen)
   const closeMenu = () => setIsMenuOpen(false)
-
-  const handleBackClick = () => {
-    if (onBackClick) {
-      onBackClick()
-    }
-  }
+  const handleBackClick = onBackClick || (() => {})
 
   useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
+    const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsProfileOpen(false)
       }
     }
 
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside)
+    if (isProfileOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+      return () => document.removeEventListener('mousedown', handleClickOutside)
     }
-  }, [])
+  }, [isProfileOpen])
 
   return (
     <>
@@ -87,7 +82,7 @@ export default function Header({
               alt="ChecklyTool"
               width={125}
               height={30}
-              className=""
+              priority
             />
           </Link>
         </div>
@@ -128,7 +123,7 @@ export default function Header({
                       alt="ChecklyTool"
                       width={125}
                       height={30}
-                      className=""
+                      priority
                     />
                   </div>
                   <Button
@@ -154,6 +149,7 @@ export default function Header({
                                   width={48}
                                   height={48}
                                   className="rounded-full"
+                                  sizes="48px"
                                 />
                               ) : (
                                 <User className="h-6 w-6 text-white" />
@@ -235,7 +231,7 @@ export default function Header({
               alt="ChecklyTool"
               width={125}
               height={30}
-              className=""
+              priority
             />
           </Link>
 
@@ -281,6 +277,7 @@ export default function Header({
                         width={32}
                         height={32}
                         className="rounded-full"
+                        sizes="32px"
                       />
                     ) : (
                       <User className="h-4 w-4 text-white" />

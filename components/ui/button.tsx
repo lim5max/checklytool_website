@@ -10,18 +10,18 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default:
-          "bg-primary-blue text-white shadow-sm hover:bg-primary-blue/90 rounded-figma-full px-6 py-3 h-14 font-medium",
+          "bg-primary-blue text-white shadow-sm hover:bg-primary-blue/90 rounded-full px-6 py-3 h-14 font-medium",
         destructive:
-          "bg-red-500 text-white shadow-sm hover:bg-red-600 rounded-figma-full px-6 py-3 h-14 font-medium",
+          "bg-red-500 text-white shadow-sm hover:bg-red-600 rounded-full px-6 py-3 h-14 font-medium",
         outline:
-          "border border-slate-100 bg-background shadow-sm hover:bg-slate-50 hover:text-slate-800 rounded-figma-lg px-5 py-3 h-14 font-medium text-slate-500",
+          "border border-slate-100 bg-background shadow-sm hover:bg-slate-50 hover:text-slate-800 rounded-full px-5 py-3 h-14 font-medium text-slate-500",
         secondary:
-          "bg-slate-100 text-slate-800 shadow-sm hover:bg-slate-200 rounded-figma-lg px-5 py-3 h-12 font-medium",
+          "bg-slate-100 text-slate-800 shadow-sm hover:bg-slate-200 rounded-full px-5 py-3 h-12 font-medium",
         ghost:
-          "hover:bg-slate-50 hover:text-slate-800 rounded-figma-lg px-4 py-2 h-12 font-medium text-slate-600",
+          "hover:bg-slate-50 hover:text-slate-800 rounded-full px-4 py-2 h-12 font-medium text-slate-600",
         link: "text-primary-blue underline-offset-4 hover:underline font-medium",
         toggle:
-          "bg-slate-50 text-slate-500 border border-slate-100 hover:bg-primary-blue hover:text-white rounded-figma-lg px-5 py-2 h-12 font-medium data-[state=active]:bg-primary-blue data-[state=active]:text-white",
+          "bg-slate-50 text-slate-500 border border-slate-100 hover:bg-primary-blue hover:text-white rounded-full px-5 py-2 h-12 font-medium data-[state=active]:bg-primary-blue data-[state=active]:text-white",
       },
       size: {
         default: "h-14 px-6 py-3",
