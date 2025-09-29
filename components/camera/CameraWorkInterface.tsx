@@ -4,7 +4,6 @@ import React, { useState, useRef, useEffect, useCallback } from 'react'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { X, Camera, ChevronUp, Plus, Trash2, UserPlus, ImagePlus } from 'lucide-react'
-import { toast } from 'sonner'
 import {
   getDraft,
   ensureStudent as ensureDraftStudent,
@@ -173,13 +172,13 @@ export function CameraWorkInterface({
     }
 
     if (!isStreaming) {
-      toast.error('Камера не готова, попробуйте еще раз')
+      console.error('Camera not ready')
       return
     }
 
     const activeStudent = students[activeStudentIndex]
     if (activeStudent.photos.length >= maxPhotosPerStudent) {
-      toast.error(`Максимум ${maxPhotosPerStudent} фотографий на ученика`)
+      console.warn(`Maximum ${maxPhotosPerStudent} photos per student`)
       return
     }
 
@@ -216,7 +215,7 @@ export function CameraWorkInterface({
       // Очень маленькие изображения (меньше 50KB) могут быть проблематичными
       if (dataUrl.length < 50000) {
         console.warn('[CAMERA] Image seems too small, might be low quality')
-        toast.warning('Изображение получилось очень маленьким. Попробуйте сфотографировать ближе.')
+        console.warn('Image is very small')
       }
 
       const bundle = addPhotoDraft(checkId, activeStudentIndex, dataUrl)
@@ -224,7 +223,7 @@ export function CameraWorkInterface({
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new Event('drafts:updated'))
       }
-      toast.success('Фотография сделана!')
+      console.log('Photo captured successfully')
       console.log('[CAMERA] Photo saved to drafts')
     } catch (err) {
       console.error('[CAMERA] Error capturing photo:', err)
@@ -232,7 +231,7 @@ export function CameraWorkInterface({
       console.error('[CAMERA] Video readyState:', videoRef.current?.readyState)
       console.error('[CAMERA] Stream active:', streamRef.current?.active)
       
-      toast.error('Не удалось сделать фотографию. Попробуйте еще раз.')
+      console.error('Failed to capture photo')
       
       // Попробуем перезапустить камеру если поток неактивен
       if (!streamRef.current?.active && isStreaming) {
@@ -256,7 +255,7 @@ export function CameraWorkInterface({
     const remainingSlots = maxPhotosPerStudent - activeStudent.photos.length
 
     if (remainingSlots <= 0) {
-      toast.error(`Максимум ${maxPhotosPerStudent} фотографий на ученика`)
+      console.warn(`Maximum ${maxPhotosPerStudent} photos per student`)
       return
     }
 
@@ -291,7 +290,7 @@ export function CameraWorkInterface({
     }
 
     if (filesToProcess.length > 0) {
-      toast.success(`Добавлено ${filesToProcess.length} фотографий`)
+      console.log(`Added ${filesToProcess.length} photos`)
     }
 
     // Clear input
@@ -303,7 +302,7 @@ export function CameraWorkInterface({
     const { bundle, index } = addStudentDraft(checkId, `Ученик ${students.length + 1}`)
     setStudents(mapDraftToLocal(bundle.students))
     setActiveStudentIndex(index)
-    toast.success('Ученик добавлен')
+    console.log('Student added')
   }, [students.length, checkId])
 
   const updateStudentName = useCallback((name: string) => {
@@ -330,7 +329,7 @@ export function CameraWorkInterface({
       }
     }
 
-    toast.success('Фотография удалена')
+    console.log('Photo deleted')
   }, [checkId, activeStudentIndex, currentPhotoIndex])
 
   // Effects

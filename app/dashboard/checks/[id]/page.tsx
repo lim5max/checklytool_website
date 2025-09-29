@@ -487,9 +487,6 @@ export default function CheckPage({ params }: CheckPageProps) {
 														</div>
 														<div className="h-2 w-2 bg-blue-500 rounded-full animate-pulse" />
 													</div>
-													<div className="mt-2 text-sm text-blue-600 animate-pulse">
-														Проверяется...
-													</div>
 												</div>
 											))
 										) : (

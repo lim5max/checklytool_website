@@ -3,7 +3,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { X, Camera, RotateCcw, ChevronRight } from 'lucide-react'
-import { toast } from 'sonner'
 
 interface Student {
   id: string
@@ -159,10 +158,10 @@ export function FullscreenCameraModal({
       const dataUrl = canvas.toDataURL('image/jpeg', 0.9)
       onCapture(dataUrl)
       
-      toast.success('Photo captured!')
+      console.log('Photo captured successfully')
     } catch (err) {
       console.error('Error capturing photo:', err)
-      toast.error('Failed to capture photo')
+      console.error('Failed to capture photo:', err)
     } finally {
       setIsCapturing(false)
     }

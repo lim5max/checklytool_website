@@ -111,7 +111,7 @@ function generateTestHTML({
           font-size: 18pt;
           font-weight: bold;
           text-align: center;
-          margin-bottom: 8mm;
+          margin-bottom: 3mm;
         }
 
         .test-info {
@@ -178,7 +178,7 @@ function generateTestHTML({
 
         .answer-box {
           border: 2px solid #000;
-          width: 40mm;
+          width: calc(100% - 20mm);
           height: 8mm;
           display: inline-block;
           vertical-align: middle;
@@ -191,7 +191,6 @@ function generateTestHTML({
     </head>
     <body>
       <div class="header">
-        <div>${new Date().toLocaleDateString('ru-RU')}, ${new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}</div>
         <div class="test-identifier">${testIdentifier}</div>
       </div>
 

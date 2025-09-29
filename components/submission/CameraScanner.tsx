@@ -14,7 +14,6 @@ import {
   AlertCircle,
   SwitchCamera
 } from 'lucide-react'
-import { toast } from 'sonner'
 import Image from 'next/image'
 
 interface CapturedPhoto {
@@ -154,7 +153,7 @@ export function CameraScanner({
       setIsFlashOn(!isFlashOn)
     } catch (err) {
       console.error('Error toggling flash:', err)
-      toast.error('Не удается управлять вспышкой')
+      console.error('Flash control error:', err)
     }
   }, [hasFlash, isFlashOn])
 
@@ -196,13 +195,12 @@ export function CameraScanner({
           }
 
           setCapturedPhotos(prev => [...prev, photo])
-          toast.success('Фото захвачено!')
           resolve()
         }, 'image/jpeg', 0.9)
       })
     } catch (err) {
       console.error('Error capturing photo:', err)
-      toast.error('Ошибка при захвате фото')
+      console.error('Photo capture failed:', err)
     } finally {
       setIsCapturing(false)
     }
@@ -237,7 +235,7 @@ export function CameraScanner({
     })
     setCapturedPhotos([])
     
-    toast.success(`Сохранено ${files.length} фото`)
+    console.log(`Saved ${files.length} photos`)
   }, [capturedPhotos, onPhotosCapture])
 
   // Очистка всех фото
