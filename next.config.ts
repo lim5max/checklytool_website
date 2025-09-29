@@ -13,7 +13,6 @@ const nextConfig: NextConfig = {
   trailingSlash: false,
   serverExternalPackages: [],
   experimental: {
-    optimizeCss: true,
     optimizePackageImports: ['framer-motion', 'lucide-react'],
   },
   compiler: {
