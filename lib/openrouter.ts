@@ -42,9 +42,9 @@ export async function analyzeStudentWork(
       "grammar_errors": 2,
       "syntax_errors": 1,
       "total_errors": 3,
-      "examples": ["ошибка 1: описание", "ошибка 2: описание"]
+      "examples": ["ошибка 1 описание", "ошибка 2 описание"]
     },
-    "content_quality": "хорошее раскрытие темы, примеры уместны",
+    "content_quality": "хорошее раскрытие темы примеры уместны",
     "final_grade": 4
   },
   "answers": {
@@ -57,13 +57,20 @@ export async function analyzeStudentWork(
 ${essayCriteria?.map(c => `${c.grade} баллов — ${c.description}`).join('\n') ||
 '5 баллов — структура соблюдена, логика ясная, ошибок мало или совсем нет (не более двух грамматических ошибок)\n4 балла — структура есть, логика в целом понятна, ошибок немного (от 3 до 6 грамматических и синтаксических)\n3 балла — структура нарушена, логика местами сбивается, ошибок достаточно много (более 6 ошибок)\n2 балла — структура отсутствует, логики почти нет, ошибок очень много, текст трудно читать'}
 
-Требования:
+КРИТИЧЕСКИ ВАЖНО - ТРЕБОВАНИЯ К JSON:
+- Верни ТОЛЬКО валидный JSON без лишнего текста
+- В строковых значениях НЕ используй двойные кавычки - замени их на одинарные
+- В строковых значениях НЕ используй символы скобок () [] {} - замени их на тире или запятые
+- Все описания ошибок пиши БЕЗ двойных кавычек и скобок
+- Пример: вместо "ошибка: слово "привет"" пиши "ошибка слово привет"
+- Пример: вместо "описание (пояснение)" пиши "описание - пояснение"
+
+Требования к анализу:
 - Внимательно прочитай весь текст сочинения
 - Оцени структуру: есть ли вступление, основная часть, заключение
 - Оцени логику изложения и связность текста
 - Подсчитай грамматические и синтаксические ошибки
-- Выбери подходящую оценку согласно критериям
-- Верни ТОЛЬКО JSON, без лишнего текста` : `Ты - преподаватель, проверяешь тесты ChecklyTool.
+- Выбери подходящую оценку согласно критериям` : `Ты - преподаватель, проверяешь тесты ChecklyTool.
 
 КРИТИЧЕСКИ ВАЖНО - МЫ ПРОВЕРЯЕМ ТОЛЬКО ТЕСТЫ CHECKLY TOOL:
 Ищи следующие признаки ChecklyTool теста:
@@ -113,7 +120,13 @@ ${essayCriteria?.map(c => `${c.grade} баллов — ${c.description}`).join('
   * Если в поле "Ответ" написано несколько номеров или текст - верни как есть
   * Пример: если в поле "Ответ" написано "2", то detected_answer: "2"
 - Если текст в поле "Ответ" плохо видно, укажи низкую confidence
-- Верни ТОЛЬКО JSON, без лишнего текста`
+
+КРИТИЧЕСКИ ВАЖНО - ТРЕБОВАНИЯ К JSON:
+- Верни ТОЛЬКО валидный JSON без лишнего текста
+- В строковых значениях НЕ используй двойные кавычки - замени их на одинарные
+- В строковых значениях НЕ используй символы скобок () [] {} - замени их на тире или запятые
+- Все комментарии пиши БЕЗ двойных кавычек и скобок
+- Пример: вместо "описание (пояснение)" пиши "описание - пояснение"`
 
 	const userPrompt = `Анализ ${analysisId}.${referenceAnswers ? ` Ответы: ${JSON.stringify(referenceAnswers)}` : ''} Верни JSON.`
 
@@ -266,7 +279,47 @@ ${essayCriteria?.map(c => `${c.grade} баллов — ${c.description}`).join('
 					console.log('Fixed JSON:', jsonStr)
 				}
 
-				parsedResponse = JSON.parse(jsonStr)
+				// First parsing attempt
+				try {
+					parsedResponse = JSON.parse(jsonStr)
+				} catch (firstParseError) {
+					console.warn('First parse attempt failed, trying to sanitize JSON...')
+
+					// Try to fix common JSON issues
+					// 1. Remove control characters and invalid escapes
+					jsonStr = jsonStr.replace(/[\u0000-\u001F\u007F-\u009F]/g, '')
+
+					// 2. Fix unescaped quotes in string values
+					// This regex finds strings and escapes any unescaped quotes within them
+					jsonStr = jsonStr.replace(/"([^"]*?)"(\s*:\s*)"([^"]*)"/g, (match, key, colon, value) => {
+						// Only process if this is a key-value pair
+						if (colon.includes(':')) {
+							// Escape any unescaped quotes in the value
+							const escapedValue = value.replace(/(?<!\\)"/g, '\\"')
+							return `"${key}"${colon}"${escapedValue}"`
+						}
+						return match
+					})
+
+					// 3. Try to extract just the outer JSON object more carefully
+					const betterJsonMatch = jsonStr.match(/^\{[\s\S]*\}$/)
+					if (betterJsonMatch) {
+						jsonStr = betterJsonMatch[0]
+					}
+
+					console.log('Sanitized JSON:', jsonStr.substring(0, 500) + '...')
+
+					// Second parsing attempt with sanitized string
+					try {
+						parsedResponse = JSON.parse(jsonStr)
+					} catch (secondParseError) {
+						console.error('Second parse attempt also failed')
+						console.error('Parse error details:', secondParseError)
+
+						// Last resort: try to parse with JSON5 or create minimal valid response
+						throw new Error(`Failed to parse AI analysis result: ${firstParseError instanceof Error ? firstParseError.message : 'Invalid JSON format'}`)
+					}
+				}
 			} else {
 				console.error('No JSON pattern found in AI response:', aiResponseText)
 				throw new Error('No JSON found in AI response')

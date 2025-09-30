@@ -125,6 +125,7 @@ export default function DashboardPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('')
   const [subjectFilter, setSubjectFilter] = useState<string>('')
   const [sortBy] = useState<'created_at' | 'title' | 'updated_at'>('created_at')
   const [currentPage, setCurrentPage] = useState(1)
@@ -132,6 +133,15 @@ export default function DashboardPage() {
   const [totalCount, setTotalCount] = useState(0)
 
   const ITEMS_PER_PAGE = 5
+
+  // Debounce для поиска
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery)
+    }, 500)
+
+    return () => clearTimeout(timer)
+  }, [searchQuery])
 
   // Загрузка данных с пагинацией
   const loadChecks = useCallback(async (page: number = 1, reset: boolean = false) => {
@@ -149,8 +159,8 @@ export default function DashboardPage() {
         sort_order: 'desc'
       })
 
-      if (searchQuery.trim()) {
-        params.set('search', searchQuery.trim())
+      if (debouncedSearchQuery.trim()) {
+        params.set('search', debouncedSearchQuery.trim())
       }
 
       if (subjectFilter) {
@@ -195,7 +205,7 @@ export default function DashboardPage() {
       setIsLoading(false)
       setIsLoadingMore(false)
     }
-  }, [searchQuery, subjectFilter, sortBy, ITEMS_PER_PAGE])
+  }, [debouncedSearchQuery, subjectFilter, sortBy, ITEMS_PER_PAGE])
 
   // Загрузка дополнительных данных
   const loadMore = useCallback(() => {
@@ -204,19 +214,12 @@ export default function DashboardPage() {
     }
   }, [currentPage, hasMore, isLoadingMore, loadChecks])
 
-  // Загрузка начальных данных
+  // Загрузка начальных данных и при изменении фильтров
   useEffect(() => {
+    setCurrentPage(1)
+    setHasMore(true)
     loadChecks(1, true)
-  }, [])
-
-  // Перезагрузка при изменении фильтров
-  useEffect(() => {
-    if (searchQuery !== '' || subjectFilter !== '') {
-      setCurrentPage(1)
-      setHasMore(true)
-      loadChecks(1, true)
-    }
-  }, [searchQuery, subjectFilter, loadChecks])
+  }, [debouncedSearchQuery, subjectFilter, sortBy, loadChecks])
 
   // Мемоизируем форматирование даты
   const formatDate = useCallback((dateString: string) => {

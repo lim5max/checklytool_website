@@ -213,7 +213,7 @@ export default function CheckPage({ params }: CheckPageProps) {
 			if (!isCameraOpen) {
 				loadDrafts()
 			}
-		}, 2000) // Проверяем каждые 2 секунды
+		}, 5000) // Проверяем каждые 5 секунд (оптимизировано с 2 до 5)
 
 		return () => clearInterval(interval)
 	}, [checkId, isCameraOpen, loadDrafts])
@@ -476,46 +476,44 @@ export default function CheckPage({ params }: CheckPageProps) {
 										{showSkeleton ? 'Проверяем работы' : 'Работы к проверке'}
 									</h2>
 									<div className="flex flex-col gap-2.5">
-										{showSkeleton ? (
-											// Скелетоны для проверяющихся работ
-											Array.from({ length: Math.max(3, drafts.length) }).map((_, i) => (
-												<div key={i} className="bg-slate-50 rounded-[24px] p-6 w-full">
+										{drafts.map((student, index) => (
+											<div key={`${student.name}-${index}`} className="flex gap-2 items-center justify-start w-full">
+												<div className="bg-slate-50 rounded-[24px] p-6 flex-1">
 													<div className="flex items-center justify-between w-full">
-														<div className="flex items-center gap-3">
-															<div className="h-5 bg-gray-200 rounded w-20 animate-pulse" />
-															<div className="w-6 h-5 bg-gray-200 rounded-xl animate-pulse" />
-														</div>
-														<div className="h-2 w-2 bg-blue-500 rounded-full animate-pulse" />
+														{showSkeleton ? (
+															// Скелетон во время обработки - сохраняем структуру
+															<div className="flex items-center gap-3 w-full">
+																<div className="h-5 bg-gray-200 rounded w-20 animate-pulse" />
+																<div className="w-6 h-5 bg-gray-200 rounded-xl animate-pulse" />
+															</div>
+														) : (
+															// Обычное отображение
+															<>
+																<div className="flex items-center gap-3">
+																	<span className="font-medium text-lg text-slate-800">
+																		{student.name}
+																	</span>
+																	{student.variant && (
+																		<span className="bg-blue-600 text-white font-extrabold text-sm rounded-xl px-1.5 py-0.5 h-5 flex items-center justify-center">
+																			{student.variant}
+																		</span>
+																	)}
+																</div>
+																<div className="h-2 w-2 bg-orange-500 rounded-full" />
+															</>
+														)}
 													</div>
 												</div>
-											))
-										) : (
-											drafts.map((student, index) => (
-												<div key={`${student.name}-${index}`} className="flex gap-2 items-center justify-start w-full">
-													<div className="bg-slate-50 rounded-[24px] p-6 flex-1">
-														<div className="flex items-center justify-between w-full">
-															<div className="flex items-center gap-3">
-																<span className="font-medium text-lg text-slate-800">
-																	{student.name}
-																</span>
-																{student.variant && (
-																	<span className="bg-blue-600 text-white font-extrabold text-sm rounded-xl px-1.5 py-0.5 h-5 flex items-center justify-center">
-																		{student.variant}
-																	</span>
-																)}
-															</div>
-															<div className="h-2 w-2 bg-orange-500 rounded-full" />
-														</div>
-													</div>
+												{!showSkeleton && (
 													<button
 														onClick={() => handleDeleteDraft(student.name)}
 														className="p-3 rounded-xl hover:bg-red-100 active:bg-red-200 transition-colors"
 													>
 														<Trash2 className="h-6 w-6 text-red-500" />
 													</button>
-												</div>
-											))
-										)}
+												)}
+											</div>
+										))}
 									</div>
 								</div>
 							)}
