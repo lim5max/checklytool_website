@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
-import { X, Camera, RotateCcw, ChevronRight } from 'lucide-react'
+import { X, Camera, RotateCcw } from 'lucide-react'
 
 interface Student {
   id: string
@@ -381,17 +381,23 @@ export function FullscreenCameraModal({
               onClick={() => onStudentChange(index)}
             >
               <p className={`text-[20px] font-extrabold leading-none whitespace-nowrap ${
-                index === activeStudentIndex 
-                  ? 'text-white' 
+                index === activeStudentIndex
+                  ? 'text-white'
                   : 'text-white opacity-40'
               }`}>
                 {student.name}
               </p>
-              {index === activeStudentIndex && (
-                <div className="w-[18px] h-[18px] text-white">
-                  <ChevronRight className="w-full h-full" />
-                </div>
-              )}
+              <div className={`flex items-center justify-center min-w-[28px] h-[28px] rounded-full ${
+                index === activeStudentIndex
+                  ? 'bg-blue-500'
+                  : student.photos.length > 0
+                    ? 'bg-green-500'
+                    : 'bg-white bg-opacity-20'
+              }`}>
+                <span className="text-white text-[14px] font-bold px-2">
+                  {student.photos.length}
+                </span>
+              </div>
             </div>
           ))}
         </div>
