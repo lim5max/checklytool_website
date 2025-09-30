@@ -55,6 +55,10 @@ export default function DashboardPageNew() {
 	const [activeSegment, setActiveSegment] = useState('all')
 	const [isSheetOpen, setIsSheetOpen] = useState(false)
 
+	// Pagination state
+	const [displayCount, setDisplayCount] = useState(5)
+	const ITEMS_PER_PAGE = 5
+
 	// Загрузка данных (оптимизировано: одна загрузка)
 	const loadData = useCallback(async () => {
 		try {
@@ -139,6 +143,14 @@ export default function DashboardPageNew() {
 		return filtered
 	}, [unifiedItems, activeSegment, searchQuery])
 
+	// Пагинация: показываем только первые displayCount элементов
+	const visibleItems = useMemo(
+		() => filteredItems.slice(0, displayCount),
+		[filteredItems, displayCount]
+	)
+
+	const hasMore = filteredItems.length > displayCount
+
 	// Обработчики (мемоизированы)
 	const handleItemClick = useCallback(
 		(id: string, type: 'check' | 'test') => {
@@ -154,9 +166,45 @@ export default function DashboardPageNew() {
 	const handleSearchChange = useCallback(
 		(e: React.ChangeEvent<HTMLInputElement>) => {
 			setSearchQuery(e.target.value)
+			setDisplayCount(5) // Сброс при поиске
 		},
 		[]
 	)
+
+	// Infinite scroll: загрузка следующей порции
+	const loadMore = useCallback(() => {
+		if (hasMore) {
+			setDisplayCount((prev) => prev + ITEMS_PER_PAGE)
+		}
+	}, [hasMore, ITEMS_PER_PAGE])
+
+	// Intersection Observer для автозагрузки при скролле
+	useEffect(() => {
+		const observer = new IntersectionObserver(
+			(entries) => {
+				if (entries[0].isIntersecting && hasMore) {
+					loadMore()
+				}
+			},
+			{ threshold: 0.1, rootMargin: '100px' }
+		)
+
+		const sentinel = document.getElementById('scroll-sentinel')
+		if (sentinel) {
+			observer.observe(sentinel)
+		}
+
+		return () => {
+			if (sentinel) {
+				observer.unobserve(sentinel)
+			}
+		}
+	}, [hasMore, loadMore])
+
+	// Сброс displayCount при изменении фильтров
+	useEffect(() => {
+		setDisplayCount(5)
+	}, [activeSegment])
 
 	// Пустое состояние - онбординг
 	if (!isLoading && unifiedItems.length === 0) {
@@ -319,13 +367,33 @@ export default function DashboardPageNew() {
 						</p>
 					</div>
 				) : (
-					filteredItems.map((item) => (
-						<UnifiedListItem
-							key={`${item.type}-${item.id}`}
-							{...item}
-							onClick={handleItemClick}
-						/>
-					))
+					<>
+						{/* Рендерим только видимые элементы (5 первых, потом +5 при скролле) */}
+						{visibleItems.map((item) => (
+							<UnifiedListItem
+								key={`${item.type}-${item.id}`}
+								{...item}
+								onClick={handleItemClick}
+							/>
+						))}
+
+						{/* Sentinel для Intersection Observer */}
+						{hasMore && <div id="scroll-sentinel" className="h-1" />}
+
+						{/* Индикатор загрузки */}
+						{hasMore && (
+							<div className="flex justify-center py-4">
+								<div className="w-6 h-6 border-2 border-slate-300 border-t-blue-500 rounded-full animate-spin" />
+							</div>
+						)}
+
+						{/* Показываем сколько ещё осталось */}
+						{!hasMore && filteredItems.length > 5 && (
+							<p className="text-center text-slate-500 text-sm py-4">
+								Показано {filteredItems.length} из {filteredItems.length}
+							</p>
+						)}
+					</>
 				)}
 			</div>
 
