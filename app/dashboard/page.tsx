@@ -380,13 +380,6 @@ export default function DashboardPageNew() {
 						{/* Sentinel для Intersection Observer */}
 						{hasMore && <div id="scroll-sentinel" className="h-1" />}
 
-						{/* Индикатор загрузки */}
-						{hasMore && (
-							<div className="flex justify-center py-4">
-								<div className="w-6 h-6 border-2 border-slate-300 border-t-blue-500 rounded-full animate-spin" />
-							</div>
-						)}
-
 						{/* Показываем сколько ещё осталось */}
 						{!hasMore && filteredItems.length > 5 && (
 							<p className="text-center text-slate-500 text-sm py-4">
