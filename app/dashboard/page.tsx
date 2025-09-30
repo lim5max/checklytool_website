@@ -20,6 +20,14 @@ interface Check {
 	}
 }
 
+interface Test {
+	id: string
+	title: string
+	description?: string
+	created_at: string
+	question_count: number
+}
+
 interface UnifiedItem {
 	id: string
 	title: string
@@ -49,6 +57,7 @@ export default function DashboardPageNew() {
 
 	// State
 	const [allChecks, setAllChecks] = useState<Check[]>([])
+	const [allTests, setAllTests] = useState<Test[]>([])
 	const [stats, setStats] = useState<DashboardStats | null>(null)
 	const [isLoading, setIsLoading] = useState(true)
 	const [searchQuery, setSearchQuery] = useState('')
@@ -64,14 +73,20 @@ export default function DashboardPageNew() {
 		try {
 			setIsLoading(true)
 
-			const [checksRes, statsRes] = await Promise.all([
+			const [checksRes, testsRes, statsRes] = await Promise.all([
 				fetch('/api/checks?limit=100'),
+				fetch('/api/tests/saved'),
 				fetch('/api/dashboard/stats'),
 			])
 
 			if (checksRes.ok) {
 				const data = await checksRes.json()
 				setAllChecks(data.checks || [])
+			}
+
+			if (testsRes.ok) {
+				const testsData = await testsRes.json()
+				setAllTests(Array.isArray(testsData) ? testsData : [])
 			}
 
 			if (statsRes.ok) {
@@ -109,15 +124,26 @@ export default function DashboardPageNew() {
 			})
 		})
 
-		// TODO: Добавить тесты когда будет API
-		// tests.forEach(test => { ... })
+		// Добавляем тесты
+		allTests.forEach((test) => {
+			items.push({
+				id: test.id,
+				title: test.title,
+				type: 'test',
+				createdAt: test.created_at,
+				meta: {
+					count: test.question_count,
+					label: 'Вопросов',
+				},
+			})
+		})
 
 		// Сортировка по дате (новые сначала)
 		return items.sort(
 			(a, b) =>
 				new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
 		)
-	}, [allChecks])
+	}, [allChecks, allTests])
 
 	// Фильтрация (супербыстро: < 1ms для 100 элементов)
 	const filteredItems = useMemo(() => {
