@@ -186,7 +186,7 @@ export default function DashboardPageNew() {
 					loadMore()
 				}
 			},
-			{ threshold: 0.1, rootMargin: '100px' }
+			{ threshold: 0.1, rootMargin: '0px' }
 		)
 
 		const sentinel = document.getElementById('scroll-sentinel')
