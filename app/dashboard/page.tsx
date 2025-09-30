@@ -197,35 +197,12 @@ export default function DashboardPageNew() {
 		[]
 	)
 
-	// Infinite scroll: загрузка следующей порции
+	// Загрузка следующей порции
 	const loadMore = useCallback(() => {
 		if (hasMore) {
 			setDisplayCount((prev) => prev + ITEMS_PER_PAGE)
 		}
 	}, [hasMore, ITEMS_PER_PAGE])
-
-	// Intersection Observer для автозагрузки при скролле
-	useEffect(() => {
-		const observer = new IntersectionObserver(
-			(entries) => {
-				if (entries[0].isIntersecting && hasMore) {
-					loadMore()
-				}
-			},
-			{ threshold: 0.1, rootMargin: '0px' }
-		)
-
-		const sentinel = document.getElementById('scroll-sentinel')
-		if (sentinel) {
-			observer.observe(sentinel)
-		}
-
-		return () => {
-			if (sentinel) {
-				observer.unobserve(sentinel)
-			}
-		}
-	}, [hasMore, loadMore])
 
 	// Сброс displayCount при изменении фильтров
 	useEffect(() => {
@@ -394,7 +371,7 @@ export default function DashboardPageNew() {
 					</div>
 				) : (
 					<>
-						{/* Рендерим только видимые элементы (5 первых, потом +5 при скролле) */}
+						{/* Рендерим только видимые элементы */}
 						{visibleItems.map((item) => (
 							<UnifiedListItem
 								key={`${item.type}-${item.id}`}
@@ -403,13 +380,20 @@ export default function DashboardPageNew() {
 							/>
 						))}
 
-						{/* Sentinel для Intersection Observer */}
-						{hasMore && <div id="scroll-sentinel" className="h-1" />}
+						{/* Кнопка "Показать ещё" */}
+						{hasMore && (
+							<button
+								onClick={loadMore}
+								className="w-full bg-slate-100 hover:bg-slate-200 transition-colors text-slate-700 font-inter font-medium text-base rounded-full h-14 flex items-center justify-center gap-2"
+							>
+								Показать ещё ({filteredItems.length - displayCount})
+							</button>
+						)}
 
-						{/* Показываем сколько ещё осталось */}
+						{/* Показываем сколько всего */}
 						{!hasMore && filteredItems.length > 5 && (
 							<p className="text-center text-slate-500 text-sm py-4">
-								Показано {filteredItems.length} из {filteredItems.length}
+								Показано все {filteredItems.length}
 							</p>
 						)}
 					</>

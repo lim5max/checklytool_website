@@ -23,11 +23,11 @@ interface UnifiedListItemProps {
 const typeConfig = {
 	check: {
 		label: 'Проверка',
-		tabLabel: 'Проверка',
+		color: 'bg-[#096ff5]',
 	},
 	test: {
 		label: 'Тест',
-		tabLabel: 'вчера',
+		color: 'bg-purple-500',
 	},
 }
 
@@ -63,14 +63,14 @@ export const UnifiedListItem = memo(function UnifiedListItem({
 				<ChevronRight className="w-6 h-6 text-slate-600 flex-shrink-0 group-hover:translate-x-1 transition-transform" />
 			</div>
 
-			{/* Табы */}
-			<div className="inline-flex rounded-full bg-white p-1 gap-1">
-				<div className="px-4 py-2 bg-[#096ff5] text-white rounded-full">
+			{/* Бейджи */}
+			<div className="flex gap-2">
+				<div className={`px-4 py-2 ${config.color} text-white rounded-full`}>
 					<span className="font-inter font-medium text-sm">
 						{config.label}
 					</span>
 				</div>
-				<div className="px-4 py-2 text-slate-600 rounded-full">
+				<div className="px-4 py-2 bg-slate-200 text-slate-600 rounded-full">
 					<span className="font-inter font-medium text-sm">
 						{formattedDate}
 					</span>
