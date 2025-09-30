@@ -39,12 +39,12 @@ services:
     expose:
       - "${WEBHOOK_PORT:-9000}"
     volumes:
-      - ./webhook-server.js:/app/webhook-server.js
+      - ./webhook-server.mjs:/app/webhook-server.mjs
       - ./deploy.sh:/app/deploy.sh
       - /var/run/docker.sock:/var/run/docker.sock
       - ./:/app/project
     working_dir: /app
-    command: node webhook-server.js
+    command: node webhook-server.mjs
     environment:
       - NODE_ENV=production
       - WEBHOOK_PORT=${WEBHOOK_PORT:-9000}
