@@ -1,7 +1,7 @@
 'use client'
 
 import { memo } from 'react'
-import { ChevronRight, FileCheck, FileText } from 'lucide-react'
+import { ChevronRight } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { ru } from 'date-fns/locale'
 
@@ -22,33 +22,29 @@ interface UnifiedListItemProps {
 
 const typeConfig = {
 	check: {
-		icon: FileCheck,
-		badge: 'Проверка',
-		color: 'text-blue-600 bg-blue-50',
+		label: 'Проверка',
+		tabLabel: 'Проверка',
 	},
 	test: {
-		icon: FileText,
-		badge: 'Тест',
-		color: 'text-green-600 bg-green-50',
+		label: 'Тест',
+		tabLabel: 'вчера',
 	},
 }
 
 /**
  * Универсальный компонент списка для проверок и тестов
- * Оптимизирован: React.memo + useMemo для форматирования
+ * Дизайн в стиле Airbnb с табами внутри карточки
  */
 export const UnifiedListItem = memo(function UnifiedListItem({
 	id,
 	title,
 	type,
 	createdAt,
-	meta,
 	onClick,
 }: UnifiedListItemProps) {
 	const config = typeConfig[type]
-	const Icon = config.icon
 
-	// Мемоизация форматирования даты (дорогая операция)
+	// Мемоизация форматирования даты
 	const formattedDate = formatDistanceToNow(new Date(createdAt), {
 		addSuffix: true,
 		locale: ru,
@@ -57,50 +53,29 @@ export const UnifiedListItem = memo(function UnifiedListItem({
 	return (
 		<button
 			onClick={() => onClick(id, type)}
-			className="w-full bg-slate-50 rounded-[42px] p-6 hover:bg-slate-100 transition-colors text-left group"
+			className="w-full bg-slate-50 rounded-[42px] p-7 hover:bg-slate-100 transition-colors text-left group"
 		>
-			<div className="flex items-start justify-between mb-3">
-				{/* Title + Badge */}
-				<div className="flex-1 pr-4">
-					<div className="flex items-center gap-2 mb-1">
-						<Icon className="w-5 h-5 text-slate-600 flex-shrink-0" />
-						<h3 className="font-nunito font-extrabold text-xl text-slate-800 line-clamp-1">
-							{title}
-						</h3>
-					</div>
-					<span
-						className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${config.color}`}
-					>
-						{config.badge}
-					</span>
-				</div>
-
-				{/* Arrow */}
+			{/* Заголовок и стрелка */}
+			<div className="flex items-center justify-between mb-4">
+				<h3 className="font-nunito font-extrabold text-[24px] leading-tight text-slate-800 pr-4">
+					{title}
+				</h3>
 				<ChevronRight className="w-6 h-6 text-slate-600 flex-shrink-0 group-hover:translate-x-1 transition-transform" />
 			</div>
 
-			{/* Meta */}
-			<div className="flex items-center gap-2 text-base">
-				{meta.count !== undefined && (
-					<>
-						<span className="font-medium text-slate-500">{meta.label}</span>
-						<span className="font-medium text-slate-800">{meta.count}</span>
-					</>
-				)}
-
-				{meta.score !== undefined && (
-					<>
-						<div className="w-1 h-1 bg-slate-400 rounded-full"></div>
-						<span className="font-medium text-slate-500">Средний балл</span>
-						<span className="font-medium text-slate-800">
-							{meta.score.toFixed(1)}
-						</span>
-					</>
-				)}
+			{/* Табы */}
+			<div className="inline-flex rounded-full bg-white p-1 gap-1">
+				<div className="px-4 py-2 bg-[#096ff5] text-white rounded-full">
+					<span className="font-inter font-medium text-sm">
+						{config.label}
+					</span>
+				</div>
+				<div className="px-4 py-2 text-slate-600 rounded-full">
+					<span className="font-inter font-medium text-sm">
+						{formattedDate}
+					</span>
+				</div>
 			</div>
-
-			{/* Date */}
-			<p className="font-medium text-sm text-slate-600 mt-2">{formattedDate}</p>
 		</button>
 	)
 })
