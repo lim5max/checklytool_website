@@ -5,7 +5,7 @@ export async function POST(request: NextRequest) {
   try {
     const body: PDFGenerationRequest = await request.json()
 
-    const { testId, title, description, questions, answerType = 'circles', variant = 1 } = body
+    const { testId, title, questions, variant = 1 } = body
 
     // Валидация входных данных
     if (!testId || !title || !questions || questions.length === 0) {
@@ -19,10 +19,8 @@ export async function POST(request: NextRequest) {
     const htmlContent = generateTestHTML({
       testId,
       title,
-      description,
       questions,
       variant,
-      answerType
     })
 
     // Поскольку jsPDF работает только в браузере, возвращаем HTML для генерации на клиенте
@@ -50,22 +48,17 @@ export async function POST(request: NextRequest) {
 function generateTestHTML({
   testId,
   title,
-  description,
   questions,
   variant,
-  answerType
 }: {
   testId: string
   title: string
-  description?: string
   questions: Array<{
     question: string
     options: Array<{ text: string }>
   }>
   variant: number
-  answerType: 'circles' | 'squares'
 }) {
-  const currentDate = new Date().toLocaleDateString('ru-RU')
   const testIdentifier = `#CT${testId.slice(-6).toUpperCase()}`
 
   return `

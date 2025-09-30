@@ -16,7 +16,6 @@ import {
   Square,
   CheckSquare,
   FileText,
-  AlertCircle
 } from 'lucide-react'
 import type { TestQuestion, TestOption, GeneratedTest, PDFGenerationRequest } from '@/types/check'
 
