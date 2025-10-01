@@ -8,6 +8,23 @@ import { Switch } from '@/components/ui/switch'
 import { toast } from 'sonner'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
+	DndContext,
+	closestCenter,
+	KeyboardSensor,
+	PointerSensor,
+	useSensor,
+	useSensors,
+	DragEndEvent,
+} from '@dnd-kit/core'
+import {
+	arrayMove,
+	SortableContext,
+	sortableKeyboardCoordinates,
+	useSortable,
+	verticalListSortingStrategy,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
+import {
 	Plus,
 	Trash2,
 	Download,
@@ -41,17 +58,41 @@ export default function TestConstructor({
 			description: '',
 			subject: '',
 			questions: [],
-			variants: [{ id: 'var_1', variantNumber: 1 }],
 			created_at: new Date().toISOString(),
 			updated_at: new Date().toISOString()
 		}
 	)
 
-	const [selectedVariant, setSelectedVariant] = useState(1)
+	const selectedVariant = 1
 	const [isGeneratingPDF, setIsGeneratingPDF] = useState(false)
 	const [isSaving, setIsSaving] = useState(false)
 	const [autoSaveStatus, setAutoSaveStatus] = useState<'saved' | 'saving' | 'unsaved'>('saved')
 	const [expandedQuestion, setExpandedQuestion] = useState<string | null>(null)
+
+	// Drag and drop sensors
+	const sensors = useSensors(
+		useSensor(PointerSensor),
+		useSensor(KeyboardSensor, {
+			coordinateGetter: sortableKeyboardCoordinates,
+		})
+	)
+
+	const handleDragEnd = useCallback((event: DragEndEvent) => {
+		const { active, over } = event
+
+		if (over && active.id !== over.id) {
+			setTest(prev => {
+				const oldIndex = prev.questions.findIndex(q => q.id === active.id)
+				const newIndex = prev.questions.findIndex(q => q.id === over.id)
+
+				return {
+					...prev,
+					questions: arrayMove(prev.questions, oldIndex, newIndex),
+					updated_at: new Date().toISOString()
+				}
+			})
+		}
+	}, [])
 
 	// Автосохранение с debounce
 	useEffect(() => {
@@ -69,20 +110,26 @@ export default function TestConstructor({
 		return () => clearTimeout(timer)
 	}, [test, onSave, initialTest])
 
-	// Валидация в реальном времени
+	// Валидация в реальном времени (только для заполненных полей)
 	const validationErrors = useMemo(() => {
 		const errors: Record<string, string> = {}
 
-		if (!test.title.trim()) {
+		// Валидируем только если тест начат (есть вопросы или название заполнено)
+		const isTestStarted = test.questions.length > 0 || test.title.trim().length > 0
+
+		if (isTestStarted && !test.title.trim()) {
 			errors.title = 'Укажите название теста'
 		}
 
 		test.questions.forEach((q, idx) => {
-			if (!q.question.trim()) {
+			// Валидируем только если вопрос начат
+			const isQuestionStarted = q.question.trim().length > 0 || q.options.some(opt => opt.text.trim().length > 0)
+
+			if (isQuestionStarted && !q.question.trim()) {
 				errors[`q${idx}_text`] = 'Укажите текст вопроса'
 			}
 
-			if (q.type !== 'open') {
+			if (isQuestionStarted && q.type !== 'open') {
 				if (q.options.some(opt => !opt.text.trim())) {
 					errors[`q${idx}_options`] = 'Заполните все варианты'
 				}
@@ -231,36 +278,6 @@ export default function TestConstructor({
 		}
 	}, [test.questions, updateQuestion, updateOption])
 
-	const addVariant = useCallback(() => {
-		const nextNumber = (test.variants?.length || 0) + 1
-		const newVariant: TestVariant = {
-			id: `var_${nextNumber}`,
-			variantNumber: nextNumber
-		}
-
-		setTest(prev => ({
-			...prev,
-			variants: [...(prev.variants || []), newVariant],
-			updated_at: new Date().toISOString()
-		}))
-
-		toast.success(`Вариант ${nextNumber} добавлен`)
-	}, [test.variants])
-
-	const removeVariant = useCallback((variantId: string) => {
-		if ((test.variants?.length || 0) <= 1) {
-			toast.error('Должен остаться хотя бы один вариант')
-			return
-		}
-
-		setTest(prev => ({
-			...prev,
-			variants: prev.variants?.filter(v => v.id !== variantId) || [],
-			updated_at: new Date().toISOString()
-		}))
-
-		toast.success('Вариант удалён')
-	}, [test.variants])
 
 	const validateTest = useCallback(() => {
 		if (!test.title.trim()) {
@@ -511,59 +528,6 @@ export default function TestConstructor({
 					</div>
 				</div>
 
-				{/* Управление вариантами */}
-				<div className="bg-slate-50 rounded-2xl p-6">
-					<div className="flex items-center justify-between mb-4">
-						<div>
-							<h3 className="font-nunito font-bold text-lg text-slate-900">Варианты теста</h3>
-							<p className="text-sm text-slate-600 mt-1">
-								Создавайте разные варианты для разных групп учащихся
-							</p>
-						</div>
-						<Button onClick={addVariant} variant="outline" size="sm" className="gap-2">
-							<Plus className="w-4 h-4" />
-							Добавить вариант
-						</Button>
-					</div>
-
-					<div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-						{test.variants?.map((variant) => (
-							<motion.div
-								key={variant.id}
-								initial={{ opacity: 0, scale: 0.9 }}
-								animate={{ opacity: 1, scale: 1 }}
-								className={`relative group p-4 rounded-xl border-2 transition-all cursor-pointer ${
-									selectedVariant === variant.variantNumber
-										? 'border-blue-500 bg-blue-50'
-										: 'border-slate-200 bg-white hover:border-slate-300'
-								}`}
-								onClick={() => setSelectedVariant(variant.variantNumber)}
-							>
-								<div className="text-center">
-									<div className="font-bold text-2xl text-slate-800">
-										{variant.variantNumber}
-									</div>
-									<div className="text-xs text-slate-600 mt-1">
-										Вариант
-									</div>
-								</div>
-
-								{(test.variants?.length || 0) > 1 && (
-									<button
-										onClick={(e) => {
-											e.stopPropagation()
-											removeVariant(variant.id)
-										}}
-										className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-lg hover:bg-red-100"
-									>
-										<Trash2 className="w-3 h-3 text-red-600" />
-									</button>
-								)}
-							</motion.div>
-						))}
-					</div>
-				</div>
-
 				{/* Список вопросов */}
 				<div className="space-y-4">
 					<div className="flex items-center justify-between">
@@ -576,28 +540,37 @@ export default function TestConstructor({
 						</Button>
 					</div>
 
-					<AnimatePresence mode="popLayout">
-						{test.questions.map((question, questionIndex) => (
-							<QuestionCard
-								key={question.id}
-								question={question}
-								questionIndex={questionIndex}
-								isExpanded={expandedQuestion === question.id}
-								onToggleExpand={() => setExpandedQuestion(
-									expandedQuestion === question.id ? null : question.id
-								)}
-								onUpdate={(updates) => updateQuestion(question.id, updates)}
-								onDelete={() => deleteQuestion(question.id)}
-								onDuplicate={() => duplicateQuestion(question.id)}
-								onToggleCorrect={toggleCorrectAnswer}
-								onUpdateOption={updateOption}
-								onAddOption={() => addOption(question.id)}
-								onRemoveOption={removeOption}
-								validationErrors={validationErrors}
-								getOptionLabel={getOptionLabel}
-							/>
-						))}
-					</AnimatePresence>
+					<DndContext
+						sensors={sensors}
+						collisionDetection={closestCenter}
+						onDragEnd={handleDragEnd}
+					>
+						<SortableContext
+							items={test.questions.map(q => q.id)}
+							strategy={verticalListSortingStrategy}
+						>
+							{test.questions.map((question, questionIndex) => (
+								<SortableQuestionCard
+									key={question.id}
+									question={question}
+									questionIndex={questionIndex}
+									isExpanded={expandedQuestion === question.id}
+									onToggleExpand={() => setExpandedQuestion(
+										expandedQuestion === question.id ? null : question.id
+									)}
+									onUpdate={(updates) => updateQuestion(question.id, updates)}
+									onDelete={() => deleteQuestion(question.id)}
+									onDuplicate={() => duplicateQuestion(question.id)}
+									onToggleCorrect={toggleCorrectAnswer}
+									onUpdateOption={updateOption}
+									onAddOption={() => addOption(question.id)}
+									onRemoveOption={removeOption}
+									validationErrors={validationErrors}
+									getOptionLabel={getOptionLabel}
+								/>
+							))}
+						</SortableContext>
+					</DndContext>
 
 					{test.questions.length === 0 && (
 						<motion.div
@@ -673,6 +646,30 @@ export default function TestConstructor({
 	)
 }
 
+// Sortable wrapper для вопроса
+function SortableQuestionCard(props: QuestionCardProps) {
+	const {
+		attributes,
+		listeners,
+		setNodeRef,
+		transform,
+		transition,
+		isDragging,
+	} = useSortable({ id: props.question.id })
+
+	const style = {
+		transform: CSS.Transform.toString(transform),
+		transition,
+		opacity: isDragging ? 0.5 : 1,
+	}
+
+	return (
+		<div ref={setNodeRef} style={style} className="mb-4">
+			<QuestionCard {...props} dragHandleProps={{ ...attributes, ...listeners }} />
+		</div>
+	)
+}
+
 // Компонент карточки вопроса
 interface QuestionCardProps {
 	question: TestQuestion
@@ -688,6 +685,7 @@ interface QuestionCardProps {
 	onRemoveOption: (questionId: string, optionId: string) => void
 	validationErrors: Record<string, string>
 	getOptionLabel: (index: number) => string
+	dragHandleProps?: React.HTMLAttributes<HTMLDivElement>
 }
 
 function QuestionCard({
@@ -704,15 +702,12 @@ function QuestionCard({
 	onRemoveOption,
 	validationErrors,
 	getOptionLabel,
+	dragHandleProps,
 }: QuestionCardProps) {
 	const hasError = Object.keys(validationErrors).some(key => key.startsWith(`q${questionIndex}_`))
 
 	return (
-		<motion.div
-			layout
-			initial={{ opacity: 0, y: 20 }}
-			animate={{ opacity: 1, y: 0 }}
-			exit={{ opacity: 0, scale: 0.95 }}
+		<div
 			className={`bg-white rounded-2xl border-2 transition-all ${
 				hasError ? 'border-red-400' : 'border-slate-200'
 			} ${isExpanded ? 'shadow-lg' : 'hover:border-slate-300'}`}
@@ -724,10 +719,12 @@ function QuestionCard({
 			>
 				<div className="flex items-start gap-4">
 					<div className="flex items-center gap-3">
-						<GripVertical className="w-5 h-5 text-slate-400 cursor-grab" />
-						<div className="flex items-center justify-center w-8 h-8 rounded-full bg-blue-100 text-blue-700 font-bold text-sm">
-							{questionIndex + 1}
+						<div {...dragHandleProps} className="cursor-grab active:cursor-grabbing" onClick={(e) => e.stopPropagation()}>
+							<GripVertical className="w-5 h-5 text-slate-400" />
 						</div>
+						<span className="text-slate-900 font-bold text-lg min-w-[24px]">
+							{questionIndex + 1}
+						</span>
 					</div>
 
 					<div className="flex-1 min-w-0">
@@ -758,7 +755,7 @@ function QuestionCard({
 			</div>
 
 			{/* Развёрнутое содержимое */}
-			<AnimatePresence>
+			<AnimatePresence initial={false}>
 				{isExpanded && (
 					<motion.div
 						initial={{ height: 0, opacity: 0 }}
@@ -943,6 +940,6 @@ function QuestionCard({
 					</motion.div>
 				)}
 			</AnimatePresence>
-		</motion.div>
+		</div>
 	)
 }
