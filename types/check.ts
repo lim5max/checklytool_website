@@ -341,15 +341,24 @@ export interface ImageUploadProgress {
 export interface TestQuestion {
   id: string
   question: string
-  type: 'single' | 'multiple'
+  type: 'single' | 'multiple' | 'open'
   options: TestOption[]
   explanation?: string
+  strictMatch?: boolean // Требуется ли точное совпадение ответа (для открытых вопросов)
+  hideOptionsInPDF?: boolean // Скрывать варианты ответа в PDF (только вопрос)
+  points?: number // Баллы за вопрос (по умолчанию 1)
 }
 
 export interface TestOption {
   id: string
   text: string
   isCorrect: boolean
+}
+
+export interface TestVariant {
+  id: string
+  variantNumber: number
+  title?: string // Опциональное название варианта
 }
 
 export interface GeneratedTest {
@@ -359,6 +368,7 @@ export interface GeneratedTest {
   subject?: string
   class_level?: string
   questions: TestQuestion[]
+  variants?: TestVariant[] // Варианты теста
   created_at: string
   updated_at: string
 }

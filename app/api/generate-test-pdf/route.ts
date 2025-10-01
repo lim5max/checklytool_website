@@ -56,6 +56,9 @@ function generateTestHTML({
   questions: Array<{
     question: string
     options: Array<{ text: string }>
+    type?: string
+    points?: number
+    hideOptionsInPDF?: boolean
   }>
   variant: number
 }) {
@@ -212,13 +215,16 @@ function generateTestHTML({
           <div class="question-header">
             <div class="question-number">${index + 1}.</div>
             <div class="question-text">${question.question}</div>
+            ${question.points && question.points > 1 ? `<div style="margin-left: auto; font-size: 11pt; color: #666;">(${question.points} балл${question.points === 1 ? '' : question.points < 5 ? 'а' : 'ов'})</div>` : ''}
           </div>
 
+          ${!question.hideOptionsInPDF && question.type !== 'open' ? `
           <div class="options">
             ${question.options.map((option: { text: string }, optIndex: number) => `
-              <div class="option">${optIndex + 1}) ${option.text}</div>
+              <div class="option">${String.fromCharCode(65 + optIndex)}) ${option.text}</div>
             `).join('')}
           </div>
+          ` : ''}
 
           <div class="answer-section">
             <span class="answer-label">Ответ</span>
