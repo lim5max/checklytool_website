@@ -35,16 +35,34 @@ import {
 	Save,
 	AlertCircle,
 	Copy,
-	FileText,
 	List,
+	Check,
+	FileText,
+	ChevronDown,
 } from 'lucide-react'
-import type { TestQuestion, TestOption, GeneratedTest, PDFGenerationRequest, TestVariant } from '@/types/check'
+import type { TestQuestion, TestOption, GeneratedTest, PDFGenerationRequest } from '@/types/check'
 
 interface TestConstructorProps {
 	initialTest?: GeneratedTest
 	onSave?: (test: GeneratedTest) => void
 	className?: string
 }
+
+const createDefaultQuestion = (index: number): TestQuestion => ({
+	id: `q_${Date.now()}_${index}`,
+	question: '',
+	type: 'single',
+	options: [
+		{ id: `opt_${Date.now()}_${index}_1`, text: '', isCorrect: false },
+		{ id: `opt_${Date.now()}_${index}_2`, text: '', isCorrect: false },
+		{ id: `opt_${Date.now()}_${index}_3`, text: '', isCorrect: false },
+		{ id: `opt_${Date.now()}_${index}_4`, text: '', isCorrect: false }
+	],
+	explanation: '',
+	strictMatch: false,
+	hideOptionsInPDF: false,
+	points: 1
+})
 
 export default function TestConstructor({
 	initialTest,
@@ -57,7 +75,7 @@ export default function TestConstructor({
 			title: '',
 			description: '',
 			subject: '',
-			questions: [],
+			questions: [createDefaultQuestion(0), createDefaultQuestion(1)],
 			created_at: new Date().toISOString(),
 			updated_at: new Date().toISOString()
 		}
@@ -66,8 +84,8 @@ export default function TestConstructor({
 	const selectedVariant = 1
 	const [isGeneratingPDF, setIsGeneratingPDF] = useState(false)
 	const [isSaving, setIsSaving] = useState(false)
-	const [autoSaveStatus, setAutoSaveStatus] = useState<'saved' | 'saving' | 'unsaved'>('saved')
 	const [expandedQuestion, setExpandedQuestion] = useState<string | null>(null)
+	const [touchedFields, setTouchedFields] = useState<Set<string>>(new Set())
 
 	// Drag and drop sensors
 	const sensors = useSensors(
@@ -98,38 +116,33 @@ export default function TestConstructor({
 	useEffect(() => {
 		if (!initialTest) return // Не автосохраняем новые тесты
 
-		setAutoSaveStatus('unsaved')
 		const timer = setTimeout(() => {
 			if (onSave && test.questions.length > 0) {
-				setAutoSaveStatus('saving')
 				onSave(test)
-				setTimeout(() => setAutoSaveStatus('saved'), 500)
 			}
 		}, 2000)
 
 		return () => clearTimeout(timer)
 	}, [test, onSave, initialTest])
 
-	// Валидация в реальном времени (только для заполненных полей)
+	// Валидация в реальном времени (только для затронутых полей)
 	const validationErrors = useMemo(() => {
 		const errors: Record<string, string> = {}
 
-		// Валидируем только если тест начат (есть вопросы или название заполнено)
-		const isTestStarted = test.questions.length > 0 || test.title.trim().length > 0
-
-		if (isTestStarted && !test.title.trim()) {
+		// Валидируем название только если поле было затронуто И есть вопросы
+		if (touchedFields.has('title') && test.questions.length > 0 && !test.title.trim()) {
 			errors.title = 'Укажите название теста'
 		}
 
 		test.questions.forEach((q, idx) => {
-			// Валидируем только если вопрос начат
-			const isQuestionStarted = q.question.trim().length > 0 || q.options.some(opt => opt.text.trim().length > 0)
+			// Валидируем только если вопрос был затронут
+			const questionTouched = touchedFields.has(`question_${q.id}`)
 
-			if (isQuestionStarted && !q.question.trim()) {
+			if (questionTouched && !q.question.trim()) {
 				errors[`q${idx}_text`] = 'Укажите текст вопроса'
 			}
 
-			if (isQuestionStarted && q.type !== 'open') {
+			if (questionTouched && q.type !== 'open') {
 				if (q.options.some(opt => !opt.text.trim())) {
 					errors[`q${idx}_options`] = 'Заполните все варианты'
 				}
@@ -142,7 +155,7 @@ export default function TestConstructor({
 		})
 
 		return errors
-	}, [test])
+	}, [test, touchedFields])
 
 	const isValid = Object.keys(validationErrors).length === 0 && test.questions.length > 0
 
@@ -394,57 +407,6 @@ export default function TestConstructor({
 
 	return (
 		<div className={`space-y-6 ${className}`}>
-			{/* Sticky Header с статусом сохранения */}
-			<motion.div
-				initial={{ opacity: 0, y: -20 }}
-				animate={{ opacity: 1, y: 0 }}
-				className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b border-slate-200 -mx-4 px-4 py-4"
-			>
-				<div className="flex items-center justify-between max-w-5xl mx-auto">
-					<div className="flex items-center gap-3">
-						<FileText className="w-6 h-6 text-blue-600" />
-						<div>
-							<h2 className="font-nunito font-black text-lg text-slate-900">
-								{test.title || 'Новый тест'}
-							</h2>
-							<div className="flex items-center gap-2 text-xs text-slate-500">
-								<span>{test.questions.length} вопросов</span>
-								{autoSaveStatus === 'saved' && initialTest && (
-									<span className="flex items-center gap-1 text-green-600">
-										<CheckCircle2 className="w-3 h-3" />
-										Сохранено
-									</span>
-								)}
-								{autoSaveStatus === 'saving' && (
-									<span className="flex items-center gap-1 text-blue-600">
-										<div className="w-3 h-3 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
-										Сохранение...
-									</span>
-								)}
-								{autoSaveStatus === 'unsaved' && initialTest && (
-									<span className="flex items-center gap-1 text-orange-600">
-										<AlertCircle className="w-3 h-3" />
-										Есть изменения
-									</span>
-								)}
-							</div>
-						</div>
-					</div>
-
-					{isValid ? (
-						<div className="flex items-center gap-1 text-green-600 text-sm font-medium">
-							<CheckCircle2 className="w-4 h-4" />
-							Готово к публикации
-						</div>
-					) : (
-						<div className="flex items-center gap-1 text-orange-600 text-sm font-medium">
-							<AlertCircle className="w-4 h-4" />
-							{Object.keys(validationErrors).length} проблем
-						</div>
-					)}
-				</div>
-			</motion.div>
-
 			{/* Основная информация о тесте */}
 			<motion.div
 				initial={{ opacity: 0 }}
@@ -465,6 +427,9 @@ export default function TestConstructor({
 								title: e.target.value,
 								updated_at: new Date().toISOString()
 							}))}
+							onBlur={() => {
+								setTouchedFields(prev => new Set(prev).add('title'))
+							}}
 							placeholder="Например: Контрольная работа по математике"
 							className={`h-14 text-lg font-medium ${validationErrors.title ? 'border-red-400 bg-red-50' : ''}`}
 						/>
@@ -530,15 +495,9 @@ export default function TestConstructor({
 
 				{/* Список вопросов */}
 				<div className="space-y-4">
-					<div className="flex items-center justify-between">
-						<h3 className="font-nunito font-bold text-xl text-slate-900">
-							Вопросы
-						</h3>
-						<Button onClick={addQuestion} className="gap-2">
-							<Plus className="w-4 h-4" />
-							Добавить вопрос
-						</Button>
-					</div>
+					<h3 className="font-nunito font-bold text-3xl text-slate-900 mb-6">
+						Вопросы
+					</h3>
 
 					<DndContext
 						sensors={sensors}
@@ -567,6 +526,9 @@ export default function TestConstructor({
 									onRemoveOption={removeOption}
 									validationErrors={validationErrors}
 									getOptionLabel={getOptionLabel}
+									onMarkTouched={() => {
+										setTouchedFields(prev => new Set(prev).add(`question_${question.id}`))
+									}}
 								/>
 							))}
 						</SortableContext>
@@ -590,6 +552,15 @@ export default function TestConstructor({
 								Добавить первый вопрос
 							</Button>
 						</motion.div>
+					)}
+
+					{test.questions.length > 0 && (
+						<div className="flex justify-center pt-4">
+							<Button onClick={addQuestion} className="gap-2" size="lg" variant="outline">
+								<Plus className="w-4 h-4" />
+								Добавить вопрос
+							</Button>
+						</div>
 					)}
 				</div>
 
@@ -670,6 +641,109 @@ function SortableQuestionCard(props: QuestionCardProps) {
 	)
 }
 
+// Компонент выбора типа вопроса
+interface QuestionTypeSelectorProps {
+	value: TestQuestion['type']
+	onChange: (type: TestQuestion['type']) => void
+}
+
+const questionTypes: Array<{
+	value: TestQuestion['type']
+	label: string
+	description: string
+	icon: React.ReactNode
+}> = [
+	{
+		value: 'single',
+		label: 'Один ответ',
+		description: 'Только один правильный вариант',
+		icon: <CheckCircle2 className="w-5 h-5" />,
+	},
+	{
+		value: 'multiple',
+		label: 'Несколько ответов',
+		description: 'Несколько правильных вариантов',
+		icon: <Check className="w-5 h-5" />,
+	},
+	{
+		value: 'open',
+		label: 'Открытый вопрос',
+		description: 'Свободный ответ студента',
+		icon: <FileText className="w-5 h-5" />,
+	},
+]
+
+function QuestionTypeSelector({ value, onChange }: QuestionTypeSelectorProps) {
+	const [isOpen, setIsOpen] = useState(false)
+	const selected = questionTypes.find(t => t.value === value) || questionTypes[0]
+
+	return (
+		<div className="relative">
+			<button
+				type="button"
+				onClick={() => setIsOpen(!isOpen)}
+				className="w-full h-12 px-4 flex items-center justify-between bg-white border-2 border-slate-200 rounded-xl hover:border-slate-300 transition-colors"
+			>
+				<div className="flex items-center gap-3">
+					<div className="text-slate-600">{selected.icon}</div>
+					<span className="font-medium text-slate-900">{selected.label}</span>
+				</div>
+				<ChevronDown className={`w-5 h-5 text-slate-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+			</button>
+
+			<AnimatePresence>
+				{isOpen && (
+					<>
+						<motion.div
+							initial={{ opacity: 0 }}
+							animate={{ opacity: 1 }}
+							exit={{ opacity: 0 }}
+							className="fixed inset-0 z-40"
+							onClick={() => setIsOpen(false)}
+						/>
+						<motion.div
+							initial={{ opacity: 0, y: -10 }}
+							animate={{ opacity: 1, y: 0 }}
+							exit={{ opacity: 0, y: -10 }}
+							transition={{ duration: 0.15 }}
+							className="absolute top-full left-0 right-0 mt-2 bg-white border-2 border-slate-200 rounded-xl shadow-xl overflow-hidden z-50"
+						>
+							{questionTypes.map((type) => (
+								<button
+									key={type.value}
+									type="button"
+									onClick={() => {
+										onChange(type.value)
+										setIsOpen(false)
+									}}
+									className={`w-full px-4 py-3 flex items-start gap-3 hover:bg-slate-50 transition-colors ${
+										type.value === value ? 'bg-blue-50' : ''
+									}`}
+								>
+									<div className={`mt-0.5 ${type.value === value ? 'text-blue-600' : 'text-slate-600'}`}>
+										{type.icon}
+									</div>
+									<div className="flex-1 text-left">
+										<div className={`font-semibold ${type.value === value ? 'text-blue-600' : 'text-slate-900'}`}>
+											{type.label}
+										</div>
+										<div className="text-xs text-slate-600 mt-0.5">
+											{type.description}
+										</div>
+									</div>
+									{type.value === value && (
+										<Check className="w-5 h-5 text-blue-600 mt-0.5" />
+									)}
+								</button>
+							))}
+						</motion.div>
+					</>
+				)}
+			</AnimatePresence>
+		</div>
+	)
+}
+
 // Компонент карточки вопроса
 interface QuestionCardProps {
 	question: TestQuestion
@@ -686,6 +760,7 @@ interface QuestionCardProps {
 	validationErrors: Record<string, string>
 	getOptionLabel: (index: number) => string
 	dragHandleProps?: React.HTMLAttributes<HTMLDivElement>
+	onMarkTouched: () => void
 }
 
 function QuestionCard({
@@ -703,6 +778,7 @@ function QuestionCard({
 	validationErrors,
 	getOptionLabel,
 	dragHandleProps,
+	onMarkTouched,
 }: QuestionCardProps) {
 	const hasError = Object.keys(validationErrors).some(key => key.startsWith(`q${questionIndex}_`))
 
@@ -713,31 +789,25 @@ function QuestionCard({
 			} ${isExpanded ? 'shadow-lg' : 'hover:border-slate-300'}`}
 		>
 			{/* Заголовок вопроса */}
-			<div
-				className="p-6 cursor-pointer select-none"
-				onClick={onToggleExpand}
-			>
-				<div className="flex items-start gap-4">
+			<div className="p-6 select-none">
+				<div className="flex items-center gap-4">
 					<div className="flex items-center gap-3">
-						<div {...dragHandleProps} className="cursor-grab active:cursor-grabbing" onClick={(e) => e.stopPropagation()}>
+						<div {...dragHandleProps} className="cursor-grab active:cursor-grabbing">
 							<GripVertical className="w-5 h-5 text-slate-400" />
 						</div>
-						<span className="text-slate-900 font-bold text-lg min-w-[24px]">
-							{questionIndex + 1}
+						<span className="text-slate-900 font-bold text-lg whitespace-nowrap">
+							Задание {questionIndex + 1}
 						</span>
 					</div>
 
 					<div className="flex-1 min-w-0">
-						<p className="font-medium text-slate-900 truncate">
-							{question.question || <span className="text-slate-400">Новый вопрос...</span>}
-						</p>
-						<div className="flex items-center gap-3 mt-2 text-xs text-slate-600">
-							<span className="px-2 py-1 bg-slate-100 rounded-full">
+						<div className="flex items-center gap-3 text-sm text-slate-600">
+							<span className="px-3 py-1.5 bg-slate-100 rounded-full font-medium">
 								{question.type === 'single' ? 'Один ответ' : question.type === 'multiple' ? 'Несколько ответов' : 'Открытый'}
 							</span>
-							<span>{question.points || 1} балл</span>
+							<span className="font-medium">{question.points || 1} балл</span>
 							{question.hideOptionsInPDF && (
-								<span className="text-orange-600">Без вариантов в PDF</span>
+								<span className="text-orange-600 font-medium">Без вариантов в PDF</span>
 							)}
 						</div>
 					</div>
@@ -747,8 +817,10 @@ function QuestionCard({
 						<motion.div
 							animate={{ rotate: isExpanded ? 180 : 0 }}
 							transition={{ duration: 0.2 }}
+							onClick={onToggleExpand}
+							className="cursor-pointer"
 						>
-							<Eye className="w-5 h-5 text-slate-400" />
+							<Eye className="w-5 h-5 text-slate-400 hover:text-slate-600 transition-colors" />
 						</motion.div>
 					</div>
 				</div>
@@ -773,6 +845,7 @@ function QuestionCard({
 								<Textarea
 									value={question.question}
 									onChange={(e) => onUpdate({ question: e.target.value })}
+									onBlur={onMarkTouched}
 									placeholder="Введите текст вопроса"
 									className={`min-h-[100px] resize-none ${validationErrors[`q${questionIndex}_text`] ? 'border-red-400 bg-red-50' : ''}`}
 									rows={3}
@@ -785,15 +858,10 @@ function QuestionCard({
 									<label className="block text-sm font-semibold text-slate-700 mb-2">
 										Тип вопроса
 									</label>
-									<select
+									<QuestionTypeSelector
 										value={question.type}
-										onChange={(e) => onUpdate({ type: e.target.value as TestQuestion['type'] })}
-										className="w-full h-12 rounded-xl border border-slate-200 px-4 bg-white"
-									>
-										<option value="single">Один ответ</option>
-										<option value="multiple">Несколько ответов</option>
-										<option value="open">Открытый вопрос</option>
-									</select>
+										onChange={(type) => onUpdate({ type })}
+									/>
 								</div>
 
 								<div>

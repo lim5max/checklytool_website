@@ -221,7 +221,7 @@ function generateTestHTML({
           ${!question.hideOptionsInPDF && question.type !== 'open' ? `
           <div class="options">
             ${question.options.map((option: { text: string }, optIndex: number) => `
-              <div class="option">${String.fromCharCode(65 + optIndex)}) ${option.text}</div>
+              <div class="option">${optIndex + 1}) ${option.text}</div>
             `).join('')}
           </div>
           ` : ''}
