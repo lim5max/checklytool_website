@@ -288,17 +288,17 @@ export default function Header({
               ) : null}
 
               {isProfileOpen && user && (
-                <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg border py-1 z-50">
-                  <div className="px-4 py-3 border-b">
-                    <p className="text-sm font-medium text-gray-900">{user.name || 'Пользователь'}</p>
-                    <p className="text-sm text-gray-500">{user.email}</p>
+                <div className="absolute right-0 mt-2 w-64 bg-white rounded-xl border-2 border-slate-200 elevation-lg py-2 z-50">
+                  <div className="px-4 py-3 border-b-2 border-slate-100">
+                    <p className="text-base font-semibold text-slate-900">{user.name || 'Пользователь'}</p>
+                    <p className="text-sm text-slate-600 mt-0.5">{user.email}</p>
                   </div>
 
                   <button
                     onClick={onSignOut}
-                    className="flex items-center space-x-2 w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                    className="flex items-center gap-2 w-full text-left px-4 py-3 text-sm font-medium text-red-600 hover:bg-red-50 transition-all duration-200 rounded-lg mx-2 my-1"
                   >
-                    <LogOut className="h-4 w-4" />
+                    <LogOut className="icon-sm" />
                     <span>Выйти</span>
                   </button>
                 </div>

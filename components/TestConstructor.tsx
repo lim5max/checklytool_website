@@ -431,7 +431,7 @@ export default function TestConstructor({
 								setTouchedFields(prev => new Set(prev).add('title'))
 							}}
 							placeholder="Например: Контрольная работа по математике"
-							className={`h-14 text-lg font-medium ${validationErrors.title ? 'border-red-400 bg-red-50' : ''}`}
+							variant={validationErrors.title ? 'error' : 'default'}
 						/>
 						{validationErrors.title && (
 							<p className="text-sm text-red-600 mt-1">{validationErrors.title}</p>
@@ -452,7 +452,6 @@ export default function TestConstructor({
 									updated_at: new Date().toISOString()
 								}))}
 								placeholder="Математика, Физика..."
-								className="h-12"
 							/>
 						</div>
 
@@ -469,27 +468,8 @@ export default function TestConstructor({
 									updated_at: new Date().toISOString()
 								}))}
 								placeholder="8А, 9Б..."
-								className="h-12"
 							/>
 						</div>
-					</div>
-
-					<div>
-						<label htmlFor="test-description" className="block text-sm font-semibold text-slate-700 mb-2">
-							Описание (необязательно)
-						</label>
-						<Textarea
-							id="test-description"
-							value={test.description || ''}
-							onChange={(e) => setTest(prev => ({
-								...prev,
-								description: e.target.value,
-								updated_at: new Date().toISOString()
-							}))}
-							placeholder="Краткое описание теста"
-							rows={2}
-							className="resize-none"
-						/>
 					</div>
 				</div>
 

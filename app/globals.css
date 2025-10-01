@@ -1,18 +1,56 @@
 @import "tailwindcss";
 
-/* Основные CSS переменные */
-:root {
-  --radius: 0.625rem;
+/* ============================================================================
+ * ChecklyTool Design System
+ * Основано на Apple HIG и Google Material Design 3
+ * ============================================================================ */
 
-  /* Основные цвета */
+:root {
+  /* Цвета */
   --background: #ffffff;
   --foreground: #0f172a;
   --primary: #096ff5;
   --primary-foreground: #ffffff;
-
-  /* Кастомные цвета для UI */
   --primary-blue: #096ff5;
   --ring: #096ff5;
+
+  /* Icon Sizes */
+  --icon-sm: 16px;
+  --icon-md: 24px;
+  --icon-lg: 32px;
+
+  /* Spacing (8pt grid) */
+  --spacing-0: 0px;
+  --spacing-1: 4px;
+  --spacing-2: 8px;
+  --spacing-3: 12px;
+  --spacing-4: 16px;
+  --spacing-6: 24px;
+  --spacing-8: 32px;
+  --spacing-12: 48px;
+  --spacing-16: 64px;
+
+  /* Border Radius */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-2xl: 28px;
+  --radius-full: 9999px;
+
+  /* Elevation (Shadows) */
+  --elevation-none: none;
+  --elevation-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --elevation-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --elevation-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --elevation-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  --elevation-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+
+  /* Animation */
+  --animation-fast: 150ms;
+  --animation-normal: 200ms;
+  --animation-slow: 300ms;
+  --animation-slower: 400ms;
 
   /* Шрифты */
   --font-inter: var(--font-inter);
@@ -20,6 +58,9 @@
 
   /* Безопасная зона для устройств */
   --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
+
+  /* Legacy support */
+  --radius: 0.625rem;
 }
 
 body {
@@ -63,7 +104,52 @@ body {
   animation: animate-in 0.2s ease-out;
 }
 
-/* Кастомные утилиты для компонентов */
+/* ============================================================================
+ * Design System Utility Classes
+ * ============================================================================ */
+
+/* Icon Sizes */
+.icon-sm {
+  width: var(--icon-sm);
+  height: var(--icon-sm);
+}
+
+.icon-md {
+  width: var(--icon-md);
+  height: var(--icon-md);
+}
+
+.icon-lg {
+  width: var(--icon-lg);
+  height: var(--icon-lg);
+}
+
+/* Elevation */
+.elevation-none {
+  box-shadow: var(--elevation-none);
+}
+
+.elevation-sm {
+  box-shadow: var(--elevation-sm);
+}
+
+.elevation-md {
+  box-shadow: var(--elevation-md);
+}
+
+.elevation-lg {
+  box-shadow: var(--elevation-lg);
+}
+
+.elevation-xl {
+  box-shadow: var(--elevation-xl);
+}
+
+.elevation-2xl {
+  box-shadow: var(--elevation-2xl);
+}
+
+/* Color Utilities */
 .bg-primary-blue {
   background-color: var(--primary-blue);
 }
@@ -80,12 +166,13 @@ body {
   --tw-ring-color: rgb(9 111 245 / 0.5);
 }
 
+/* Border Radius (Legacy support) */
 .rounded-figma-full {
-  border-radius: 9999px;
+  border-radius: var(--radius-full);
 }
 
 .rounded-figma-lg {
-  border-radius: 1.5rem;
+  border-radius: var(--radius-lg);
 }
 
 /* Темная тема (базовая) */

@@ -4,32 +4,39 @@ import { cva, type VariantProps } from "class-variance-authority"
 
 import { cn } from "@/lib/utils"
 
+/**
+ * Button Component
+ * Основан на дизайн-системе ChecklyTool
+ * Использует стандартизованные размеры, отступы и стили
+ */
+
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] font-inter",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap font-medium transition-all duration-200 disabled:pointer-events-none disabled:opacity-50 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 font-inter shrink-0",
   {
     variants: {
       variant: {
         default:
-          "bg-primary-blue text-white shadow-sm hover:bg-primary-blue/90 rounded-full px-6 py-3 h-14 font-medium",
+          "bg-primary-blue text-white elevation-sm hover:elevation-md hover:bg-primary-blue/90 active:elevation-none",
         destructive:
-          "bg-red-500 text-white shadow-sm hover:bg-red-600 rounded-full px-6 py-3 h-14 font-medium",
+          "bg-red-500 text-white elevation-sm hover:elevation-md hover:bg-red-600 active:elevation-none",
         outline:
-          "border border-slate-100 bg-background shadow-sm hover:bg-slate-50 hover:text-slate-800 rounded-full px-5 py-3 h-14 font-medium text-slate-500",
+          "border-2 border-slate-200 bg-white hover:bg-slate-50 hover:border-slate-300 text-slate-700 active:bg-slate-100",
         secondary:
-          "bg-slate-100 text-slate-800 shadow-sm hover:bg-slate-200 rounded-full px-5 py-3 h-12 font-medium",
+          "bg-slate-100 text-slate-800 hover:bg-slate-200 active:bg-slate-300",
         ghost:
-          "hover:bg-slate-50 hover:text-slate-800 rounded-full px-4 py-2 h-12 font-medium text-slate-600",
-        link: "text-primary-blue underline-offset-4 hover:underline font-medium",
-        toggle:
-          "bg-slate-50 text-slate-500 border border-slate-100 hover:bg-primary-blue hover:text-white rounded-full px-5 py-2 h-12 font-medium data-[state=active]:bg-primary-blue data-[state=active]:text-white",
+          "hover:bg-slate-100 hover:text-slate-900 text-slate-600 active:bg-slate-200",
+        link:
+          "text-primary-blue underline-offset-4 hover:underline p-0 h-auto",
       },
       size: {
-        default: "h-14 px-6 py-3",
-        sm: "h-12 px-5 py-2",
-        lg: "h-16 px-8 py-4",
-        icon: "size-12",
-        mobile: "h-14 px-6 py-3 w-full", // Full width for mobile
+        sm: "h-10 px-4 text-sm rounded-lg",
+        default: "h-12 px-6 text-base rounded-xl",
+        lg: "h-14 px-8 text-base rounded-xl",
+        icon: "size-12 rounded-xl",
       },
+      fullWidth: {
+        true: "w-full",
+      }
     },
     defaultVariants: {
       variant: "default",
@@ -38,25 +45,27 @@ const buttonVariants = cva(
   }
 )
 
+interface ButtonProps extends React.ComponentProps<"button">, VariantProps<typeof buttonVariants> {
+  asChild?: boolean
+}
+
 function Button({
   className,
   variant,
   size,
+  fullWidth,
   asChild = false,
   ...props
-}: React.ComponentProps<"button"> &
-  VariantProps<typeof buttonVariants> & {
-    asChild?: boolean
-  }) {
+}: ButtonProps) {
   const Comp = asChild ? Slot : "button"
 
   return (
     <Comp
       data-slot="button"
-      className={cn(buttonVariants({ variant, size, className }))}
+      className={cn(buttonVariants({ variant, size, fullWidth, className }))}
       {...props}
     />
   )
 }
 
-export { Button, buttonVariants }
+export { Button, buttonVariants, type ButtonProps }
