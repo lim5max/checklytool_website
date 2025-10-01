@@ -9,13 +9,13 @@ import { cn } from "@/lib/utils"
  */
 
 const inputVariants = cva(
-  "flex w-full border-2 bg-white text-slate-900 placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-blue focus-visible:border-primary-blue disabled:cursor-not-allowed disabled:opacity-50 font-inter transition-all duration-200",
+  "flex w-full border-2 text-slate-900 placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-blue focus-visible:border-primary-blue disabled:cursor-not-allowed disabled:opacity-50 font-inter transition-all duration-200",
   {
     variants: {
       variant: {
-        default: "border-slate-200 hover:border-slate-300",
-        filled: "bg-slate-50 border-slate-200 hover:border-slate-300",
-        error: "border-red-300 focus-visible:ring-red-500 focus-visible:border-red-500",
+        default: "bg-slate-50 border-slate-200 hover:border-slate-300 focus-visible:bg-white",
+        outlined: "bg-white border-slate-200 hover:border-slate-300",
+        error: "bg-red-50 border-red-300 focus-visible:ring-red-500 focus-visible:border-red-500",
       },
       size: {
         sm: "h-10 px-3 text-sm rounded-lg",

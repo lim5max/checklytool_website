@@ -277,7 +277,7 @@ import { Button } from '@/components/ui/button'
 
 ### Input
 
-Поля ввода с единообразным дизайном.
+Поля ввода с единообразным дизайном и серой заливкой по умолчанию.
 
 ```tsx
 import { Input, SearchInput } from '@/components/ui/input'
@@ -288,13 +288,15 @@ import { Input, SearchInput } from '@/components/ui/input'
 <Input size="lg" placeholder="Большое поле" />
 
 // Варианты
-<Input variant="default" />
-<Input variant="filled" />
-<Input variant="error" />
+<Input variant="default" />  // С серой заливкой (bg-slate-50)
+<Input variant="outlined" /> // Без заливки (bg-white)
+<Input variant="error" />    // С красной заливкой для ошибок
 
 // Поле поиска
 <SearchInput placeholder="Поиск..." />
 ```
+
+**Примечание:** По умолчанию все поля ввода имеют легкую серую заливку (`bg-slate-50`), которая при фокусе меняется на белую (`focus-visible:bg-white`). Это создает приятный визуальный эффект и делает интерфейс более мягким.
 
 ### Card
 
@@ -348,7 +350,7 @@ import { Switch } from '@/components/ui/switch'
 
 ### Textarea
 
-Многострочные поля ввода.
+Многострочные поля ввода с серой заливкой по умолчанию.
 
 ```tsx
 import { Textarea } from '@/components/ui/textarea'
@@ -359,10 +361,12 @@ import { Textarea } from '@/components/ui/textarea'
 <Textarea size="lg" />
 
 // Варианты
-<Textarea variant="default" />
-<Textarea variant="filled" />
-<Textarea variant="error" />
+<Textarea variant="default" />  // С серой заливкой (bg-slate-50)
+<Textarea variant="outlined" /> // Без заливки (bg-white)
+<Textarea variant="error" />    // С красной заливкой для ошибок
 ```
+
+**Примечание:** Textarea также использует серую заливку по умолчанию, которая меняется на белую при фокусе.
 
 ---
 
