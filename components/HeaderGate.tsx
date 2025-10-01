@@ -11,12 +11,14 @@ import { usePathname } from 'next/navigation'
  * - /dashboard/checks/[id]
  * - /dashboard/checks/[id]/results
  * - /dashboard/checks/[id]/submit
+ * - /dashboard/tests/[id]
  */
 export default function HeaderGate({ children }: PropsWithChildren) {
   const pathname = usePathname()
 
   const hide =
     /^\/dashboard\/checks\/[^/]+(\/results|\/submit)?$/.test(pathname || '') ||
+    /^\/dashboard\/tests\/[^/]+$/.test(pathname || '') ||
     pathname === '/dashboard/checks/create' ||
     pathname === '/dashboard/test-builder'
 
