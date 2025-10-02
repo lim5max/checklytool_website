@@ -22,7 +22,6 @@ interface HeaderProps {
   } | null
 
   // Callbacks
-  onSignOut?: () => void
   onOpenModal?: () => void
   isUserLoading?: boolean
 
@@ -35,17 +34,41 @@ export default function Header({
   showBackButton = false,
   onBackClick,
   user,
-  onSignOut,
   isUserLoading = false,
   className = ""
 }: HeaderProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isProfileOpen, setIsProfileOpen] = useState(false)
+  const [isSigningOut, setIsSigningOut] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   const toggleMenu = () => setIsMenuOpen(!isMenuOpen)
   const closeMenu = () => setIsMenuOpen(false)
   const handleBackClick = onBackClick || (() => {})
+
+  const handleSignOut = async () => {
+    try {
+      setIsSigningOut(true)
+      // Call our API route to sign out
+      const response = await fetch('/api/auth/signout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+
+      if (response.ok || response.redirected) {
+        // Force a hard redirect to clear all state
+        window.location.href = '/'
+      } else {
+        console.error('Sign out failed')
+        setIsSigningOut(false)
+      }
+    } catch (error) {
+      console.error('Sign out error:', error)
+      setIsSigningOut(false)
+    }
+  }
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -200,17 +223,24 @@ export default function Header({
                   </nav>
 
                   {/* Кнопка выйти в самом низу для dashboard */}
-                  {variant === "dashboard" && user && onSignOut && (
+                  {variant === "dashboard" && user && (
                     <div className="mt-auto pt-6 border-t">
                       <button
                         onClick={() => {
-                          onSignOut()
+                          handleSignOut()
                           closeMenu()
                         }}
-                        className="flex items-center space-x-3 text-red-600 hover:text-red-700 transition-colors w-full text-left"
+                        disabled={isSigningOut}
+                        className="flex items-center space-x-3 text-red-600 hover:text-red-700 transition-colors w-full text-left disabled:opacity-50"
                       >
-                        <LogOut className="h-5 w-5" />
-                        <span className="text-xl font-nunito font-bold">Выйти</span>
+                        {isSigningOut ? (
+                          <div className="w-5 h-5 border-2 border-red-600 border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                          <LogOut className="h-5 w-5" />
+                        )}
+                        <span className="text-xl font-nunito font-bold">
+                          {isSigningOut ? 'Выходим...' : 'Выйти'}
+                        </span>
                       </button>
                     </div>
                   )}
@@ -295,11 +325,16 @@ export default function Header({
                   </div>
 
                   <button
-                    onClick={onSignOut}
-                    className="flex items-center gap-2 w-full text-left px-4 py-3 text-sm font-medium text-red-600 hover:bg-red-50 transition-all duration-200 rounded-lg mx-2 my-1"
+                    onClick={handleSignOut}
+                    disabled={isSigningOut}
+                    className="flex items-center gap-2 w-full text-left px-4 py-3 text-sm font-medium text-red-600 hover:bg-red-50 transition-all duration-200 rounded-lg mx-2 my-1 disabled:opacity-50"
                   >
-                    <LogOut className="icon-sm" />
-                    <span>Выйти</span>
+                    {isSigningOut ? (
+                      <div className="w-4 h-4 border-2 border-red-600 border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <LogOut className="icon-sm" />
+                    )}
+                    <span>{isSigningOut ? 'Выходим...' : 'Выйти'}</span>
                   </button>
                 </div>
               )}

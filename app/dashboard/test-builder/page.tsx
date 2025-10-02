@@ -126,7 +126,6 @@ export default function TestBuilderPage() {
         <Header
           variant="dashboard"
           user={user}
-          onSignOut={handleSignOut}
           isUserLoading={isUserLoading}
           className="py-4"
         />

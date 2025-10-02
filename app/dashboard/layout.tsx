@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { redirect } from 'next/navigation'
-import { auth, signOut } from '../../lib/auth'
+import { auth } from '../../lib/auth'
 import Header from '../../components/Header'
 import HeaderGate from '../../components/HeaderGate'
 
@@ -20,11 +20,6 @@ export default async function DashboardLayout({
     redirect('/auth/login')
   }
 
-  const handleSignOut = async () => {
-    'use server'
-    await signOut({ redirectTo: '/' })
-  }
-
   return (
     <div className="min-h-screen bg-white">
       {/* Headers (hidden on checks pages to match Figma local nav) */}
@@ -38,7 +33,6 @@ export default async function DashboardLayout({
                 email: session.user?.email,
                 image: session.user?.image
               }}
-              onSignOut={handleSignOut}
               className="py-4"
             />
           </div>

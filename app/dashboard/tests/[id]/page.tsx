@@ -176,7 +176,6 @@ export default function TestPage({ params }: TestPageProps) {
 				<Header
 					variant="dashboard"
 					user={user}
-					onSignOut={handleSignOut}
 					isUserLoading={isUserLoading}
 					className="py-4"
 				/>

@@ -366,7 +366,6 @@ export default function CheckPage({ params }: CheckPageProps) {
 					variant="dashboard"
 					user={user}
 					isUserLoading={isUserLoading}
-					onSignOut={handleSignOut}
 				/>
 			</div>
 
