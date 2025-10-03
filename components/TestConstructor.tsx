@@ -48,22 +48,6 @@ interface TestConstructorProps {
 	className?: string
 }
 
-const createDefaultQuestion = (index: number): TestQuestion => ({
-	id: `q_${Date.now()}_${index}`,
-	question: '',
-	type: 'single',
-	options: [
-		{ id: `opt_${Date.now()}_${index}_1`, text: '', isCorrect: false },
-		{ id: `opt_${Date.now()}_${index}_2`, text: '', isCorrect: false },
-		{ id: `opt_${Date.now()}_${index}_3`, text: '', isCorrect: false },
-		{ id: `opt_${Date.now()}_${index}_4`, text: '', isCorrect: false }
-	],
-	explanation: '',
-	strictMatch: false,
-	hideOptionsInPDF: false,
-	points: 1
-})
-
 export default function TestConstructor({
 	initialTest,
 	onSave,
@@ -75,7 +59,7 @@ export default function TestConstructor({
 			title: '',
 			description: '',
 			subject: '',
-			questions: [createDefaultQuestion(0), createDefaultQuestion(1)],
+			questions: [],
 			created_at: new Date().toISOString(),
 			updated_at: new Date().toISOString()
 		}
@@ -402,7 +386,7 @@ export default function TestConstructor({
 	}, [test, validateTest, onSave, isSaving])
 
 	const getOptionLabel = (index: number) => {
-		return String.fromCharCode(65 + index) // A, B, C, D, ...
+		return (index + 1).toString() // 1, 2, 3, 4, ...
 	}
 
 	return (

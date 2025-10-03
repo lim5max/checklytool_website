@@ -170,7 +170,7 @@ export default function TestBuilderPage() {
               <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-700 font-bold mb-3">1</div>
               <h4 className="font-semibold text-blue-900 mb-2">Создание вопросов</h4>
               <p className="text-blue-800 text-sm">
-                Добавьте вопросы с вариантами ответов A, B, C, D и отметьте правильные
+                Добавьте вопросы с вариантами ответов 1, 2, 3, 4 и отметьте правильные
               </p>
             </div>
 
