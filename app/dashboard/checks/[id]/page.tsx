@@ -57,6 +57,7 @@ export default function CheckPage({ params }: CheckPageProps) {
 	const [isCameraOpen, setIsCameraOpen] = useState(false)
 	const [isProcessing, setIsProcessing] = useState(false)
 	const [drafts, setDrafts] = useState<DraftStudent[]>([])
+	const [processingCount, setProcessingCount] = useState(0) // Количество работ в процессе проверки
 
 	// Загружаем данные пользователя
 	useEffect(() => {
@@ -171,6 +172,7 @@ export default function CheckPage({ params }: CheckPageProps) {
 			setTimeout(() => {
 				loadSubmissions()
 				setIsProcessing(false) // Сбрасываем флаг обработки после завершения всех проверок
+				setProcessingCount(0) // Сбрасываем количество обрабатываемых работ
 			}, 2000)
 		}
 
@@ -270,6 +272,9 @@ export default function CheckPage({ params }: CheckPageProps) {
 
 		try {
 			setIsProcessing(true)
+			// Сохраняем количество работ для отображения скелетонов
+			setProcessingCount(drafts.length)
+
 			const draft = getDraft(checkId)
 			const { items } = await submitStudents(checkId, draft?.students || [])
 
@@ -290,6 +295,7 @@ export default function CheckPage({ params }: CheckPageProps) {
 			toast.error('Ошибка при отправке работ')
 			// Только при ошибке отправки сбрасываем сразу
 			setIsProcessing(false)
+			setProcessingCount(0)
 		}
 	}
 
@@ -355,8 +361,11 @@ export default function CheckPage({ params }: CheckPageProps) {
 	// Вычисляем показывать ли состояние загрузки
 	const showSkeleton = isLoading || isProcessing
 
+	// Определяем сколько скелетонов показывать (на основе количества черновиков перед отправкой)
+	const skeletonCount = isProcessing ? Math.max(processingCount, pendingSubs.length, 1) : 0
+
 	// Проверяем есть ли вообще какой-то контент
-	const hasAnyContent = failedSubs.length > 0 || pendingSubs.length > 0 || completedSubs.length > 0 || drafts.length > 0
+	const hasAnyContent = failedSubs.length > 0 || pendingSubs.length > 0 || completedSubs.length > 0 || drafts.length > 0 || skeletonCount > 0
 
 	return (
 		<div className="min-h-screen bg-white">
@@ -469,50 +478,55 @@ export default function CheckPage({ params }: CheckPageProps) {
 							)}
 
 							{/* Работы к проверке */}
-							{(drafts.length > 0 || showSkeleton) && (
+							{(drafts.length > 0 || skeletonCount > 0) && (
 								<div className="flex flex-col gap-4">
 									<h2 className="font-medium text-base text-slate-800">
 										{showSkeleton ? 'Проверяем работы' : 'Работы к проверке'}
 									</h2>
 									<div className="flex flex-col gap-2.5">
-										{drafts.map((student, index) => (
-											<div key={`${student.name}-${index}`} className="flex gap-2 items-center justify-start w-full">
-												<div className="bg-slate-50 rounded-[24px] p-6 flex-1">
-													<div className="flex items-center justify-between w-full">
-														{showSkeleton ? (
-															// Скелетон во время обработки - сохраняем структуру
+										{/* Показываем скелетоны во время обработки */}
+										{showSkeleton && skeletonCount > 0 ? (
+											Array.from({ length: skeletonCount }).map((_, index) => (
+												<div key={`skeleton-${index}`} className="flex gap-2 items-center justify-start w-full">
+													<div className="bg-slate-50 rounded-[24px] p-6 flex-1">
+														<div className="flex items-center justify-between w-full">
 															<div className="flex items-center gap-3 w-full">
-																<div className="h-5 bg-gray-200 rounded w-20 animate-pulse" />
+																<div className="h-5 bg-gray-200 rounded w-32 animate-pulse" />
 																<div className="w-6 h-5 bg-gray-200 rounded-xl animate-pulse" />
 															</div>
-														) : (
-															// Обычное отображение
-															<>
-																<div className="flex items-center gap-3">
-																	<span className="font-medium text-lg text-slate-800">
-																		{student.name}
-																	</span>
-																	{student.variant && (
-																		<span className="bg-blue-600 text-white font-extrabold text-sm rounded-xl px-1.5 py-0.5 h-5 flex items-center justify-center">
-																			{student.variant}
-																		</span>
-																	)}
-																</div>
-																<div className="h-2 w-2 bg-orange-500 rounded-full" />
-															</>
-														)}
+															<div className="h-2 w-2 bg-blue-500 rounded-full animate-pulse" />
+														</div>
 													</div>
 												</div>
-												{!showSkeleton && (
+											))
+										) : (
+											/* Обычное отображение черновиков */
+											drafts.map((student, index) => (
+												<div key={`${student.name}-${index}`} className="flex gap-2 items-center justify-start w-full">
+													<div className="bg-slate-50 rounded-[24px] p-6 flex-1">
+														<div className="flex items-center justify-between w-full">
+															<div className="flex items-center gap-3">
+																<span className="font-medium text-lg text-slate-800">
+																	{student.name}
+																</span>
+																{student.variant && (
+																	<span className="bg-blue-600 text-white font-extrabold text-sm rounded-xl px-1.5 py-0.5 h-5 flex items-center justify-center">
+																		{student.variant}
+																	</span>
+																)}
+															</div>
+															<div className="h-2 w-2 bg-orange-500 rounded-full" />
+														</div>
+													</div>
 													<button
 														onClick={() => handleDeleteDraft(student.name)}
 														className="p-3 rounded-xl hover:bg-red-100 active:bg-red-200 transition-colors"
 													>
 														<Trash2 className="h-6 w-6 text-red-500" />
 													</button>
-												)}
-											</div>
-										))}
+												</div>
+											))
+										)}
 									</div>
 								</div>
 							)}
