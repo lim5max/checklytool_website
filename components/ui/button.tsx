@@ -29,10 +29,10 @@ const buttonVariants = cva(
           "text-primary-blue underline-offset-4 hover:underline p-0 h-auto",
       },
       size: {
-        sm: "h-10 px-4 text-sm rounded-lg",
-        default: "h-12 px-6 text-base rounded-xl",
-        lg: "h-14 px-8 text-base rounded-xl",
-        icon: "size-12 rounded-xl",
+        sm: "h-10 px-4 text-sm rounded-full",
+        default: "h-12 px-6 text-base rounded-full",
+        lg: "h-14 px-8 text-base rounded-full",
+        icon: "size-12 rounded-full",
       },
       fullWidth: {
         true: "w-full",

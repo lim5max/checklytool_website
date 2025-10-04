@@ -540,14 +540,19 @@ export default function TestConstructor({
 								onClick={() => generatePDF()}
 								disabled={isGeneratingPDF || !isValid}
 								size="lg"
-								className="flex-1 gap-2"
+								className="w-full sm:flex-1 gap-2 min-h-[56px] sm:h-12 text-base"
 							>
 								{isGeneratingPDF ? (
 									<div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
 								) : (
 									<Download className="w-4 h-4" />
 								)}
-								{isGeneratingPDF ? 'Генерация PDF...' : `Скачать PDF (Вариант ${selectedVariant})`}
+								<span className="hidden sm:inline">
+									{isGeneratingPDF ? 'Генерация PDF...' : `Скачать PDF (Вариант ${selectedVariant})`}
+								</span>
+								<span className="inline sm:hidden">
+									{isGeneratingPDF ? 'Генерация...' : `PDF (В${selectedVariant})`}
+								</span>
 							</Button>
 
 							{onSave && (
@@ -556,7 +561,7 @@ export default function TestConstructor({
 									onClick={handleSave}
 									disabled={isSaving || !isValid}
 									size="lg"
-									className="gap-2"
+									className="w-full sm:flex-1 gap-2 min-h-[56px] sm:h-12 text-base"
 								>
 									{isSaving ? (
 										<div className="w-4 h-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" />
@@ -753,9 +758,41 @@ function QuestionCard({
 			} ${isExpanded ? 'shadow-lg' : 'hover:border-slate-300'}`}
 		>
 			{/* Заголовок вопроса */}
-			<div className="p-6 select-none">
-				<div className="flex items-center gap-4">
-					<div className="flex items-center gap-3">
+			<div className="p-4 sm:p-6 select-none">
+				{/* Mobile layout */}
+				<div className="sm:hidden">
+					<div className="flex items-center justify-between mb-3">
+						<div className="flex items-center gap-2">
+							<div {...dragHandleProps} className="cursor-grab active:cursor-grabbing">
+								<GripVertical className="w-5 h-5 text-slate-400" />
+							</div>
+							<span className="text-slate-900 font-bold text-base whitespace-nowrap">
+								Задание {questionIndex + 1}
+							</span>
+						</div>
+						<div className="flex items-center gap-2">
+							{hasError && <AlertCircle className="w-5 h-5 text-red-500" />}
+							<motion.div
+								animate={{ rotate: isExpanded ? 180 : 0 }}
+								transition={{ duration: 0.2 }}
+								onClick={onToggleExpand}
+								className="cursor-pointer"
+							>
+								<Eye className="w-5 h-5 text-slate-400 hover:text-slate-600 transition-colors" />
+							</motion.div>
+						</div>
+					</div>
+					<div className="flex flex-wrap items-center gap-2 text-xs text-slate-600 pl-7">
+						<span className="px-2.5 py-1 bg-slate-100 rounded-full font-medium whitespace-nowrap">
+							{question.type === 'single' ? 'Один ответ' : question.type === 'multiple' ? 'Несколько ответов' : 'Открытый'}
+						</span>
+						<span className="font-medium whitespace-nowrap">{question.points || 1} балл</span>
+					</div>
+				</div>
+
+				{/* Desktop layout */}
+				<div className="hidden sm:flex items-center gap-4">
+					<div className="flex items-center gap-3 flex-shrink-0">
 						<div {...dragHandleProps} className="cursor-grab active:cursor-grabbing">
 							<GripVertical className="w-5 h-5 text-slate-400" />
 						</div>
@@ -765,18 +802,18 @@ function QuestionCard({
 					</div>
 
 					<div className="flex-1 min-w-0">
-						<div className="flex items-center gap-3 text-sm text-slate-600">
-							<span className="px-3 py-1.5 bg-slate-100 rounded-full font-medium">
+						<div className="flex flex-wrap items-center gap-2 text-sm text-slate-600">
+							<span className="px-3 py-1.5 bg-slate-100 rounded-full font-medium whitespace-nowrap">
 								{question.type === 'single' ? 'Один ответ' : question.type === 'multiple' ? 'Несколько ответов' : 'Открытый'}
 							</span>
-							<span className="font-medium">{question.points || 1} балл</span>
+							<span className="font-medium whitespace-nowrap">{question.points || 1} балл</span>
 							{question.hideOptionsInPDF && (
-								<span className="text-orange-600 font-medium">Без вариантов в PDF</span>
+								<span className="text-orange-600 font-medium whitespace-nowrap">Без вариантов в PDF</span>
 							)}
 						</div>
 					</div>
 
-					<div className="flex items-center gap-2">
+					<div className="flex items-center gap-2 flex-shrink-0">
 						{hasError && <AlertCircle className="w-5 h-5 text-red-500" />}
 						<motion.div
 							animate={{ rotate: isExpanded ? 180 : 0 }}

@@ -57,16 +57,13 @@ export default function Header({
         },
       })
 
-      if (response.ok || response.redirected) {
-        // Force a hard redirect to clear all state
-        window.location.href = '/'
-      } else {
-        console.error('Sign out failed')
-        setIsSigningOut(false)
-      }
+      // Always redirect after sign out attempt
+      // The API will handle the actual sign out
+      window.location.href = '/'
     } catch (error) {
       console.error('Sign out error:', error)
-      setIsSigningOut(false)
+      // Even on error, redirect to home to clear state
+      window.location.href = '/'
     }
   }
 
