@@ -99,97 +99,108 @@ export default function SubscriptionModal({
 				onClick={onClose}
 			></div>
 
-			{/* Modal */}
-			<div className="relative bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-				{/* Header */}
-				<div className="sticky top-0 bg-white border-b px-6 py-6">
-					<div className="flex items-start justify-between">
-						<div className="flex-1">
-							{/* Success Icon */}
-							<div className="mb-4 w-14 h-14 bg-gradient-to-br from-green-400 to-green-500 rounded-full flex items-center justify-center">
-								<Sparkles className="w-7 h-7 text-white" />
-							</div>
-
-							<h2 className="text-3xl font-bold text-gray-900 mb-2">
-								Отлично! Ваши работы готовы к проверке
-							</h2>
-
-							{requiredCredits !== undefined && availableCredits !== undefined && (
-								<div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-3 mb-2">
-									<div className="flex items-center gap-2 text-blue-900">
-										<Zap className="w-4 h-4" />
-										<p className="text-sm font-medium">
-											Для оценки потребуется <span className="font-bold">{requiredCredits}</span> {requiredCredits === 1 ? 'проверка' : 'проверок'}
-										</p>
-									</div>
-									{availableCredits === 0 && (
-										<p className="text-xs text-blue-700 mt-1 ml-6">
-											Текущий баланс: {availableCredits} проверок
-										</p>
-									)}
-								</div>
-							)}
-
-							<p className="text-gray-600 mt-2">
-								{message || 'Выберите подходящий тариф для продолжения работы'}
-							</p>
+			{/* Modal - Airbnb style */}
+			<div className="relative bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col">
+				{/* Compact Header - Fixed at top */}
+				<div className="flex items-center justify-between px-6 py-4 border-b flex-shrink-0">
+					<div className="flex items-center gap-3">
+						<div className="w-10 h-10 bg-gradient-to-br from-green-400 to-green-500 rounded-full flex items-center justify-center flex-shrink-0">
+							<Sparkles className="w-5 h-5 text-white" />
 						</div>
-						<button
-							onClick={onClose}
-							className="p-2 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0"
-						>
-							<X className="w-6 h-6" />
-						</button>
+						<div>
+							<h2 className="text-lg font-bold text-gray-900">
+								Работы готовы к проверке
+							</h2>
+							{requiredCredits !== undefined && (
+								<p className="text-sm text-gray-600">
+									Нужно {requiredCredits} {requiredCredits === 1 ? 'проверка' : 'проверок'}
+								</p>
+							)}
+						</div>
 					</div>
+					<button
+						onClick={onClose}
+						className="p-2 hover:bg-gray-100 rounded-full transition-colors flex-shrink-0"
+						aria-label="Закрыть"
+					>
+						<X className="w-5 h-5 text-gray-600" />
+					</button>
 				</div>
 
-				{/* Content */}
-				<div className="p-6">
+				{/* Scrollable Content */}
+				<div className="overflow-y-auto flex-1 px-6 py-6">
 					{loading ? (
 						<div className="flex items-center justify-center py-12">
 							<div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
 						</div>
 					) : (
-						<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-							{paidPlans.map((plan) => (
+						<div className="space-y-4">
+							{/* Balance info if needed */}
+							{availableCredits !== undefined && availableCredits === 0 && (
+								<div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+									<div className="flex items-start gap-3">
+										<Zap className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+										<div>
+											<p className="text-sm font-semibold text-amber-900">
+												Баланс проверок исчерпан
+											</p>
+											<p className="text-xs text-amber-700 mt-1">
+												Выберите тариф, чтобы продолжить работу
+											</p>
+										</div>
+									</div>
+								</div>
+							)}
+
+							{/* Plans */}
+							{paidPlans.map((plan, index) => (
 								<div
 									key={plan.id}
-									className="border-2 border-gray-200 rounded-xl p-6 hover:border-blue-500 transition-colors"
+									className={`border-2 rounded-xl p-5 hover:border-blue-500 hover:shadow-md transition-all ${
+										index === 0 ? 'border-blue-500 bg-blue-50/30' : 'border-gray-200'
+									}`}
 								>
 									<div className="flex items-start justify-between mb-4">
-										<div>
-											<h3 className="text-xl font-bold text-gray-900">
-												{plan.display_name}
-											</h3>
-											<p className="text-3xl font-bold text-gray-900 mt-2">
+										<div className="flex-1">
+											<div className="flex items-center gap-2 mb-1">
+												<h3 className="text-xl font-bold text-gray-900">
+													{plan.display_name}
+												</h3>
+												{index === 0 && (
+													<span className="px-2 py-0.5 bg-blue-600 text-white text-xs font-semibold rounded-full">
+														Популярный
+													</span>
+												)}
+											</div>
+											<p className="text-2xl font-bold text-gray-900">
 												{plan.price.toLocaleString('ru-RU')} ₽
 												<span className="text-sm font-normal text-gray-600">
 													/мес
 												</span>
 											</p>
 										</div>
-										<div className="bg-blue-100 p-2 rounded-lg">
-											<Zap className="w-6 h-6 text-blue-600" />
+										<div className="bg-blue-100 p-2 rounded-lg flex-shrink-0">
+											<Zap className="w-5 h-5 text-blue-600" />
 										</div>
 									</div>
 
-									<div className="space-y-3 mb-6">
-										<div className="flex items-center gap-2 text-gray-700">
-											<Check className="w-5 h-5 text-green-600" />
+									<div className="space-y-2.5 mb-5">
+										<div className="flex items-start gap-2.5 text-sm text-gray-700">
+											<Check className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
 											<span>
 												{plan.check_credits} проверок в месяц
 											</span>
 										</div>
-										<div className="flex items-center gap-2 text-gray-700">
-											<Check className="w-5 h-5 text-green-600" />
+										<div className="flex items-start gap-2.5 text-sm text-gray-700">
+											<Check className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
 											<span>Тесты (1 лист = 0,5 проверки)</span>
 										</div>
-										<div className="flex items-center gap-2 text-gray-700">
-											<Check className="w-5 h-5 text-green-600" />
+										<div className="flex items-start gap-2.5 text-sm text-gray-700">
+											<Check className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
 											<span>Сочинения (1 лист = 1 проверка)</span>
 										</div>
-										<div className="flex items-center gap-2 text-gray-700">
-											<Check className="w-5 h-5 text-green-600" />
+										<div className="flex items-start gap-2.5 text-sm text-gray-700">
+											<Check className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
 											<span>Неограниченное создание тестов</span>
 										</div>
 									</div>
@@ -211,17 +222,17 @@ export default function SubscriptionModal({
 									</Button>
 								</div>
 							))}
+
+							{/* Info */}
+							<div className="p-4 bg-blue-50 rounded-xl">
+								<p className="text-sm text-gray-700 leading-relaxed">
+									💡 <strong>Обратите внимание:</strong> Создание тестов в
+									конструкторе бесплатно и доступно всем пользователям.
+									Проверки тратятся только при оценке работ учеников.
+								</p>
+							</div>
 						</div>
 					)}
-
-					{/* Info */}
-					<div className="mt-6 p-4 bg-blue-50 rounded-lg">
-						<p className="text-sm text-gray-700">
-							💡 <strong>Обратите внимание:</strong> Создание тестов в
-							конструкторе бесплатно и доступно всем пользователям.
-							Проверки тратятся только при оценке работ учеников.
-						</p>
-					</div>
 				</div>
 			</div>
 		</div>
