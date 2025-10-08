@@ -11,6 +11,8 @@ import { CameraWorkInterface } from '@/components/camera/CameraWorkInterface'
 import { Button } from '@/components/ui/button'
 import { getDraft, clearDraft, setDraftStudents, getTempFailedNames, clearTempFailedNames, addTempFailedName } from '@/lib/drafts'
 import { submitStudents, evaluateAll } from '@/lib/upload-submissions'
+import SubscriptionModal from '@/components/subscription-modal'
+import { useCheckBalance } from '@/hooks/use-check-balance'
 
 type SubmissionStatus = 'pending' | 'processing' | 'completed' | 'failed'
 
@@ -58,6 +60,10 @@ export default function CheckPage({ params }: CheckPageProps) {
 	const [isProcessing, setIsProcessing] = useState(false)
 	const [drafts, setDrafts] = useState<DraftStudent[]>([])
 	const [processingCount, setProcessingCount] = useState(0) // Количество работ в процессе проверки
+	const [showSubscriptionModal, setShowSubscriptionModal] = useState(false)
+
+	// Check balance
+	const { balance, getCreditsNeeded } = useCheckBalance()
 
 	// Загружаем данные пользователя
 	useEffect(() => {
@@ -278,9 +284,6 @@ export default function CheckPage({ params }: CheckPageProps) {
 			const draft = getDraft(checkId)
 			const { items } = await submitStudents(checkId, draft?.students || [])
 
-			// Запускаем проверку, но не дожидаемся ее завершения
-			// isProcessing будет сброшен через событие evaluation:complete
-			evaluateAll(items.map(i => ({ submissionId: i.submissionId }))).catch(console.error)
 			clearDraft(checkId)
 
 			if (typeof window !== 'undefined') {
@@ -289,7 +292,29 @@ export default function CheckPage({ params }: CheckPageProps) {
 				}))
 			}
 
-			toast.success('Работы отправлены на проверку')
+			// Показываем успешное сообщение только после загрузки работ
+			toast.success('Работы успешно загружены')
+
+			// Запускаем проверку, но не дожидаемся ее завершения
+			// isProcessing будет сброшен через событие evaluation:complete
+			try {
+				await evaluateAll(items.map(i => ({ submissionId: i.submissionId })))
+				toast.success('Работы отправлены на проверку')
+			} catch (error) {
+				console.error('Evaluation error:', error)
+				// Проверяем, является ли ошибка недостатком кредитов
+				if (error instanceof Error && error.message.includes('insufficient_credits')) {
+					toast.error('Недостаточно проверок для оценки работ')
+					setShowSubscriptionModal(true)
+					setIsProcessing(false)
+					setProcessingCount(0)
+				} else {
+					// Другая ошибка - просто логируем
+					console.error('Unexpected evaluation error:', error)
+					setIsProcessing(false)
+					setProcessingCount(0)
+				}
+			}
 		} catch (error) {
 			console.error('Submit error:', error)
 			toast.error('Ошибка при отправке работ')
@@ -597,6 +622,12 @@ export default function CheckPage({ params }: CheckPageProps) {
 				onClose={handleCloseCamera}
 				checkTitle={checkTitle}
 				maxPhotosPerStudent={5}
+			/>
+
+			{/* Subscription Modal */}
+			<SubscriptionModal
+				isOpen={showSubscriptionModal}
+				onClose={() => setShowSubscriptionModal(false)}
 			/>
 		</div>
 	)

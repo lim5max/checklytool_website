@@ -190,6 +190,13 @@ export default function Header({
                           >
                             Дашборд
                           </Link>
+                          <Link
+                            href="/dashboard/profile"
+                            className="block text-xl font-nunito font-bold text-gray-700 hover:text-gray-900 transition-colors"
+                            onClick={closeMenu}
+                          >
+                            Профиль
+                          </Link>
                         </div>
                       </>
                     ) : (
@@ -320,6 +327,15 @@ export default function Header({
                     <p className="text-base font-semibold text-slate-900">{user.name || 'Пользователь'}</p>
                     <p className="text-sm text-slate-600 mt-0.5">{user.email}</p>
                   </div>
+
+                  <Link
+                    href="/dashboard/profile"
+                    onClick={() => setIsProfileOpen(false)}
+                    className="flex items-center gap-2 w-full text-left px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-all duration-200 rounded-lg mx-2 my-1"
+                  >
+                    <User className="icon-sm" />
+                    <span>Профиль</span>
+                  </Link>
 
                   <button
                     onClick={handleSignOut}

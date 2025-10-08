@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAuthenticatedSupabase } from '@/lib/database'
 import { analyzeWithRetry, calculateGrade, calculateEssayGrade } from '@/lib/openrouter'
+import { deductCheckCredits } from '@/lib/subscription'
 
 interface RouteParams {
 	params: Promise<{ id: string }>
@@ -123,18 +124,43 @@ export async function POST(
 				{ status: 409 }
 			)
 		}
-		
+
 		if (submissionData.status === 'completed') {
 			return NextResponse.json(
 				{ error: 'Submission already evaluated' },
 				{ status: 409 }
 			)
 		}
-		
+
+		// Deduct credits before processing
+		const pagesCount = submissionData.submission_images.length
+		const deductResult = await deductCheckCredits({
+			userId,
+			checkId: checkData.id,
+			submissionId,
+			checkType: (checkData.check_type || 'test') as 'test' | 'essay',
+			pagesCount,
+		})
+
+		if (!deductResult.success) {
+			console.log('[EVALUATE] Insufficient credits:', deductResult)
+			return NextResponse.json(
+				{
+					error: 'insufficient_credits',
+					message: 'Недостаточно проверок на балансе',
+					required: deductResult.required,
+					available: deductResult.available,
+				},
+				{ status: 402 }
+			)
+		}
+
+		console.log('[EVALUATE] Credits deducted:', deductResult.creditsDeducted, 'New balance:', deductResult.newBalance)
+
 		// Update status to processing
 		await (supabase as any)
 			.from('student_submissions')
-			.update({ 
+			.update({
 				status: 'processing',
 				processing_started_at: new Date().toISOString()
 			})

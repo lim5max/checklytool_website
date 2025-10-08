@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation"
 import CheckCreationStep1 from "@/components/CheckCreationStep1"
 import CheckCreationStep2 from "@/components/CheckCreationStep2"
 import { toast } from "sonner"
+import { useCheckBalance } from "@/hooks/use-check-balance"
+import SubscriptionModal from "@/components/subscription-modal"
 import {
   type CheckCreationData,
   type WorkType,
@@ -31,7 +33,12 @@ export default function CheckCreationPage() {
   const router = useRouter()
   const [currentStep, setCurrentStep] = useState(1)
   const [isLoading, setIsLoading] = useState(false)
-  
+  const [showSubscriptionModal, setShowSubscriptionModal] = useState(false)
+  const [bannerDismissed, setBannerDismissed] = useState(false)
+
+  // Check balance
+  const { balance, subscriptionPlanId } = useCheckBalance()
+
   // Form data state
   const [checkData, setCheckData] = useState<CheckCreationData>({
     workTitle: "",
@@ -311,9 +318,42 @@ export default function CheckCreationPage() {
     }
   }
 
+  // Show banner only if user has no subscription and hasn't dismissed it
+  const showInfoBanner = balance === 0 && !subscriptionPlanId && !bannerDismissed
+
   return (
-    <>
+    <div className="space-y-4">
+      {/* Info Banner - only for users without subscription */}
+      {showInfoBanner && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-4">
+          <div className="flex items-start gap-3">
+            <div className="flex-1">
+              <p className="text-sm text-blue-700">
+                Создание и настройка проверочных работ доступна всем пользователям.{' '}
+                <button
+                  onClick={() => setShowSubscriptionModal(true)}
+                  className="font-semibold underline hover:text-blue-800"
+                >
+                  Купите подписку
+                </button>
+                {' '}чтобы начать проверять работы учеников.
+              </p>
+            </div>
+            <button
+              onClick={() => setBannerDismissed(true)}
+              className="flex-shrink-0 w-5 h-5 flex items-center justify-center rounded-full hover:bg-blue-200 transition-colors"
+              aria-label="Закрыть"
+            >
+              <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
+
       {renderCurrentStep()}
+
       {isLoading && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 flex items-center gap-3">
@@ -324,6 +364,12 @@ export default function CheckCreationPage() {
           </div>
         </div>
       )}
-    </>
+
+      {/* Subscription Modal */}
+      <SubscriptionModal
+        isOpen={showSubscriptionModal}
+        onClose={() => setShowSubscriptionModal(false)}
+      />
+    </div>
   )
 }

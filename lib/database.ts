@@ -87,15 +87,38 @@ export async function upsertUserProfile(sessionUser: User & { provider?: string 
 	// Use service role client to bypass RLS for profile creation
 	const supabase = await createClient()
 	const userId = sessionUser.email // Always use email as consistent identifier
-	
+
 	console.log('Upserting user profile:', { userId, email: sessionUser.email, provider: sessionUser.provider })
-	
+
 	if (!userId || !sessionUser.email) {
 		console.error('Missing userId or email for profile creation')
 		return null
 	}
 
-	const profileData = {
+	// Сначала проверяем, существует ли пользователь
+	const { data: existingProfile } = await supabase
+		.from('user_profiles')
+		.select('user_id, subscription_plan_id')
+		.eq('email', sessionUser.email)
+		.single()
+
+	// Если это новый пользователь, получаем ID бесплатного плана
+	let freePlanId = null
+	if (!existingProfile) {
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		const { data: freePlan } = await (supabase as any)
+			.from('subscription_plans')
+			.select('id')
+			.eq('name', 'FREE')
+			.single()
+
+		if (freePlan) {
+			freePlanId = freePlan.id
+			console.log('Setting FREE plan for new user:', freePlanId)
+		}
+	}
+
+	const profileData: any = {
 		user_id: sessionUser.email, // Use email as user_id for consistency
 		email: sessionUser.email,
 		name: sessionUser.name || null,
@@ -105,12 +128,18 @@ export async function upsertUserProfile(sessionUser: User & { provider?: string 
 		updated_at: new Date().toISOString()
 	}
 
+	// Для новых пользователей устанавливаем бесплатный план
+	if (!existingProfile && freePlanId) {
+		profileData.subscription_plan_id = freePlanId
+		profileData.check_balance = 0 // Бесплатный план = 0 проверок
+	}
+
 	// Use email as the conflict resolution key instead of user_id
 	const { data, error } = await (supabase as any)
 		.from('user_profiles')
-		.upsert(profileData, { 
+		.upsert(profileData, {
 			onConflict: 'email', // Changed from 'user_id' to 'email'
-			ignoreDuplicates: false 
+			ignoreDuplicates: false
 		})
 		.select()
 		.single()

@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Progress } from '@/components/ui/progress'
-import { 
+import {
   ArrowLeft,
   Upload,
   Camera,
@@ -21,6 +21,8 @@ import { ImageUpload, type UploadedFile } from '@/components/submission/ImageUpl
 import { CameraScanner } from '@/components/submission/CameraScanner'
 import { SubmissionUploader, type Student } from '@/components/submission/SubmissionUploader'
 import { toast } from 'sonner'
+import { useCheckBalance } from '@/hooks/use-check-balance'
+import SubscriptionModal from '@/components/subscription-modal'
 
 interface CheckInfo {
   id: string
@@ -30,6 +32,7 @@ interface CheckInfo {
   class_level?: string
   variant_count: number
   total_questions?: number
+  check_type?: 'test' | 'essay'
 }
 
 interface SubmissionPageProps {
@@ -41,7 +44,7 @@ export default function SubmissionPage({ params }: SubmissionPageProps) {
   const [checkInfo, setCheckInfo] = useState<CheckInfo | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [checkId, setCheckId] = useState<string>('')
-  
+
   // Форма данных
   const [studentName, setStudentName] = useState('')
   const [studentClass, setStudentClass] = useState('')
@@ -50,6 +53,11 @@ export default function SubmissionPage({ params }: SubmissionPageProps) {
   const [uploadProgress, setUploadProgress] = useState(0)
   const [activeTab, setActiveTab] = useState('upload')
   const [useNewUploader, setUseNewUploader] = useState(false)
+  const [showSubscriptionModal, setShowSubscriptionModal] = useState(false)
+  const [requiredCreditsForModal, setRequiredCreditsForModal] = useState(0)
+
+  // Balance check
+  const { balance, hasEnoughCredits, getCreditsNeeded } = useCheckBalance()
 
   useEffect(() => {
     const getParams = async () => {
@@ -107,6 +115,17 @@ export default function SubmissionPage({ params }: SubmissionPageProps) {
   const handleMultiStudentSubmit = async (students: Student[]) => {
     if (students.length === 0 || students.every(s => s.photos.length === 0)) {
       toast.error('Загрузите хотя бы одну фотографию')
+      return
+    }
+
+    // Check balance for all students
+    const checkType = checkInfo?.check_type || 'test'
+    const totalPages = students.reduce((sum, s) => sum + s.photos.length, 0)
+
+    if (!hasEnoughCredits(checkType, totalPages)) {
+      const needed = getCreditsNeeded(checkType, totalPages)
+      setRequiredCreditsForModal(needed)
+      setShowSubscriptionModal(true)
       return
     }
 
@@ -196,6 +215,17 @@ export default function SubmissionPage({ params }: SubmissionPageProps) {
 
     if (!studentName.trim()) {
       toast.error('Введите имя студента')
+      return
+    }
+
+    // Check balance
+    const checkType = checkInfo?.check_type || 'test'
+    const pagesCount = uploadedFiles.length
+
+    if (!hasEnoughCredits(checkType, pagesCount)) {
+      const needed = getCreditsNeeded(checkType, pagesCount)
+      setRequiredCreditsForModal(needed)
+      setShowSubscriptionModal(true)
       return
     }
 
@@ -332,6 +362,24 @@ export default function SubmissionPage({ params }: SubmissionPageProps) {
             <p className="text-gray-600 mt-1">{checkInfo.title}</p>
           </div>
         </div>
+
+        {/* Balance Display */}
+        <Card className="border-blue-200 bg-blue-50">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600 mb-1">
+                  Доступно проверок
+                </p>
+                <p className="text-3xl font-bold text-gray-900">{balance}</p>
+              </div>
+              <div className="text-sm text-gray-600">
+                <p>• Тест (1 лист) = 0,5 проверки</p>
+                <p>• Сочинение (1 лист) = 1 проверка</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Информация о работе */}
         <Card>
@@ -563,6 +611,14 @@ export default function SubmissionPage({ params }: SubmissionPageProps) {
           </Card>
         )}
       </div>
+
+      {/* Subscription Modal */}
+      <SubscriptionModal
+        isOpen={showSubscriptionModal}
+        onClose={() => setShowSubscriptionModal(false)}
+        requiredCredits={requiredCreditsForModal}
+        availableCredits={balance}
+      />
     </div>
   )
 }

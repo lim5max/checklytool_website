@@ -15,6 +15,10 @@ export interface UserProfile {
   is_active: boolean
   created_at: string
   updated_at: string
+  subscription_plan_id?: string | null
+  check_balance: number
+  subscription_started_at?: string | null
+  subscription_expires_at?: string | null
 }
 
 export interface Check {

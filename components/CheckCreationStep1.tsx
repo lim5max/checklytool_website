@@ -234,44 +234,67 @@ export default function CheckCreationStep1({
             </div>
           )}
 
-          {/* Информационный блок для тестов */}
+          {/* Информационный блок для тестов - новый дизайн */}
           {selectedWorkTypeId === 'test' && !selectedTest && (
-            <div className="bg-blue-50 border border-blue-200 rounded-[32px] p-6 w-full">
-              <div className="flex items-start gap-4">
-                <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold text-sm">
-                  ℹ
-                </div>
-                <div className="flex-1 space-y-3">
-                  <h3 className="font-nunito font-bold text-lg text-blue-900">
-                    Мы проверяем только тесты созданные в Конструкторе
+            <div className="bg-white border border-slate-200 rounded-3xl p-6 w-full shadow-sm">
+              <div className="space-y-6">
+                {/* Заголовок */}
+                <div>
+                  <h3 className="font-nunito font-extrabold text-[20px] text-slate-700 leading-tight">
+                    Мы проверяем только тесты из Конструктора
                   </h3>
-                  <div className="text-blue-800 space-y-2">
-                    <p>
-                      Для точной проверки ИИ используйте тесты из <strong>Конструктора тестов</strong> со стандартизированными PDF бланками.
-                    </p>
-                    <div className="text-sm space-y-1">
-                      <p>• Стандартные поля для ответов (A, B, C, D)</p>
-                      <p>• Четкая нумерация вопросов</p>
-                      <p>• Оптимальный формат для распознавания ИИ</p>
-                    </div>
-                  </div>
-                  <div className="flex flex-col gap-3 pt-2">
-                    <button
-                      onClick={() => router.push('/dashboard/test-builder')}
-                      className="inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-full text-sm font-medium transition-colors w-full"
-                    >
-                      Перейти в Конструктор тестов
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                </div>
+
+                {/* Описание */}
+                <p className="text-slate-600 text-[15px] leading-relaxed">
+                  Для точной проверки ИИ используйте тесты из Конструктора со стандартизированными PDF бланками
+                </p>
+
+                {/* Преимущества */}
+                <div className="space-y-2.5">
+                  <div className="flex items-start gap-2.5">
+                    <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <svg className="w-3 h-3 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                       </svg>
-                    </button>
-                    <button
-                      onClick={() => handleCheckMethodSelect('existing')}
-                      className="inline-flex items-center justify-center gap-2 bg-white hover:bg-gray-50 text-blue-600 border border-blue-200 px-4 py-3 rounded-full text-sm font-medium transition-colors w-full"
-                    >
-                      Выбрать готовый тест
-                    </button>
+                    </div>
+                    <span className="text-slate-700 text-[14px] leading-relaxed">Стандартные поля для ответов (A, B, C, D)</span>
                   </div>
+                  <div className="flex items-start gap-2.5">
+                    <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <svg className="w-3 h-3 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <span className="text-slate-700 text-[14px] leading-relaxed">Четкая нумерация вопросов</span>
+                  </div>
+                  <div className="flex items-start gap-2.5">
+                    <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <svg className="w-3 h-3 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <span className="text-slate-700 text-[14px] leading-relaxed">Оптимальный формат для распознавания ИИ</span>
+                  </div>
+                </div>
+
+                {/* Кнопки */}
+                <div className="flex flex-col gap-3 pt-2">
+                  <button
+                    onClick={() => router.push('/dashboard/test-builder')}
+                    className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white h-14 rounded-2xl text-[16px] font-semibold transition-all shadow-sm hover:shadow-md"
+                  >
+                    Перейти в Конструктор тестов
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                    </svg>
+                  </button>
+                  <button
+                    onClick={() => handleCheckMethodSelect('existing')}
+                    className="flex items-center justify-center gap-2 bg-slate-50 hover:bg-slate-100 active:bg-slate-200 text-slate-900 h-14 rounded-2xl text-[16px] font-semibold transition-all border border-slate-200"
+                  >
+                    Выбрать готовый тест
+                  </button>
                 </div>
               </div>
             </div>
