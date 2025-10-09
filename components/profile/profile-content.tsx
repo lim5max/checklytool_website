@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Card } from '../ui/card'
 import { Button } from '../ui/button'
 import { User, Zap, Check, TrendingUp, Calendar } from 'lucide-react'
 import Image from 'next/image'
