@@ -24,7 +24,6 @@ interface SubscriptionModalProps {
 export default function SubscriptionModal({
 	isOpen,
 	onClose,
-	message,
 	requiredCredits,
 	availableCredits,
 }: SubscriptionModalProps) {

@@ -105,7 +105,6 @@ export async function upsertUserProfile(sessionUser: User & { provider?: string 
 	// Если это новый пользователь, получаем ID бесплатного плана
 	let freePlanId = null
 	if (!existingProfile) {
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		const { data: freePlan } = await (supabase as any)
 			.from('subscription_plans')
 			.select('id')

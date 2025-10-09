@@ -208,14 +208,15 @@ export default function CheckCreationPage() {
       }
       
       toast.success('Проверочная работа создана успешно!')
-      
+
       // Navigate to check management based on checking method
       const checkId = responseValidation.data!.check.id
-      
+      const encodedTitle = encodeURIComponent(checkData.workTitle)
+
       if (checkData.checkingMethod === "manual") {
-        router.push(`/dashboard/checks/${checkId}?tab=variants`)
+        router.push(`/dashboard/checks/${checkId}?tab=variants&title=${encodedTitle}`)
       } else {
-        router.push(`/dashboard/checks/${checkId}`)
+        router.push(`/dashboard/checks/${checkId}?title=${encodedTitle}`)
       }
       
     } catch (error) {

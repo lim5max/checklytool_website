@@ -49,13 +49,15 @@ export default function CheckPage({ params }: CheckPageProps) {
 	const [user, setUser] = useState<{ name?: string | null; email?: string | null; image?: string | null } | null>(null)
 	const [isUserLoading, setIsUserLoading] = useState(true)
 	const [checkId, setCheckId] = useState<string>('')
-	const [checkTitle, setCheckTitle] = useState<string>(() => {
-		// Инициализируем из URL параметров если есть
-		const titleFromUrl = searchParams.get('title')
-		return titleFromUrl ? decodeURIComponent(titleFromUrl) : 'Проверочная работа'
-	})
+
+	// Инициализируем title из URL параметра для мгновенного отображения
+	const titleFromUrl = searchParams.get('title')
+	const [checkTitle, setCheckTitle] = useState<string>(
+		titleFromUrl ? decodeURIComponent(titleFromUrl) : 'Проверочная работа'
+	)
 	const [submissions, setSubmissions] = useState<StudentSubmission[]>([])
-	const [isLoading, setIsLoading] = useState(true)
+	// Если title есть в URL, показываем контент сразу (optimistic UI)
+	const [isLoading, setIsLoading] = useState(!titleFromUrl)
 	const [isCameraOpen, setIsCameraOpen] = useState(false)
 	const [isProcessing, setIsProcessing] = useState(false)
 	const [drafts, setDrafts] = useState<DraftStudent[]>([])
@@ -83,10 +85,6 @@ export default function CheckPage({ params }: CheckPageProps) {
 			.finally(() => setIsUserLoading(false))
 	}, [router])
 
-	const handleSignOut = async () => {
-		// Используем window.location для выхода, так как у нас серверная аутентификация
-		window.location.href = '/api/auth/signout'
-	}
 
 	// Инициализация checkId из params
 	useEffect(() => {
@@ -97,28 +95,45 @@ export default function CheckPage({ params }: CheckPageProps) {
 		getParams()
 	}, [params])
 
-	// Загрузка данных проверки
-	const loadCheckData = useCallback(async () => {
+	// Загрузка данных проверки и submissions параллельно
+	const loadAllData = useCallback(async () => {
 		if (!checkId) return
 
 		try {
 			setIsLoading(true)
-			const response = await fetch(`/api/checks/${checkId}`)
 
-			if (!response.ok) {
+			// Загружаем данные параллельно
+			const [checkResponse, submissionsResponse] = await Promise.all([
+				fetch(`/api/checks/${checkId}`),
+				fetch(`/api/checks/${checkId}/submissions`)
+			])
+
+			if (!checkResponse.ok) {
 				throw new Error('Проверочная работа не найдена')
 			}
 
-			const data = await response.json()
-			setCheckTitle(data.check.title || 'Проверочная работа')
+			// Обрабатываем данные проверки
+			const checkData = await checkResponse.json()
+			setCheckTitle(checkData.check.title || 'Проверочная работа')
+
+			// Обрабатываем submissions (даже если запрос не удался)
+			if (submissionsResponse.ok) {
+				const submissionsData: { submissions: StudentSubmission[] } = await submissionsResponse.json()
+				setSubmissions(submissionsData.submissions || [])
+			} else {
+				console.error('Failed to load submissions')
+				setSubmissions([])
+			}
 		} catch (error) {
-			console.error('Error loading check data:', error)
+			console.error('Error loading data:', error)
 			toast.error('Не удалось загрузить данные')
 			router.push('/dashboard')
+		} finally {
+			setIsLoading(false)
 		}
 	}, [checkId, router])
 
-	// Загрузка submissions
+	// Для обратной совместимости (если нужно перезагрузить только submissions)
 	const loadSubmissions = useCallback(async () => {
 		if (!checkId) return
 
@@ -130,8 +145,6 @@ export default function CheckPage({ params }: CheckPageProps) {
 			setSubmissions(data.submissions || [])
 		} catch (error) {
 			console.error('Error loading submissions:', error)
-		} finally {
-			setIsLoading(false)
 		}
 	}, [checkId])
 
@@ -158,11 +171,10 @@ export default function CheckPage({ params }: CheckPageProps) {
 	// Эффекты для загрузки данных
 	useEffect(() => {
 		if (checkId) {
-			loadCheckData()
-			loadSubmissions()
+			loadAllData()
 			loadDrafts()
 		}
-	}, [checkId, loadCheckData, loadSubmissions, loadDrafts])
+	}, [checkId, loadAllData, loadDrafts])
 
 	// Обработчики событий
 	useEffect(() => {
@@ -264,10 +276,44 @@ export default function CheckPage({ params }: CheckPageProps) {
 
 	const handleCloseCamera = () => {
 		setIsCameraOpen(false)
-		// Принудительно обновляем drafts после закрытия камеры (для мобильных устройств)
+
+		// Принудительная загрузка черновиков с несколькими попытками
+		// для надежной синхронизации на мобильных устройствах (особенно iOS)
+		const attemptLoadDrafts = (attemptNumber: number, maxAttempts: number) => {
+			console.log(`[DRAFTS] Attempt ${attemptNumber}/${maxAttempts} to load drafts`)
+
+			const draft = getDraft(checkId)
+			const students = draft?.students || []
+			const validDrafts: DraftStudent[] = students
+				.filter(s => s.photos.length > 0)
+				.map(s => ({
+					...s,
+					photos: s.photos.map(p => p.dataUrl)
+				}))
+
+			console.log(`[DRAFTS] Found ${validDrafts.length} drafts with photos`)
+			setDrafts(validDrafts)
+
+			// Если нашли черновики или исчерпали попытки - останавливаемся
+			if (validDrafts.length > 0 || attemptNumber >= maxAttempts) {
+				if (validDrafts.length > 0) {
+					console.log('[DRAFTS] Successfully loaded drafts')
+				} else {
+					console.log('[DRAFTS] No drafts found after all attempts')
+				}
+				return
+			}
+
+			// Следующая попытка через 300ms
+			setTimeout(() => {
+				attemptLoadDrafts(attemptNumber + 1, maxAttempts)
+			}, 300)
+		}
+
+		// Начинаем с первой попытки сразу, максимум 4 попытки
 		setTimeout(() => {
-			loadDrafts()
-		}, 300)
+			attemptLoadDrafts(1, 4)
+		}, 100)
 	}
 
 	const handleSendAll = async () => {
@@ -276,14 +322,34 @@ export default function CheckPage({ params }: CheckPageProps) {
 			return
 		}
 
+		// Проверяем баланс ДО отправки работ
+		const draft = getDraft(checkId)
+		const totalPhotos = (draft?.students || []).reduce((sum, student) => sum + student.photos.length, 0)
+		const creditsNeeded = getCreditsNeeded('test', totalPhotos)
+
+		console.log('[BALANCE] Checking balance before submission:', {
+			balance,
+			creditsNeeded,
+			totalPhotos,
+			hasEnough: balance >= creditsNeeded
+		})
+
+		// Если баланса недостаточно - показываем модалку СРАЗУ
+		if (balance < creditsNeeded) {
+			console.log('[BALANCE] Insufficient balance, showing modal')
+			toast.error(`Недостаточно проверок. Нужно: ${creditsNeeded}, доступно: ${balance}`)
+			setShowSubscriptionModal(true)
+			return
+		}
+
 		try {
 			setIsProcessing(true)
 			// Сохраняем количество работ для отображения скелетонов
 			setProcessingCount(drafts.length)
 
-			const draft = getDraft(checkId)
 			const { items } = await submitStudents(checkId, draft?.students || [])
 
+			// Очищаем черновики ТОЛЬКО после успешной отправки
 			clearDraft(checkId)
 
 			if (typeof window !== 'undefined') {
@@ -566,7 +632,11 @@ export default function CheckPage({ params }: CheckPageProps) {
 										{completedSubs.map((sub) => {
 											const grade = sub.evaluation_results?.[0]?.final_grade
 											return (
-												<div key={sub.id} className="bg-slate-50 rounded-[24px] p-6 w-full">
+												<button
+													key={sub.id}
+													onClick={() => router.push(`/dashboard/submissions/${sub.id}`)}
+													className="bg-slate-50 rounded-[24px] p-6 w-full hover:bg-slate-100 active:scale-[0.98] transition-all duration-200 cursor-pointer"
+												>
 													<div className="flex items-center justify-between w-full">
 														<span className="font-medium text-lg text-slate-800">
 															{sub.student_name || 'Студент'}
@@ -577,7 +647,7 @@ export default function CheckPage({ params }: CheckPageProps) {
 															</span>
 														)}
 													</div>
-												</div>
+												</button>
 											)
 										})}
 									</div>

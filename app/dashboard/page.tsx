@@ -179,9 +179,14 @@ export default function DashboardPageNew() {
 
 	// Обработчики (мемоизированы)
 	const handleItemClick = useCallback(
-		(id: string, type: 'check' | 'test') => {
+		(id: string, type: 'check' | 'test', title?: string) => {
 			if (type === 'check') {
-				router.push(`/dashboard/checks/${id}`)
+				// Передаем title в URL для мгновенного отображения
+				const encodedTitle = title ? encodeURIComponent(title) : ''
+				const url = encodedTitle
+					? `/dashboard/checks/${id}?title=${encodedTitle}`
+					: `/dashboard/checks/${id}`
+				router.push(url)
 			} else {
 				router.push(`/dashboard/tests/${id}`)
 			}

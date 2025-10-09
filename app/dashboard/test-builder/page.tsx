@@ -31,10 +31,6 @@ export default function TestBuilderPage() {
       .finally(() => setIsUserLoading(false))
   }, [router])
 
-  const handleSignOut = async () => {
-    window.location.href = '/api/auth/signout'
-  }
-
   const [isSaving, setIsSaving] = useState(false)
 
   /**

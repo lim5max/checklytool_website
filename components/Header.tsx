@@ -50,7 +50,7 @@ export default function Header({
     try {
       setIsSigningOut(true)
       // Call our API route to sign out
-      const response = await fetch('/api/auth/signout', {
+      await fetch('/api/auth/signout', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

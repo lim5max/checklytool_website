@@ -249,10 +249,12 @@ export function CameraWorkInterface({
   // File upload
   const handleFileUpload = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files
+    console.log('[CAMERA] File upload started, files:', files?.length)
     if (!files) return
 
     const activeStudent = students[activeStudentIndex]
     const remainingSlots = maxPhotosPerStudent - activeStudent.photos.length
+    console.log('[CAMERA] Active student:', activeStudent.name, 'remaining slots:', remainingSlots)
 
     if (remainingSlots <= 0) {
       console.warn(`Maximum ${maxPhotosPerStudent} photos per student`)
@@ -262,6 +264,8 @@ export function CameraWorkInterface({
     const filesToProcess = Array.from(files)
       .filter((f) => f.type.startsWith('image/'))
       .slice(0, remainingSlots)
+
+    console.log('[CAMERA] Files to process:', filesToProcess.length)
 
     const readAsDataUrl = (file: File) =>
       new Promise<string>((resolve, reject) => {
@@ -275,22 +279,27 @@ export function CameraWorkInterface({
 
     for (const file of filesToProcess) {
       try {
+        console.log('[CAMERA] Reading file:', file.name)
         const dataUrl = await readAsDataUrl(file)
+        console.log('[CAMERA] File read, data URL length:', dataUrl.length)
         lastBundle = addPhotoDraft(checkId, activeStudentIndex, dataUrl)
-      } catch {
-        // skip file on error
+        console.log('[CAMERA] Photo added to draft, bundle students:', lastBundle.students.length)
+      } catch (err) {
+        console.error('[CAMERA] Error processing file:', err)
       }
     }
 
     if (lastBundle) {
+      console.log('[CAMERA] Updating local state with', lastBundle.students.length, 'students')
       setStudents(mapDraftToLocal(lastBundle.students))
       if (typeof window !== 'undefined') {
+        console.log('[CAMERA] Dispatching drafts:updated event')
         window.dispatchEvent(new Event('drafts:updated'))
       }
     }
 
     if (filesToProcess.length > 0) {
-      console.log(`Added ${filesToProcess.length} photos`)
+      console.log(`[CAMERA] Successfully added ${filesToProcess.length} photos`)
     }
 
     // Clear input

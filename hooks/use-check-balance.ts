@@ -2,11 +2,6 @@
 
 import { useState, useEffect } from 'react'
 
-interface UserBalance {
-	check_balance: number
-	subscription_plan_id: string | null
-}
-
 export function useCheckBalance() {
 	const [balance, setBalance] = useState<number>(0)
 	const [loading, setLoading] = useState(true)

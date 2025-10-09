@@ -17,7 +17,7 @@ interface UnifiedListItemProps {
 		label?: string
 		score?: number
 	}
-	onClick: (id: string, type: ItemType) => void
+	onClick: (id: string, type: ItemType, title?: string) => void
 }
 
 const typeConfig = {
@@ -52,7 +52,7 @@ export const UnifiedListItem = memo(function UnifiedListItem({
 
 	return (
 		<button
-			onClick={() => onClick(id, type)}
+			onClick={() => onClick(id, type, title)}
 			className="w-full bg-slate-50 rounded-[42px] p-7 hover:bg-slate-100 transition-colors text-left group"
 		>
 			{/* Заголовок и стрелка */}

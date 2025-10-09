@@ -38,10 +38,6 @@ export default function TestPage({ params }: TestPageProps) {
 			.finally(() => setIsUserLoading(false))
 	}, [router])
 
-	const handleSignOut = async () => {
-		window.location.href = '/api/auth/signout'
-	}
-
 	// Инициализация testId из params
 	useEffect(() => {
 		const getParams = async () => {
