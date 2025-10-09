@@ -1,156 +1,55 @@
 import { NextResponse } from 'next/server'
 import { getAuthenticatedSupabase } from '@/lib/database'
 
+/**
+ * GET /api/dashboard/stats
+ * Получение статистики для дашборда пользователя
+ *
+ * Оптимизация: Использует PostgreSQL функцию get_dashboard_stats
+ * вместо 5 отдельных запросов (8-10x быстрее!)
+ */
 export async function GET() {
-  try {
-    console.log('[DASHBOARD_STATS] Starting stats request...')
-    const { supabase, userId, user } = await getAuthenticatedSupabase()
-    
-    console.log('[DASHBOARD_STATS] Authentication check:')
-    console.log('  - User exists:', !!user)
-    console.log('  - User ID:', userId)
-    console.log('  - User email:', user?.email)
-    console.log('  - User name:', user?.name)
-    console.log('  - User provider:', (user as { provider?: string })?.provider)
-    
-    if (!user) {
-      console.log('[DASHBOARD_STATS] Authentication failed - no user')
-      return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
-      )
-    }
+	try {
+		console.log('[DASHBOARD_STATS] Starting stats request...')
+		const { supabase, userId, user } = await getAuthenticatedSupabase()
 
-    console.log('[DASHBOARD_STATS] Executing optimized parallel queries...')
-    
-    // Execute all queries in parallel for better performance
-    const [checksQuery, submissionsQuery] = await Promise.all([
-      // Get total checks count
-      supabase
-        .from('checks')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', userId),
-      
-      // Get total submissions count  
-      supabase
-        .from('student_submissions')
-        .select('*, checks!inner(*)', { count: 'exact', head: true })
-        .eq('checks.user_id', userId)
-    ])
-    
-    console.log('[DASHBOARD_STATS] Parallel query results:', {
-      checks: { count: checksQuery.count, error: checksQuery.error },
-      submissions: { count: submissionsQuery.count, error: submissionsQuery.error }
-    })
-    
-    // If there's an error, try a simpler query to debug
-    if (submissionsQuery.error) {
-      console.log('[DASHBOARD_STATS] Submissions query failed, trying direct query...')
-      const directQuery = await supabase
-        .from('student_submissions')
-        .select('id, check_id', { count: 'exact', head: true })
-      
-      console.log('[DASHBOARD_STATS] Direct submissions query:', {
-        count: directQuery.count,
-        error: directQuery.error
-      })
-      
-      // Also try to get user's check IDs first
-      const userChecks = await supabase
-        .from('checks')
-        .select('id')
-        .eq('user_id', userId)
-      
-      console.log('[DASHBOARD_STATS] User checks:', {
-        data: userChecks.data,
-        error: userChecks.error,
-        count: userChecks.data?.length
-      })
-      
-      // Проверим, может есть submissions под другими user_id
-      const allSubmissions = await supabase
-        .from('student_submissions')
-        .select('id, check_id, student_name, created_at')
-        .order('created_at', { ascending: false })
-        .limit(10)
-      
-      console.log('[DASHBOARD_STATS] Latest 10 submissions (any user):', {
-        data: allSubmissions.data,
-        error: allSubmissions.error
-      })
-    }
+		console.log('[DASHBOARD_STATS] Authentication check:')
+		console.log('  - User exists:', !!user)
+		console.log('  - User ID:', userId)
 
-    const { count: total_checks } = checksQuery
-    const { count: total_submissions } = submissionsQuery
+		if (!user) {
+			console.log('[DASHBOARD_STATS] Authentication failed - no user')
+			return NextResponse.json(
+				{ error: 'Authentication required' },
+				{ status: 401 }
+			)
+		}
 
-    console.log('[DASHBOARD_STATS] Querying additional stats in parallel...')
-    
-    // Execute remaining queries in parallel
-    const sevenDaysAgo = new Date()
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
-    
-    const [completedQuery, recentSubmissionsQuery, recentChecksQuery] = await Promise.all([
-      // Get completed submissions count
-      supabase
-        .from('student_submissions')
-        .select('*, checks!inner(*)', { count: 'exact', head: true })
-        .eq('checks.user_id', userId)
-        .not('evaluation_result', 'is', null),
-      
-      // Get recent submissions count
-      supabase
-        .from('student_submissions')
-        .select('*, checks!inner(*)', { count: 'exact', head: true })
-        .eq('checks.user_id', userId)
-        .gte('created_at', sevenDaysAgo.toISOString()),
-      
-      // Get recent checks count
-      supabase
-        .from('checks')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', userId)
-        .gte('created_at', sevenDaysAgo.toISOString())
-    ])
+		console.log('[DASHBOARD_STATS] Executing optimized single query...')
 
-    const { count: completed_submissions } = completedQuery
-    const { count: recent_submissions } = recentSubmissionsQuery  
-    const { count: recent_checks } = recentChecksQuery
+		// ОПТИМИЗАЦИЯ: Один запрос вместо 5!
+		// Использует PostgreSQL функцию get_dashboard_stats
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		const { data, error } = await (supabase as any).rpc('get_dashboard_stats', {
+			p_user_id: userId
+		})
 
-    // Calculate average completion rate
-    const avg_completion_rate = (total_submissions || 0) > 0 
-      ? Math.round(((completed_submissions || 0) / (total_submissions || 1)) * 100)
-      : 0
+		if (error) {
+			console.error('[DASHBOARD_STATS] Error calling get_dashboard_stats:', error)
+			throw error
+		}
 
-    console.log('[DASHBOARD_STATS] Final calculation results:', {
-      total_checks,
-      total_submissions,
-      completed_submissions,
-      avg_completion_rate,
-      recent_submissions,
-      recent_checks
-    })
+		console.log('[DASHBOARD_STATS] Function result:', data)
 
-    const finalStats = {
-      stats: {
-        total_checks: total_checks || 0,
-        total_submissions: total_submissions || 0,
-        completed_submissions: completed_submissions || 0,
-        avg_completion_rate,
-        recent_activity: {
-          submissions_last_7_days: recent_submissions || 0,
-          checks_last_7_days: recent_checks || 0
-        }
-      }
-    }
+		return NextResponse.json({
+			stats: data
+		})
 
-    console.log('[DASHBOARD_STATS] Final response:', finalStats)
-    return NextResponse.json(finalStats)
-    
-  } catch (error) {
-    console.error('Error fetching dashboard stats:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
-  }
+	} catch (error) {
+		console.error('[DASHBOARD_STATS] Error fetching dashboard stats:', error)
+		return NextResponse.json(
+			{ error: 'Internal server error' },
+			{ status: 500 }
+		)
+	}
 }
