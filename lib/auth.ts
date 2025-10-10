@@ -49,6 +49,8 @@ export const authOptions: NextAuthConfig = {
         try {
           const supabase = await createClient()
 
+          console.log('[AUTH] Attempting login for:', credentials.email)
+
           // Получаем пользователя из базы данных
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const { data: user, error } = await (supabase as any)
@@ -57,22 +59,37 @@ export const authOptions: NextAuthConfig = {
             .eq('email', credentials.email as string)
             .single()
 
-          if (error || !user) {
+          if (error) {
+            console.error('[AUTH] Database error:', error)
+            return null
+          }
+
+          if (!user) {
             console.log('[AUTH] User not found:', credentials.email)
             return null
           }
 
+          console.log('[AUTH] User found:', {
+            email: user.email,
+            hasPasswordHash: !!user.password_hash,
+            passwordHashType: typeof user.password_hash,
+            passwordHashLength: user.password_hash?.length
+          })
+
           // Проверяем наличие пароля
           if (!user.password_hash || typeof user.password_hash !== 'string') {
-            console.log('[AUTH] No password hash for user:', credentials.email)
+            console.log('[AUTH] No password hash for user:', credentials.email, 'Type:', typeof user.password_hash)
             return null
           }
 
           // Проверяем пароль
+          console.log('[AUTH] Comparing passwords for:', credentials.email)
           const isPasswordValid = await bcrypt.compare(
             credentials.password as string,
             user.password_hash
           )
+
+          console.log('[AUTH] Password comparison result:', isPasswordValid)
 
           if (!isPasswordValid) {
             console.log('[AUTH] Invalid password for:', credentials.email)
@@ -91,6 +108,10 @@ export const authOptions: NextAuthConfig = {
           }
         } catch (error) {
           console.error('[AUTH] Authorization error:', error)
+          if (error instanceof Error) {
+            console.error('[AUTH] Error message:', error.message)
+            console.error('[AUTH] Error stack:', error.stack)
+          }
           return null
         }
       },
