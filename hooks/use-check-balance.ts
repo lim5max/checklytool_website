@@ -30,19 +30,24 @@ export function useCheckBalance() {
 	}
 
 	function hasEnoughCredits(
-		checkType: 'test' | 'essay',
+		checkType: 'test' | 'essay' | 'written_work',
 		pagesCount: number
 	): boolean {
-		const creditsNeeded =
-			checkType === 'test' ? pagesCount * 0.5 : pagesCount * 1.0
+		const creditsNeeded = getCreditsNeeded(checkType, pagesCount)
 		return balance >= creditsNeeded
 	}
 
 	function getCreditsNeeded(
-		checkType: 'test' | 'essay',
+		checkType: 'test' | 'essay' | 'written_work',
 		pagesCount: number
 	): number {
-		return checkType === 'test' ? pagesCount * 0.5 : pagesCount * 1.0
+		if (checkType === 'test') {
+			return pagesCount * 0.5
+		} else if (checkType === 'written_work') {
+			return pagesCount * 2.0
+		} else {
+			return pagesCount * 1.0
+		}
 	}
 
 	return {
