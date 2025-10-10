@@ -44,7 +44,7 @@ import type { TestQuestion, TestOption, GeneratedTest, PDFGenerationRequest } fr
 
 interface TestConstructorProps {
 	initialTest?: GeneratedTest
-	onSave?: (test: GeneratedTest) => void
+	onSave?: (test: GeneratedTest, silent?: boolean) => void
 	className?: string
 }
 
@@ -96,13 +96,13 @@ export default function TestConstructor({
 		}
 	}, [])
 
-	// Автосохранение с debounce
+	// Автосохранение с debounce (тихое, без тостов)
 	useEffect(() => {
 		if (!initialTest) return // Не автосохраняем новые тесты
 
 		const timer = setTimeout(() => {
 			if (onSave && test.questions.length > 0) {
-				onSave(test)
+				onSave(test, true) // true = silent autosave
 			}
 		}, 2000)
 
@@ -371,7 +371,7 @@ export default function TestConstructor({
 		if (onSave) {
 			setIsSaving(true)
 			try {
-				await onSave(test)
+				await onSave(test, false) // false = show toast
 				toast.success('Тест сохранён!')
 			} catch (error) {
 				console.error('Save error:', error)

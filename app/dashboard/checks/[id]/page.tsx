@@ -49,6 +49,7 @@ export default function CheckPage({ params }: CheckPageProps) {
 	const [user, setUser] = useState<{ name?: string | null; email?: string | null; image?: string | null } | null>(null)
 	const [isUserLoading, setIsUserLoading] = useState(true)
 	const [checkId, setCheckId] = useState<string>('')
+	const [checkType, setCheckType] = useState<'test' | 'essay' | 'written_work'>('test')
 
 	// Инициализируем title из URL параметра для мгновенного отображения
 	const titleFromUrl = searchParams.get('title')
@@ -115,6 +116,7 @@ export default function CheckPage({ params }: CheckPageProps) {
 			// Обрабатываем данные проверки
 			const checkData = await checkResponse.json()
 			setCheckTitle(checkData.check.title || 'Проверочная работа')
+			setCheckType(checkData.check.check_type || 'test')
 
 			// Обрабатываем submissions (даже если запрос не удался)
 			if (submissionsResponse.ok) {
@@ -325,7 +327,7 @@ export default function CheckPage({ params }: CheckPageProps) {
 		// Проверяем баланс ДО отправки работ
 		const draft = getDraft(checkId)
 		const totalPhotos = (draft?.students || []).reduce((sum, student) => sum + student.photos.length, 0)
-		const creditsNeeded = getCreditsNeeded('test', totalPhotos)
+		const creditsNeeded = getCreditsNeeded(checkType, totalPhotos)
 
 		console.log('[BALANCE] Checking balance before submission:', {
 			balance,

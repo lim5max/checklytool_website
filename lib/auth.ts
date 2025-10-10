@@ -62,6 +62,12 @@ export const authOptions: NextAuthConfig = {
             return null
           }
 
+          // Проверяем наличие пароля
+          if (!user.password_hash || typeof user.password_hash !== 'string') {
+            console.log('[AUTH] No password hash for user:', credentials.email)
+            return null
+          }
+
           // Проверяем пароль
           const isPasswordValid = await bcrypt.compare(
             credentials.password as string,
