@@ -12,12 +12,12 @@ const SaveTestSchema = z.object({
 	questions: z.array(z.object({
 		id: z.string(),
 		question: z.string().min(1, 'Вопрос не может быть пустым'),
-		type: z.enum(['single', 'multiple']),
+		type: z.enum(['single', 'multiple', 'open']),
 		options: z.array(z.object({
 			id: z.string(),
 			text: z.string().min(1, 'Текст варианта не может быть пустым'),
 			isCorrect: z.boolean()
-		})).min(2, 'Должно быть минимум 2 варианта ответа'),
+		})).min(1, 'Должен быть минимум 1 вариант ответа'),
 		explanation: z.string().optional()
 	})).min(1, 'Должен быть минимум 1 вопрос')
 })
