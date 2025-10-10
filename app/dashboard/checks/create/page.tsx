@@ -320,7 +320,7 @@ export default function CheckCreationPage() {
   }
 
   // Show banner only if user has no subscription and hasn't dismissed it
-  const showInfoBanner = balance === 0 && !subscriptionPlanId && !bannerDismissed
+  const showInfoBanner = !subscriptionPlanId && !bannerDismissed
 
   return (
     <div className="space-y-4">
