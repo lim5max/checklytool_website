@@ -8,15 +8,62 @@ export async function analyzeStudentWork(
 	referenceAnswers: Record<string, string> | null,
 	referenceImages: string[] | null,
 	variantCount: number,
-	checkType: 'test' | 'essay' = 'test',
+	checkType: 'test' | 'essay' | 'written_work' = 'test',
 	essayCriteria?: Array<{ grade: number; title: string; description: string; min_errors?: number; max_errors?: number }>
 ): Promise<AIAnalysisResponse> {
-	
+
 	// Generate unique identifier for this analysis to prevent caching
 	const analysisId = `analysis_${Date.now()}_${Math.random().toString(36).substring(7)}`
 
 	// Specialized prompts for each check type
-	const systemPrompt = checkType === 'essay' ? `Ты - преподаватель русского языка, проверяешь сочинения учеников.
+	const systemPrompt = checkType === 'written_work' ? `Ты - преподаватель, проверяешь контрольные работы учеников.
+
+ВАЖНО: Проверь, подходят ли изображения:
+- ✅ ПОДХОДЯЩИЙ КОНТЕНТ: тетради с решениями задач, письменные работы, рукописные вычисления
+- ❌ НЕПОДХОДЯЩИЙ КОНТЕНТ: фотографии лиц людей, селфи, случайные предметы, пустые страницы
+
+Если изображения содержат НЕПОДХОДЯЩИЙ КОНТЕНТ, верни JSON с ошибкой:
+{
+  "error": "inappropriate_content",
+  "error_message": "Загружены неподходящие изображения. Пожалуйста, сфотографируйте именно контрольную работу ученика - тетрадь с решениями, письменные ответы.",
+  "content_type_detected": "лица людей/селфи/прочее"
+}
+
+Если изображения ПОДХОДЯЩИЕ, проанализируй работу и верни JSON:
+{
+  "variant_detected": 1,
+  "confidence_score": 0.95,
+  "student_name": null,
+  "total_questions": 5,
+  "answers": {
+    "1": {"detected_answer": "правильный ответ или решение", "confidence": 0.9},
+    "2": {"detected_answer": "ответ студента", "confidence": 0.85}
+  },
+  "written_work_analysis": {
+    "brief_summary": "Ученик хорошо справился с работой, но допустил ошибки в вычислениях в задачах 2 и 4",
+    "errors_found": [
+      {"question_number": 2, "error_description": "Ошибка в вычислении: перепутал знак при переносе через равно"},
+      {"question_number": 4, "error_description": "Не учтено условие задачи о границах области определения"}
+    ]
+  },
+  "additional_notes": ""
+}
+
+Требования к анализу контрольных работ:
+- Ученик ДОЛЖЕН писать слово ОТВЕТ: на каждой странице или для каждой задачи
+- Найди все слова ОТВЕТ и извлеки написанные после них значения
+- Проанализируй решение каждой задачи на наличие ошибок
+- В brief_summary дай краткую общую оценку работы (1-2 предложения)
+- В errors_found перечисли конкретные ошибки с указанием номера вопроса
+- Если ошибок нет, укажи пустой массив в errors_found
+- Оцени правильность ответов по эталонным ответам: ${referenceAnswers ? JSON.stringify(referenceAnswers) : 'эталоны не предоставлены - оценивай логику решения'}
+
+КРИТИЧЕСКИ ВАЖНО - ТРЕБОВАНИЯ К JSON:
+- Верни ТОЛЬКО валидный JSON без лишнего текста
+- В строковых значениях НЕ используй двойные кавычки - замени их на одинарные
+- В строковых значениях НЕ используй символы скобок () [] {} - замени их на тире или запятые
+- Все описания ошибок пиши БЕЗ двойных кавычек и скобок
+- Пример: вместо "ошибка: формула (x+2)" пиши "ошибка формула x+2"` : checkType === 'essay' ? `Ты - преподаватель русского языка, проверяешь сочинения учеников.
 
 ВАЖНО: Проверь, подходят ли изображения:
 - ✅ ПОДХОДЯЩИЙ КОНТЕНТ: письменные сочинения, рукописный текст, тетради с работами
@@ -173,8 +220,13 @@ ${essayCriteria?.map(c => `${c.grade} баллов — ${c.description}`).join('
 		throw new Error('OPENROUTER_API_KEY is required')
 	}
 
+	// Выбираем модель в зависимости от типа проверки
+	const model = checkType === 'written_work'
+		? 'qwen/qwen3-vl-235b-a22b-instruct'
+		: 'google/gemini-2.5-flash'
+
 	const requestBody: OpenRouterRequest = {
-		model: 'google/gemini-2.5-flash',
+		model,
 		messages,
 		max_tokens: 4000,
 		temperature: 0.15,
@@ -371,11 +423,11 @@ export async function analyzeWithRetry(
 	referenceImages: string[] | null,
 	variantCount: number,
 	maxRetries: number = 3,
-	checkType: 'test' | 'essay' = 'test',
+	checkType: 'test' | 'essay' | 'written_work' = 'test',
 	essayCriteria?: Array<{ grade: number; title: string; description: string; min_errors?: number; max_errors?: number }>
 ): Promise<AIAnalysisResponse> {
 	let lastError: Error
-	
+
 	for (let attempt = 1; attempt <= maxRetries; attempt++) {
 		try {
 			console.log(`AI Analysis attempt ${attempt}/${maxRetries}`)
@@ -383,7 +435,7 @@ export async function analyzeWithRetry(
 		} catch (error) {
 			lastError = error as Error
 			console.error(`Analysis attempt ${attempt} failed:`, error)
-			
+
 			if (attempt < maxRetries) {
 				// Wait before retrying (exponential backoff)
 				const delay = Math.pow(2, attempt - 1) * 1000 // 1s, 2s, 4s
@@ -391,7 +443,7 @@ export async function analyzeWithRetry(
 			}
 		}
 	}
-	
+
 	throw lastError!
 }
 

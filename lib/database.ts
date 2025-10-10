@@ -98,23 +98,43 @@ export async function upsertUserProfile(sessionUser: User & { provider?: string 
 	// Сначала проверяем, существует ли пользователь
 	const { data: existingProfile } = await supabase
 		.from('user_profiles')
-		.select('user_id, subscription_plan_id')
+		.select('user_id, subscription_plan_id, check_balance, subscription_started_at, subscription_expires_at')
 		.eq('email', sessionUser.email)
 		.single()
 
-	// Если это новый пользователь, получаем ID бесплатного плана
-	let freePlanId = null
-	if (!existingProfile) {
-		const { data: freePlan } = await (supabase as any)
-			.from('subscription_plans')
-			.select('id')
-			.eq('name', 'FREE')
+	// Если пользователь уже существует, просто обновляем last_login_at
+	if (existingProfile) {
+		console.log('User already exists, updating last_login_at only')
+		const { data, error } = await supabase
+			.from('user_profiles')
+			.update({
+				last_login_at: new Date().toISOString(),
+				updated_at: new Date().toISOString()
+			})
+			.eq('email', sessionUser.email)
+			.select()
 			.single()
 
-		if (freePlan) {
-			freePlanId = freePlan.id
-			console.log('Setting FREE plan for new user:', freePlanId)
+		if (error) {
+			console.error('Error updating user profile:', error)
+			return null
 		}
+
+		console.log('User profile updated successfully')
+		return data as UserProfile
+	}
+
+	// Если это новый пользователь, получаем ID бесплатного плана
+	let freePlanId = null
+	const { data: freePlan } = await (supabase as any)
+		.from('subscription_plans')
+		.select('id')
+		.eq('name', 'FREE')
+		.single()
+
+	if (freePlan) {
+		freePlanId = freePlan.id
+		console.log('Setting FREE plan for new user:', freePlanId)
 	}
 
 	const profileData: any = {
@@ -128,27 +148,24 @@ export async function upsertUserProfile(sessionUser: User & { provider?: string 
 	}
 
 	// Для новых пользователей устанавливаем бесплатный план
-	if (!existingProfile && freePlanId) {
+	if (freePlanId) {
 		profileData.subscription_plan_id = freePlanId
 		profileData.check_balance = 0 // Бесплатный план = 0 проверок
 	}
 
-	// Use email as the conflict resolution key instead of user_id
+	// Создаём нового пользователя
 	const { data, error } = await (supabase as any)
 		.from('user_profiles')
-		.upsert(profileData, {
-			onConflict: 'email', // Changed from 'user_id' to 'email'
-			ignoreDuplicates: false
-		})
+		.insert(profileData)
 		.select()
 		.single()
 
 	if (error) {
-		console.error('Error upserting user profile:', error)
+		console.error('Error creating user profile:', error)
 		return null
 	}
 
-	console.log('User profile created/updated successfully:', data)
+	console.log('New user profile created successfully:', data)
 	return data as UserProfile
 }
 

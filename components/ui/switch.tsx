@@ -21,8 +21,8 @@ const switchVariants = cva(
         lg: "h-7 w-[52px] p-0.5",
       },
       variant: {
-        default: "data-[state=checked]:bg-primary-blue data-[state=unchecked]:bg-slate-300",
-        success: "data-[state=checked]:bg-green-500 data-[state=unchecked]:bg-slate-300",
+        default: "data-[state=checked]:bg-green-500 data-[state=unchecked]:bg-slate-300",
+        blue: "data-[state=checked]:bg-primary-blue data-[state=unchecked]:bg-slate-300",
       }
     },
     defaultVariants: {

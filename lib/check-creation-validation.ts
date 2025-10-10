@@ -122,16 +122,22 @@ export type ValidatedCheckCreationData = z.infer<typeof mobileCheckCreationSchem
 
 // Data mapping function: Convert UI data to API format
 export function mapUIDataToAPI(uiData: CheckCreationData, variantCount?: number): CreateCheckFormData {
-  const isEssay = uiData.workType?.id === 'essay'
+  const workTypeId = uiData.workType?.id
+  const isEssay = workTypeId === 'essay'
+  const isWrittenWork = workTypeId === 'written_work'
+
+  let checkType: 'test' | 'essay' | 'written_work' = 'test'
+  if (isEssay) checkType = 'essay'
+  else if (isWrittenWork) checkType = 'written_work'
 
   const apiData: CreateCheckFormData = {
     title: uiData.workTitle,
-    description: `${isEssay ? 'Сочинение' : 'Проверочная работа'}: ${uiData.workType?.title || 'Неизвестный тип'}`,
+    description: `${isEssay ? 'Сочинение' : isWrittenWork ? 'Контрольная работа' : 'Тест'}: ${uiData.workType?.title || 'Неизвестный тип'}`,
     variant_count: variantCount || 1,
     subject: uiData.workType?.title,
     class_level: undefined,
     total_questions: uiData.answers?.length || undefined,
-    check_type: isEssay ? 'essay' : 'test'
+    check_type: checkType
   }
 
   if (isEssay && uiData.essayDescriptiveCriteria) {
@@ -306,7 +312,8 @@ export function hasFieldError(errors: Record<string, string[]>, fieldPath: strin
 
 // Pre-defined work types with validation
 export const WORK_TYPES: WorkType[] = [
-  { id: "test", title: "Контрольная или тест" },
+  { id: "test", title: "Тест" },
+  { id: "written_work", title: "Контрольная работа" },
   { id: "essay", title: "Сочинение" }
 ] as const
 

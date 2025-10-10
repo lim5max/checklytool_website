@@ -134,12 +134,14 @@ export async function POST(
 
 		// Deduct credits before processing
 		const pagesCount = submissionData.submission_images.length
+		// Для контрольных работ используем множитель x2 для списания кредитов
+		const creditsMultiplier = checkData.check_type === 'written_work' ? 2 : 1
 		const deductResult = await deductCheckCredits({
 			userId,
 			checkId: checkData.id,
 			submissionId,
-			checkType: (checkData.check_type || 'test') as 'test' | 'essay',
-			pagesCount,
+			checkType: (checkData.check_type || 'test') as 'test' | 'essay' | 'written_work',
+			pagesCount: pagesCount * creditsMultiplier,
 		})
 
 		if (!deductResult.success) {
@@ -263,7 +265,7 @@ export async function POST(
 				referenceImages || null,
 				checkData.variant_count,
 				3, // maxRetries
-				(checkData.check_type || 'test') as 'test' | 'essay',
+				(checkData.check_type || 'test') as 'test' | 'essay' | 'written_work',
 				checkData.essay_grading_criteria || undefined
 			)
 
@@ -518,6 +520,14 @@ export async function POST(
 					logic: aiResult.essay_analysis.logic,
 					errors: aiResult.essay_analysis.errors,
 					content_quality: aiResult.essay_analysis.content_quality
+				}
+			}
+
+			// Add written work feedback if this is a written work
+			if (checkData.check_type === 'written_work' && aiResult.written_work_analysis) {
+				evaluationData.written_work_feedback = {
+					brief_summary: aiResult.written_work_analysis.brief_summary,
+					errors_found: aiResult.written_work_analysis.errors_found
 				}
 			}
 

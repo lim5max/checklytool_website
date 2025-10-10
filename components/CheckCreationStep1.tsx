@@ -106,7 +106,7 @@ export default function CheckCreationStep1({
   const isFormValid = () => {
     if (!selectedWorkTypeId) return false
 
-    if (selectedWorkTypeId === 'test') {
+    if (selectedWorkTypeId === 'test' || selectedWorkTypeId === 'written_work') {
       // Если выбран готовый тест, проверяем что тест действительно выбран
       if (checkMethod === 'existing') {
         return selectedTest !== null
@@ -123,7 +123,7 @@ export default function CheckCreationStep1({
   }
 
   const handleContinue = () => {
-    if (selectedWorkTypeId === 'test' && checkMethod === 'existing' && !selectedTest) {
+    if ((selectedWorkTypeId === 'test' || selectedWorkTypeId === 'written_work') && checkMethod === 'existing' && !selectedTest) {
       // Если еще не выбран тест, показываем модалку
       setShowTestModal(true)
       loadSavedTests()
@@ -162,33 +162,32 @@ export default function CheckCreationStep1({
                 <p className="leading-[1.2] whitespace-pre">Тип работы</p>
               </div>
             </div>
-            
-            {/* Work Type Grid matching Figma exactly - только 2 элемента в строку */}
-            <div className="gap-2 grid grid-cols-2 grid-rows-1 h-40 relative shrink-0 w-full">
-              {workTypes.map((workType, index) => (
+
+            {/* Work Type Grid - 2 в первом ряду, 1 во втором */}
+            <div className="gap-2 grid grid-cols-2 auto-rows-[160px] relative shrink-0 w-full">
+              {workTypes.map((workType) => (
                 <button
                   key={workType.id}
                   onClick={() => handleWorkTypeSelect(workType)}
                   className={cn(
                     "h-40 overflow-clip relative rounded-[28px] shrink-0",
-                    selectedWorkTypeId === workType.id 
-                      ? "bg-[#096ff5]" 
+                    selectedWorkTypeId === workType.id
+                      ? "bg-[#096ff5]"
                       : "bg-slate-100",
                     hasFieldError(validationErrors, 'workType') && "ring-2 ring-red-500",
-                    index === 0 ? "[grid-area:1_/_1]" : "[grid-area:1_/_2]"
+                    workType.id === 'essay' && "col-span-2"
                   )}
                 >
                   <div className={cn(
                     "absolute flex flex-col font-inter font-medium justify-center leading-[0] text-[16px] top-[50%] translate-y-[-50%] left-[50%] translate-x-[-50%]",
-                    selectedWorkTypeId === workType.id ? "text-white" : "text-slate-800",
-                    index === 0 ? "w-[107px]" : "w-[88px]"
+                    selectedWorkTypeId === workType.id ? "text-white" : "text-slate-800"
                   )}>
                     <p className="leading-[1.6] text-center">{workType.title}</p>
                   </div>
                 </button>
               ))}
             </div>
-            
+
             {/* Error message */}
             {hasFieldError(validationErrors, 'workType') && (
               <p className="text-red-500 text-sm font-inter text-center">
@@ -235,19 +234,22 @@ export default function CheckCreationStep1({
           )}
 
           {/* Информационный блок для тестов - новый дизайн */}
-          {selectedWorkTypeId === 'test' && !selectedTest && (
+          {(selectedWorkTypeId === 'test' || selectedWorkTypeId === 'written_work') && !selectedTest && (
             <div className="bg-white border border-slate-200 rounded-3xl p-6 w-full shadow-sm">
               <div className="space-y-6">
                 {/* Заголовок */}
                 <div>
                   <h3 className="font-nunito font-extrabold text-[20px] text-slate-700 leading-tight">
-                    Мы проверяем только тесты из Конструктора
+                    {selectedWorkTypeId === 'test' ? 'Мы проверяем только тесты из Конструктора' : 'Выберите или создайте тест для контрольной работы'}
                   </h3>
                 </div>
 
                 {/* Описание */}
                 <p className="text-slate-600 text-[15px] leading-relaxed">
-                  Для точной проверки ИИ используйте тесты из Конструктора со стандартизированными PDF бланками
+                  {selectedWorkTypeId === 'test'
+                    ? 'Для точной проверки ИИ используйте тесты из Конструктора со стандартизированными PDF бланками'
+                    : 'Контрольная работа создаётся на основе теста из Конструктора, но ИИ будет анализировать письменные решения с подробными замечаниями'
+                  }
                 </p>
 
                 {/* Преимущества */}

@@ -2,7 +2,9 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
+import { signIn } from 'next-auth/react'
 
 import { Button } from '../ui/button'
 import { Input } from '../ui/input'
@@ -10,14 +12,15 @@ import { Label } from '../ui/label'
 import OAuthButtons from './OAuthButtons'
 
 export default function RegisterForm() {
+  const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [success, setSuccess] = useState(false)
   const [formData, setFormData] = useState({
     email: '',
     password: '',
     confirmPassword: '',
     fullName: '',
+    promoCode: '',
   })
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -48,7 +51,8 @@ export default function RegisterForm() {
     try {
       setIsLoading(true)
       setError(null)
-      
+
+      // Регистрация пользователя
       const response = await fetch('/api/auth/register', {
         method: 'POST',
         headers: {
@@ -58,6 +62,7 @@ export default function RegisterForm() {
           email: formData.email,
           password: formData.password,
           fullName: formData.fullName,
+          promoCode: formData.promoCode || undefined,
         }),
       })
 
@@ -65,7 +70,20 @@ export default function RegisterForm() {
 
       if (data.success) {
         console.log('Registration successful:', data)
-        setSuccess(true)
+
+        // Автоматическая авторизация после регистрации
+        const signInResult = await signIn('credentials', {
+          email: formData.email,
+          password: formData.password,
+          redirect: false,
+        })
+
+        if (signInResult?.error) {
+          setError('Регистрация прошла успешно, но не удалось войти. Попробуйте войти вручную.')
+        } else {
+          // Успешная авторизация - редирект на дашборд
+          router.push('/dashboard')
+        }
       } else {
         setError(data.message || 'Ошибка при регистрации')
       }
@@ -75,37 +93,6 @@ export default function RegisterForm() {
     } finally {
       setIsLoading(false)
     }
-  }
-
-  if (success) {
-    return (
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="text-center space-y-6"
-      >
-        <div className="space-y-2">
-          <h1 className="text-2xl font-nunito font-black text-slate-900">
-            Проверьте почту
-          </h1>
-          <p className="text-slate-600 font-inter">
-            Мы отправили ссылку для подтверждения на ваш email.
-            Перейдите по ссылке, чтобы активировать аккаунт.
-          </p>
-        </div>
-
-        <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg text-sm">
-          Не забудьте проверить папку &quot;Спам&quot;
-        </div>
-
-        <Button asChild className="w-full">
-          <Link href="/auth/login">
-            Вернуться к входу
-          </Link>
-        </Button>
-      </motion.div>
-    )
   }
 
   return (
@@ -187,6 +174,19 @@ export default function RegisterForm() {
             onChange={handleChange}
             disabled={isLoading}
             required
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="promoCode">Промокод (необязательно)</Label>
+          <Input
+            id="promoCode"
+            name="promoCode"
+            type="text"
+            placeholder="Введите промокод"
+            value={formData.promoCode}
+            onChange={handleChange}
+            disabled={isLoading}
           />
         </div>
 

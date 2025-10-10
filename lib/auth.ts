@@ -2,7 +2,9 @@ import NextAuth, { DefaultSession } from "next-auth"
 import Yandex from "next-auth/providers/yandex"
 import Credentials from "next-auth/providers/credentials"
 import type { NextAuthConfig } from "next-auth"
+import bcrypt from 'bcryptjs'
 import { upsertUserProfile } from './database'
+import { createClient } from './supabase/server'
 
 // Extend the built-in session types
 declare module "next-auth" {
@@ -44,14 +46,46 @@ export const authOptions: NextAuthConfig = {
           return null
         }
 
-        // TODO: Add actual user authentication logic here
-        // This is a placeholder - replace with your actual authentication
-        // For now, just return a mock user for testing
-        return {
-          id: "1",
-          email: credentials.email as string,
-          name: "Test User",
-          provider: "credentials"
+        try {
+          const supabase = await createClient()
+
+          // Получаем пользователя из базы данных
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const { data: user, error } = await (supabase as any)
+            .from('user_profiles')
+            .select('user_id, email, name, password_hash, avatar_url')
+            .eq('email', credentials.email as string)
+            .single()
+
+          if (error || !user) {
+            console.log('[AUTH] User not found:', credentials.email)
+            return null
+          }
+
+          // Проверяем пароль
+          const isPasswordValid = await bcrypt.compare(
+            credentials.password as string,
+            user.password_hash
+          )
+
+          if (!isPasswordValid) {
+            console.log('[AUTH] Invalid password for:', credentials.email)
+            return null
+          }
+
+          console.log('[AUTH] Login successful:', credentials.email)
+
+          // Возвращаем данные пользователя
+          return {
+            id: user.user_id,
+            email: user.email,
+            name: user.name || '',
+            image: user.avatar_url,
+            provider: "credentials"
+          }
+        } catch (error) {
+          console.error('[AUTH] Authorization error:', error)
+          return null
         }
       },
     }),

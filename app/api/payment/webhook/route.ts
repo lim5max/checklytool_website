@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			const { data: plan } = await (supabase as any)
 				.from('subscription_plans')
-				.select('check_quota, duration_days')
+				.select('check_credits, duration_days')
 				.eq('id', order.plan_id)
 				.single()
 
@@ -102,7 +102,7 @@ export async function POST(request: NextRequest) {
 					.update({
 						subscription_plan_id: order.plan_id,
 						subscription_expires_at: expiresAt.toISOString(),
-						check_balance: plan.check_quota,
+						check_balance: Number(plan.check_credits) || 0,
 					})
 					.eq('user_id', order.user_id)
 
@@ -118,7 +118,7 @@ export async function POST(request: NextRequest) {
 					await (supabase as any).from('check_usage_history').insert({
 						user_id: order.user_id,
 						check_id: null, // Это пополнение, а не использование
-						credits_used: -plan.check_quota, // Отрицательное значение = пополнение
+						credits_used: -(Number(plan.check_credits) || 0), // Отрицательное значение = пополнение
 						description: `Пополнение: подписка ${order.plan_id}`,
 					})
 				}

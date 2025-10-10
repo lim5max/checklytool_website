@@ -149,10 +149,7 @@ export default function TestConstructor({
 			question: '',
 			type: 'single',
 			options: [
-				{ id: `opt_${Date.now()}_1`, text: '', isCorrect: false },
-				{ id: `opt_${Date.now()}_2`, text: '', isCorrect: false },
-				{ id: `opt_${Date.now()}_3`, text: '', isCorrect: false },
-				{ id: `opt_${Date.now()}_4`, text: '', isCorrect: false }
+				{ id: `opt_${Date.now()}_1`, text: '', isCorrect: false }
 			],
 			explanation: '',
 			strictMatch: false,
@@ -249,7 +246,7 @@ export default function TestConstructor({
 
 	const removeOption = useCallback((questionId: string, optionId: string) => {
 		const question = test.questions.find(q => q.id === questionId)
-		if (!question || question.options.length <= 2) return
+		if (!question || question.options.length <= 1) return
 
 		updateQuestion(questionId, {
 			options: question.options.filter(opt => opt.id !== optionId)
@@ -955,7 +952,7 @@ function QuestionCard({
 													className={`flex-1 border-0 ${option.isCorrect ? 'bg-white' : 'bg-white'}`}
 												/>
 
-												{question.options.length > 2 && (
+												{question.options.length > 1 && (
 													<button
 														onClick={() => onRemoveOption(question.id, option.id)}
 														className="flex-shrink-0 p-2 rounded-lg hover:bg-red-100 transition-colors"

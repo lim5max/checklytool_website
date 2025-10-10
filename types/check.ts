@@ -30,7 +30,7 @@ export interface Check {
   subject?: string
   class_level?: string
   total_questions?: number
-  check_type: 'test' | 'essay'
+  check_type: 'test' | 'essay' | 'written_work'
   created_at: string
   updated_at: string
 }
@@ -120,6 +120,13 @@ export interface EvaluationResult {
     }
     content_quality: string
     final_grade: number
+  }
+  written_work_feedback?: {
+    brief_summary: string // Краткая выжимка ошибок
+    errors_found: Array<{
+      question_number: number
+      error_description: string
+    }>
   }
   created_at: string
 }
@@ -254,6 +261,15 @@ export interface AIAnalysisResponse {
     }
     content_quality: string
     final_grade: number
+  }
+
+  // Дополнительные данные для контрольных работ
+  written_work_analysis?: {
+    brief_summary: string
+    errors_found: Array<{
+      question_number: number
+      error_description: string
+    }>
   }
 
   // Ошибки
