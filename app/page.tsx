@@ -75,14 +75,22 @@ export default function Home() {
           </main>
 
           <footer className="flex flex-col sm:flex-row items-center justify-between gap-4 w-full pt-8 mt-16 border-t border-slate-200 text-sm text-slate-600">
-            <p>©2025 ChecklyTool. Все права защищены.</p>
+            <div className="flex flex-col sm:flex-row items-center gap-4">
+              <p>©2025 ChecklyTool. Все права защищены.</p>
+              <Link
+                href="/oferta"
+                className="hover:text-slate-900 transition-colors"
+              >
+                Публичная оферта
+              </Link>
+            </div>
             <Link
-              href="https://www.rusprofile.ru/ip/321508100625381"
+              href="https://www.rusprofile.ru/ip/325774600570532"
               target="_blank"
               rel="noopener noreferrer"
               className="hover:text-slate-900 transition-colors"
             >
-              ИП Митусов Б.С.
+              ИП Штиль М.С.
             </Link>
           </footer>
 
