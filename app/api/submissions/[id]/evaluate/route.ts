@@ -134,14 +134,12 @@ export async function POST(
 
 		// Deduct credits before processing
 		const pagesCount = submissionData.submission_images.length
-		// Для контрольных работ используем множитель x2 для списания кредитов
-		const creditsMultiplier = checkData.check_type === 'written_work' ? 2 : 1
 		const deductResult = await deductCheckCredits({
 			userId,
 			checkId: checkData.id,
 			submissionId,
 			checkType: (checkData.check_type || 'test') as 'test' | 'essay' | 'written_work',
-			pagesCount: pagesCount * creditsMultiplier,
+			pagesCount,
 		})
 
 		if (!deductResult.success) {
