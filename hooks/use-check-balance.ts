@@ -13,17 +13,21 @@ export function useCheckBalance() {
 		fetchBalance()
 	}, [])
 
-	async function fetchBalance() {
+	async function fetchBalance(): Promise<number> {
 		try {
 			const response = await fetch('/api/users/profile')
 			const data = await response.json()
 
 			if (data.profile) {
-				setBalance(Number(data.profile.check_balance) || 0)
+				const newBalance = Number(data.profile.check_balance) || 0
+				setBalance(newBalance)
 				setSubscriptionPlanId(data.profile.subscription_plan_id || null)
+				return newBalance
 			}
+			return 0
 		} catch (error) {
 			console.error('Error fetching balance:', error)
+			return 0
 		} finally {
 			setLoading(false)
 		}

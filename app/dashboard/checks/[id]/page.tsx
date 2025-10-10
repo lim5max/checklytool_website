@@ -66,7 +66,7 @@ export default function CheckPage({ params }: CheckPageProps) {
 	const [showSubscriptionModal, setShowSubscriptionModal] = useState(false)
 
 	// Check balance
-	const { balance, getCreditsNeeded } = useCheckBalance()
+	const { balance, getCreditsNeeded, refreshBalance } = useCheckBalance()
 
 	// Загружаем данные пользователя
 	useEffect(() => {
@@ -324,32 +324,46 @@ export default function CheckPage({ params }: CheckPageProps) {
 			return
 		}
 
+		// ВАЖНО: Обновляем баланс из БД перед проверкой
+		console.log('[BALANCE] ========== НАЧАЛО ПРОВЕРКИ БАЛАНСА ==========')
+		console.log('[BALANCE] Refreshing balance from database...')
+		const freshBalance = await refreshBalance()
+		console.log('[BALANCE] Fresh balance received:', freshBalance)
+
 		// Проверяем баланс ДО отправки работ
 		const draft = getDraft(checkId)
 		const totalPhotos = (draft?.students || []).reduce((sum, student) => sum + student.photos.length, 0)
 		const creditsNeeded = getCreditsNeeded(checkType, totalPhotos)
 
 		console.log('[BALANCE] Checking balance before submission:', {
-			balance,
+			checkId,
+			checkType,
+			freshBalance,
 			creditsNeeded,
 			totalPhotos,
-			hasEnough: balance >= creditsNeeded
+			hasEnough: freshBalance >= creditsNeeded,
+			willSubmit: freshBalance >= creditsNeeded
 		})
 
-		// Если баланса недостаточно - показываем модалку СРАЗУ
-		if (balance < creditsNeeded) {
-			console.log('[BALANCE] Insufficient balance, showing modal')
-			toast.error(`Недостаточно проверок. Нужно: ${creditsNeeded}, доступно: ${balance}`)
+		// Если баланса недостаточно - показываем модалку СРАЗУ и НЕ ОТПРАВЛЯЕМ работы
+		if (freshBalance < creditsNeeded) {
+			console.log('[BALANCE] ❌ INSUFFICIENT BALANCE - BLOCKING SUBMISSION')
+			console.log('[BALANCE] Модалка должна показаться, работы НЕ отправляются')
+			toast.error(`Недостаточно проверок. Нужно: ${creditsNeeded}, доступно: ${freshBalance}`)
 			setShowSubscriptionModal(true)
-			return
+			return // ВАЖНО: выходим из функции, работы НЕ отправляются!
 		}
+
+		console.log('[BALANCE] ✅ SUFFICIENT BALANCE - PROCEEDING WITH SUBMISSION')
 
 		try {
 			setIsProcessing(true)
 			// Сохраняем количество работ для отображения скелетонов
 			setProcessingCount(drafts.length)
 
+			console.log('[SUBMIT] Отправка работ на сервер...')
 			const { items } = await submitStudents(checkId, draft?.students || [])
+			console.log('[SUBMIT] Работы успешно отправлены, submissions created:', items.length)
 
 			// Очищаем черновики ТОЛЬКО после успешной отправки
 			clearDraft(checkId)
@@ -454,8 +468,8 @@ export default function CheckPage({ params }: CheckPageProps) {
 	// Вычисляем показывать ли состояние загрузки
 	const showSkeleton = isLoading || isProcessing
 
-	// Определяем сколько скелетонов показывать (на основе количества черновиков перед отправкой)
-	const skeletonCount = isProcessing ? Math.max(processingCount, pendingSubs.length, 1) : 0
+	// Всегда показываем 3 скелетона при обработке
+	const skeletonCount = isProcessing ? 3 : 0
 
 	// Проверяем есть ли вообще какой-то контент
 	const hasAnyContent = failedSubs.length > 0 || pendingSubs.length > 0 || completedSubs.length > 0 || drafts.length > 0 || skeletonCount > 0
