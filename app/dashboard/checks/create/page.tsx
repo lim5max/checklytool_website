@@ -37,7 +37,7 @@ export default function CheckCreationPage() {
   const [bannerDismissed, setBannerDismissed] = useState(false)
 
   // Check balance
-  const { balance, subscriptionPlanId } = useCheckBalance()
+  const { balance, subscriptionPlanId, loading: balanceLoading } = useCheckBalance()
 
   // Form data state
   const [checkData, setCheckData] = useState<CheckCreationData>({
@@ -376,7 +376,8 @@ export default function CheckCreationPage() {
   }
 
   // Show banner only if user has no subscription and hasn't dismissed it
-  const showInfoBanner = !subscriptionPlanId && !bannerDismissed
+  // Don't show while loading to avoid flashing
+  const showInfoBanner = !balanceLoading && !subscriptionPlanId && !bannerDismissed
 
   return (
     <div className="space-y-4">
