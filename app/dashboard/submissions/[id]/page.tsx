@@ -34,6 +34,12 @@ interface SubmissionData {
 			student_answer?: string
 			correct_answer?: string
 			feedback?: string
+		}> | Record<string, {
+			given?: string
+			correct?: string | null
+			confidence?: number
+			is_correct?: boolean
+			feedback?: string
 		}>
 		written_work_feedback?: {
 			brief_summary: string
@@ -209,19 +215,69 @@ export default function SubmissionDetailPage({ params }: PageProps) {
 				</div>
 
 				{/* Общее резюме для сочинений */}
-				{isEssay && evaluation?.detailed_answers && evaluation.detailed_answers.length > 0 && (
+				{isEssay && evaluation?.detailed_answers && Object.keys(evaluation.detailed_answers).length > 0 && (
 					<div>
 						<h2 className="font-nunito font-bold text-2xl text-slate-900 mb-6">
 							Оценка работы
 						</h2>
-						<div className="bg-white rounded-2xl border border-slate-200 p-6 space-y-4">
-							{evaluation.detailed_answers.map((answer, index) => (
-								<div key={index} className="space-y-2">
+						<div className="space-y-4">
+							{/* Текст сочинения */}
+							{!Array.isArray(evaluation.detailed_answers) && Object.entries(evaluation.detailed_answers).map(([key, answer]) => (
+								<div key={key}>
+									{answer.given && (
+										<div className="bg-white rounded-2xl border border-slate-200 p-6">
+											<h3 className="font-semibold text-lg text-slate-900 mb-3">
+												Текст работы
+											</h3>
+											<p className="text-slate-700 leading-relaxed whitespace-pre-wrap">
+												{answer.given}
+											</p>
+										</div>
+									)}
+
+									{/* Обратная связь если есть */}
 									{answer.feedback && (
-										<p className="text-slate-700 leading-relaxed">{answer.feedback}</p>
+										<div className="bg-blue-50 rounded-2xl border border-blue-200 p-6">
+											<div className="flex items-start gap-3">
+												<div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0">
+													<svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+														<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+													</svg>
+												</div>
+												<div className="flex-1">
+													<h3 className="font-semibold text-lg text-blue-900 mb-2">
+														Комментарий
+													</h3>
+													<p className="text-blue-800 leading-relaxed whitespace-pre-wrap">
+														{answer.feedback}
+													</p>
+												</div>
+											</div>
+										</div>
 									)}
 								</div>
 							))}
+
+							{/* Если нет feedback, показываем причину низкой оценки */}
+							{evaluation.final_grade < 3 && !Array.isArray(evaluation.detailed_answers) && !Object.values(evaluation.detailed_answers).some((a) => a.feedback) && (
+								<div className="bg-amber-50 rounded-2xl border border-amber-200 p-6">
+									<div className="flex items-start gap-3">
+										<div className="w-8 h-8 bg-amber-500 rounded-full flex items-center justify-center flex-shrink-0">
+											<svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+												<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+											</svg>
+										</div>
+										<div className="flex-1">
+											<h3 className="font-semibold text-lg text-amber-900 mb-2">
+												Работа требует доработки
+											</h3>
+											<p className="text-amber-800 leading-relaxed">
+												Оценка {evaluation.final_grade} ({evaluation.percentage_score}%) говорит о том, что работа не соответствует требованиям. Рекомендуется переписать сочинение, обратив внимание на критерии оценивания.
+											</p>
+										</div>
+									</div>
+								</div>
+							)}
 						</div>
 					</div>
 				)}
@@ -279,7 +335,7 @@ export default function SubmissionDetailPage({ params }: PageProps) {
 				)}
 
 				{/* Детализация по вопросам для тестов */}
-				{isTest && evaluation?.detailed_answers && evaluation.detailed_answers.length > 0 && (
+				{isTest && evaluation?.detailed_answers && Array.isArray(evaluation.detailed_answers) && evaluation.detailed_answers.length > 0 && (
 					<div>
 						<h2 className="font-nunito font-bold text-2xl text-slate-900 mb-6">
 							Детализация по вопросам
@@ -349,7 +405,7 @@ export default function SubmissionDetailPage({ params }: PageProps) {
 				)}
 
 				{/* Детализация по заданиям для written_work */}
-				{isWrittenWork && evaluation?.detailed_answers && evaluation.detailed_answers.length > 0 && (
+				{isWrittenWork && evaluation?.detailed_answers && Array.isArray(evaluation.detailed_answers) && evaluation.detailed_answers.length > 0 && (
 					<div>
 						<h2 className="font-nunito font-bold text-2xl text-slate-900 mb-6">
 							Детализация по заданиям
