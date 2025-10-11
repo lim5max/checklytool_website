@@ -103,6 +103,10 @@ export default function CheckCreationPage() {
       if (workType.id === 'essay') {
         newData.checkingMethod = 'ai'
         newData.answers = []
+      } else if (workType.id === 'written_work') {
+        // For written_work, always use AI method and ensure we have default answers
+        newData.checkingMethod = 'ai'
+        newData.answers = prev.answers.length === 0 ? DEFAULT_ANSWERS : prev.answers
       } else {
         // For tests, ensure we have default answers for manual checking
         newData.answers = prev.answers.length === 0 ? DEFAULT_ANSWERS : prev.answers
@@ -112,19 +116,71 @@ export default function CheckCreationPage() {
     })
   }
 
-  const handleTestSelect = (test: SavedTest) => {
-    // Устанавливаем данные теста напрямую из переданного объекта
-    setSelectedTest(test)
+  const handleTestSelect = async (test: SavedTest) => {
+    try {
+      // Устанавливаем данные теста напрямую из переданного объекта
+      setSelectedTest(test)
 
-    // Обновляем данные формы на основе выбранного теста
-    setCheckData(prev => ({
-      ...prev,
-      workTitle: test.title,
-      checkingMethod: 'ai', // Для готовых тестов используем ИИ
-    }))
+      // Загружаем полные данные теста с вопросами и ответами
+      const response = await fetch(`/api/tests/${test.id}`)
 
-    // Показываем успешное сообщение
-    toast.success(`Тест "${test.title}" выбран`)
+      if (!response.ok) {
+        throw new Error('Не удалось загрузить данные теста')
+      }
+
+      const { test: fullTest } = await response.json()
+
+      // Извлекаем правильные ответы из вопросов
+      const correctAnswers: Answer[] = []
+
+      fullTest.questions.forEach((question: {
+        id: string
+        type: string
+        question: string
+        options: Array<{
+          id: string
+          text: string
+          isCorrect: boolean
+        }>
+      }, index: number) => {
+        // Находим правильные ответы
+        const correctOptions = question.options.filter(opt => opt.isCorrect)
+
+        // Для single - берем текст первого правильного ответа
+        // Для multiple - берем все правильные через запятую
+        // Для open - берем первый правильный ответ как эталон
+        const answerValue = correctOptions.map(opt => opt.text).join(', ')
+
+        if (answerValue) {
+          correctAnswers.push({
+            id: `answer-${index + 1}`,
+            value: answerValue
+          })
+        }
+      })
+
+      // Создаем variants с правильными ответами
+      const variants: VariantData[] = [{
+        id: 'variant-1',
+        name: 'Вариант 1',
+        answers: correctAnswers
+      }]
+
+      // Обновляем данные формы
+      setCheckData(prev => ({
+        ...prev,
+        workTitle: test.title,
+        checkingMethod: 'ai', // Для готовых тестов используем ИИ
+        answers: correctAnswers,
+        variants: variants
+      }))
+
+      // Показываем успешное сообщение
+      toast.success(`Тест "${test.title}" выбран с ${correctAnswers.length} вопросами`)
+    } catch (error) {
+      console.error('Error loading test details:', error)
+      toast.error('Не удалось загрузить детали теста')
+    }
   }
 
   // Step 2 handlers

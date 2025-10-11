@@ -218,9 +218,15 @@ export async function POST(request: NextRequest) {
 		console.log('[API] Check creation completed successfully')
 
 		// If variant data was provided, update the variants with actual answers
+		console.log('[API] Checking for variantData...', {
+			hasVariantData: !!body.variantData,
+			isArray: Array.isArray(body.variantData),
+			variantData: body.variantData
+		})
+
 		if (body.variantData && Array.isArray(body.variantData)) {
-			console.log('[API] Processing variant answers...')
-			
+			console.log('[API] Processing variant answers...', body.variantData.length, 'variants')
+
 			for (const variantInfo of body.variantData) {
 				if (variantInfo.answers && variantInfo.answers.length > 0) {
 					// Find the corresponding database variant
