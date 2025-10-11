@@ -65,6 +65,7 @@ export async function GET(
 				correct_answers,
 				incorrect_answers,
 				detailed_answers,
+				written_work_feedback,
 				confidence_score,
 				created_at
 			`)
