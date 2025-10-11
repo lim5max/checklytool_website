@@ -2,11 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, CheckCircle, XCircle, Clock, BarChart3 } from 'lucide-react'
+import { ArrowLeft, CheckCircle, XCircle, BarChart3 } from 'lucide-react'
 import { toast } from 'sonner'
 import { GradeCircle } from '@/components/submission/grade-circle'
-import { StatCard } from '@/components/submission/stat-card'
-import { QuestionAccordion } from '@/components/submission/question-accordion'
 import { ImageGallery } from '@/components/submission/image-gallery'
 
 interface SubmissionData {
@@ -137,6 +135,7 @@ export default function SubmissionDetailPage({ params }: PageProps) {
 	const evaluation = submission.evaluation_results
 	const isEssay = submission.checks.check_type === 'essay'
 	const isWrittenWork = submission.checks.check_type === 'written_work'
+	const isTest = submission.checks.check_type === 'test'
 
 	return (
 		<div className="min-h-screen bg-white">
@@ -151,7 +150,7 @@ export default function SubmissionDetailPage({ params }: PageProps) {
 					Назад к списку
 				</button>
 
-				{/* Hero Section - Имя ученика и оценка */}
+				{/* Hero Section - Имя ученика, оценка и статистика */}
 				<div className="bg-white rounded-3xl p-8 md:p-12 shadow-sm border border-slate-200">
 					<div className="flex flex-col md:flex-row items-center gap-8">
 						{/* Информация об ученике */}
@@ -174,78 +173,56 @@ export default function SubmissionDetailPage({ params }: PageProps) {
 							</div>
 						</div>
 
-						{/* Оценка */}
+						{/* Оценка и счетчики */}
 						{evaluation && (
-							<div className="flex flex-col items-center gap-4">
+							<div className="flex flex-col items-center gap-6">
 								<GradeCircle grade={evaluation.final_grade} />
 								<div className="text-center">
-									<div className="text-2xl font-bold text-slate-900">
+									<div className="text-2xl font-bold text-slate-900 mb-1">
 										{evaluation.percentage_score}%
 									</div>
-									<p className="text-sm text-slate-500">
+									<p className="text-sm text-slate-500 mb-3">
 										{isEssay ? 'Качество работы' : 'Процент выполнения'}
 									</p>
 								</div>
+
+								{/* Счетчики для тестов и контрольных */}
+								{!isEssay && (
+									<div className="flex gap-3">
+										<div className="flex items-center gap-2 bg-green-50 px-4 py-2 rounded-full border border-green-100">
+											<CheckCircle className="w-5 h-5 text-green-600" />
+											<span className="font-semibold text-green-700">
+												{evaluation.correct_answers}
+											</span>
+										</div>
+										<div className="flex items-center gap-2 bg-red-50 px-4 py-2 rounded-full border border-red-100">
+											<XCircle className="w-5 h-5 text-red-600" />
+											<span className="font-semibold text-red-700">
+												{evaluation.incorrect_answers}
+											</span>
+										</div>
+									</div>
+								)}
 							</div>
 						)}
 					</div>
 				</div>
 
-				{/* Статистика */}
-				{evaluation && (
+				{/* Общее резюме для сочинений */}
+				{isEssay && evaluation?.detailed_answers && evaluation.detailed_answers.length > 0 && (
 					<div>
 						<h2 className="font-nunito font-bold text-2xl text-slate-900 mb-6">
-							{isEssay ? 'Оценка работы' : 'Статистика'}
+							Оценка работы
 						</h2>
-						{isEssay ? (
-							<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-								<StatCard
-									icon={BarChart3}
-									label="Оценка"
-									value={`${evaluation.final_grade} из 5`}
-									iconColor="text-blue-600"
-									iconBgColor="bg-blue-50"
-								/>
-								<StatCard
-									icon={Clock}
-									label="Качество"
-									value={`${evaluation.percentage_score}%`}
-									iconColor="text-purple-600"
-									iconBgColor="bg-purple-50"
-								/>
-							</div>
-						) : (
-							<div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-								<StatCard
-									icon={CheckCircle}
-									label="Правильно"
-									value={evaluation.correct_answers}
-									iconColor="text-green-600"
-									iconBgColor="bg-green-50"
-								/>
-								<StatCard
-									icon={XCircle}
-									label="Неправильно"
-									value={evaluation.incorrect_answers}
-									iconColor="text-red-600"
-									iconBgColor="bg-red-50"
-								/>
-								<StatCard
-									icon={BarChart3}
-									label="Всего вопросов"
-									value={evaluation.total_questions}
-									iconColor="text-blue-600"
-									iconBgColor="bg-blue-50"
-								/>
-								<StatCard
-									icon={Clock}
-									label="Процент"
-									value={`${evaluation.percentage_score}%`}
-									iconColor="text-purple-600"
-									iconBgColor="bg-purple-50"
-								/>
-							</div>
-						)}
+						<div className="bg-white rounded-2xl border border-slate-200 p-6 space-y-4">
+							{evaluation.detailed_answers.map((answer, index) => (
+								<div key={index} className="space-y-2">
+									{answer.feedback && (
+										<p className="text-slate-700 leading-relaxed">{answer.feedback}</p>
+									)}
+								</div>
+							))}
+						</div>
 					</div>
 				)}
 
@@ -301,25 +278,73 @@ export default function SubmissionDetailPage({ params }: PageProps) {
 					</div>
 				)}
 
-				{/* Детализация по вопросам или комментарии к сочинению */}
-				{!isWrittenWork && evaluation?.detailed_answers && evaluation.detailed_answers.length > 0 && (
+				{/* Детализация по вопросам для тестов */}
+				{isTest && evaluation?.detailed_answers && evaluation.detailed_answers.length > 0 && (
 					<div>
 						<h2 className="font-nunito font-bold text-2xl text-slate-900 mb-6">
-							{isEssay ? 'Комментарии к работе' : 'Детализация по вопросам'}
+							Детализация по вопросам
 						</h2>
-						{isEssay ? (
-							<div className="bg-white rounded-2xl border border-slate-200 p-6 space-y-4">
-								{evaluation.detailed_answers.map((answer, index) => (
-									<div key={index} className="space-y-2">
-										{answer.feedback && (
-											<p className="text-slate-700 leading-relaxed">{answer.feedback}</p>
-										)}
+						<div className="space-y-3">
+							{evaluation.detailed_answers.map((answer, index) => {
+								const questionNum = answer.question_number || (index + 1)
+								return (
+									<div
+										key={index}
+										className={`bg-white rounded-2xl border-2 p-6 transition-all ${
+											answer.is_correct
+												? 'border-green-200 bg-green-50'
+												: 'border-red-200 bg-red-50'
+										}`}
+									>
+										<div className="flex items-start gap-4">
+											<div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
+												answer.is_correct ? 'bg-green-500' : 'bg-red-500'
+											}`}>
+												{answer.is_correct ? (
+													<CheckCircle className="w-6 h-6 text-white" />
+												) : (
+													<XCircle className="w-6 h-6 text-white" />
+												)}
+											</div>
+											<div className="flex-1 space-y-2">
+												<div className="flex items-center justify-between">
+													<h3 className="font-semibold text-lg text-slate-900">
+														Вопрос {questionNum}
+													</h3>
+													<span className={`px-3 py-1 rounded-full text-sm font-medium ${
+														answer.is_correct
+															? 'bg-green-100 text-green-700'
+															: 'bg-red-100 text-red-700'
+													}`}>
+														{answer.is_correct ? '✓ Верно' : '✗ Неверно'}
+													</span>
+												</div>
+												{answer.student_answer && (
+													<div>
+														<p className="text-sm font-medium text-slate-600 mb-1">
+															Ответ ученика:
+														</p>
+														<p className="text-slate-900 font-medium">
+															{answer.student_answer}
+														</p>
+													</div>
+												)}
+												{answer.correct_answer && !answer.is_correct && (
+													<div>
+														<p className="text-sm font-medium text-slate-600 mb-1">
+															Правильный ответ:
+														</p>
+														<p className="text-green-700 font-medium">
+															{answer.correct_answer}
+														</p>
+													</div>
+												)}
+											</div>
+										</div>
 									</div>
-								))}
-							</div>
-						) : (
-							<QuestionAccordion questions={evaluation.detailed_answers} />
-						)}
+								)
+							})}
+						</div>
 					</div>
 				)}
 
@@ -381,6 +406,13 @@ export default function SubmissionDetailPage({ params }: PageProps) {
 														</p>
 														<p className="text-green-700 font-medium">
 															{answer.correct_answer}
+														</p>
+													</div>
+												)}
+												{answer.feedback && (
+													<div className="pt-2 border-t border-slate-200">
+														<p className="text-sm text-slate-600">
+															{answer.feedback}
 														</p>
 													</div>
 												)}
