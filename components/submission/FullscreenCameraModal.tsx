@@ -326,6 +326,13 @@ export function FullscreenCameraModal({
   // Проверяем, есть ли хотя бы одна фотография (в текущей сессии или ранее)
   const hasAnyPhotos = hasPhotosInSession || students.some(student => student.photos.length > 0)
 
+  // Debug logging
+  console.log('[Camera Debug]', {
+    hasPhotosInSession,
+    studentsWithPhotos: students.map(s => ({ name: s.name, photoCount: s.photos.length })),
+    hasAnyPhotos
+  })
+
   return (
     <div ref={modalRef} role="dialog" aria-modal="true" className="fixed inset-0 bg-black z-50 flex flex-col">
       {/* Video stream area */}
