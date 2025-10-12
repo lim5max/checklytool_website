@@ -306,30 +306,6 @@ export default function SubmissionDetailPage({ params }: PageProps) {
 								</div>
 							</div>
 
-							{/* Список ошибок */}
-							{evaluation.written_work_feedback.errors_found.length > 0 && (
-								<div className="bg-white rounded-2xl border border-slate-200 p-6">
-									<h3 className="font-semibold text-lg text-slate-900 mb-4 flex items-center gap-2">
-										<XCircle className="w-5 h-5 text-red-600" />
-										Найденные ошибки и замечания
-									</h3>
-									<div className="space-y-3">
-										{evaluation.written_work_feedback.errors_found.map((error, index) => (
-											<div
-												key={index}
-												className="flex items-start gap-3 p-4 bg-red-50 rounded-xl border border-red-100"
-											>
-												<div className="font-semibold text-red-700 flex-shrink-0">
-													Задание {error.question_number}:
-												</div>
-												<p className="text-red-800 flex-1">
-													{error.error_description}
-												</p>
-											</div>
-										))}
-									</div>
-								</div>
-							)}
 						</div>
 					</div>
 				)}
@@ -407,76 +383,27 @@ export default function SubmissionDetailPage({ params }: PageProps) {
 				{/* Детализация по заданиям для written_work */}
 				{isWrittenWork && evaluation?.detailed_answers && Array.isArray(evaluation.detailed_answers) && evaluation.detailed_answers.length > 0 && (
 					<div>
-						<h2 className="font-nunito font-bold text-2xl text-slate-900 mb-6">
-							Детализация по заданиям
-						</h2>
-						<div className="space-y-3">
-							{evaluation.detailed_answers.map((answer, index) => {
-								const questionNum = answer.question_number || (index + 1)
-								return (
-									<div
-										key={index}
-										className={`bg-white rounded-2xl border-2 p-6 ${
-											answer.is_correct
-												? 'border-green-200 bg-green-50'
-												: 'border-red-200 bg-red-50'
-										}`}
-									>
-										<div className="flex items-start gap-4">
-											<div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
-												answer.is_correct ? 'bg-green-500' : 'bg-red-500'
+						<div className="bg-white rounded-2xl border border-slate-200 p-6">
+							<div className="space-y-2">
+								{evaluation.detailed_answers.map((answer, index) => {
+									const questionNum = answer.question_number || (index + 1)
+									return (
+										<div
+											key={index}
+											className="flex items-center justify-between p-3 bg-slate-50 rounded-xl"
+										>
+											<span className="font-medium text-slate-900">
+												Задание {questionNum}:
+											</span>
+											<span className={`font-semibold ${
+												answer.is_correct ? 'text-green-600' : 'text-red-600'
 											}`}>
-												{answer.is_correct ? (
-													<CheckCircle className="w-6 h-6 text-white" />
-												) : (
-													<XCircle className="w-6 h-6 text-white" />
-												)}
-											</div>
-											<div className="flex-1 space-y-2">
-												<div className="flex items-center justify-between">
-													<h3 className="font-semibold text-lg text-slate-900">
-														Задание {questionNum}
-													</h3>
-													<span className={`px-3 py-1 rounded-full text-sm font-medium ${
-														answer.is_correct
-															? 'bg-green-100 text-green-700'
-															: 'bg-red-100 text-red-700'
-													}`}>
-														{answer.is_correct ? 'Верно' : 'Неверно'}
-													</span>
-												</div>
-												{answer.student_answer && (
-													<div>
-														<p className="text-sm font-medium text-slate-600 mb-1">
-															Ответ ученика:
-														</p>
-														<p className="text-slate-900 font-medium">
-															{answer.student_answer}
-														</p>
-													</div>
-												)}
-												{answer.correct_answer && !answer.is_correct && (
-													<div>
-														<p className="text-sm font-medium text-slate-600 mb-1">
-															Правильный ответ:
-														</p>
-														<p className="text-green-700 font-medium">
-															{answer.correct_answer}
-														</p>
-													</div>
-												)}
-												{answer.feedback && (
-													<div className="pt-2 border-t border-slate-200">
-														<p className="text-sm text-slate-600">
-															{answer.feedback}
-														</p>
-													</div>
-												)}
-											</div>
+												{answer.is_correct ? 'Верно' : 'Неверно'}
+											</span>
 										</div>
-									</div>
-								)
-							})}
+									)
+								})}
+							</div>
 						</div>
 					</div>
 				)}

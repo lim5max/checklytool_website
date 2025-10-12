@@ -556,16 +556,26 @@ export function CameraWorkInterface({
           </>
         )}
 
-        {/* Close button in top right */}
-        <Button
-          variant="ghost"
-          size="icon"
-          className="absolute top-6 right-7 text-white hover:bg-white/20 w-8 h-8"
-          onClick={onClose}
-          aria-label="Закрыть"
-        >
-          <X className="w-10 h-10" strokeWidth={1.5} />
-        </Button>
+        {/* Close button or Submit button in top right */}
+        {activeStudent && activeStudent.photos.length > 0 ? (
+          <Button
+            className="absolute top-6 right-7 bg-blue-600 hover:bg-blue-700 text-white font-medium text-base px-6 py-2.5 rounded-full h-11 flex items-center justify-center transition-colors"
+            onClick={onClose}
+            aria-label="К проверке"
+          >
+            К проверке
+          </Button>
+        ) : (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="absolute top-6 right-7 text-white hover:bg-white/20 w-8 h-8"
+            onClick={onClose}
+            aria-label="Закрыть"
+          >
+            <X className="w-10 h-10" strokeWidth={1.5} />
+          </Button>
+        )}
 
         {/* User info at bottom of video area */}
         <div className="absolute bottom-4 left-0 right-0 px-4 flex justify-between items-end">

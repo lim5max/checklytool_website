@@ -37,7 +37,7 @@ export default function CheckCreationPage() {
   const [bannerDismissed, setBannerDismissed] = useState(false)
 
   // Check balance
-  const { balance, subscriptionPlanId, loading: balanceLoading } = useCheckBalance()
+  const { subscriptionPlanId, loading: balanceLoading } = useCheckBalance()
 
   // Form data state
   const [checkData, setCheckData] = useState<CheckCreationData>({

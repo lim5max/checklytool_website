@@ -66,7 +66,7 @@ export default function CheckPage({ params }: CheckPageProps) {
 	const [showSubscriptionModal, setShowSubscriptionModal] = useState(false)
 
 	// Check balance
-	const { balance, getCreditsNeeded, refreshBalance } = useCheckBalance()
+	const { getCreditsNeeded, refreshBalance } = useCheckBalance()
 
 	// Загружаем данные пользователя
 	useEffect(() => {
