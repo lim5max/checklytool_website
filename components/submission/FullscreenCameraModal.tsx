@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
-import { X, Camera, RotateCcw } from 'lucide-react'
+import { X, Camera, RotateCcw, CheckCircle } from 'lucide-react'
 
 interface Student {
   id: string
@@ -317,6 +317,9 @@ export function FullscreenCameraModal({
   const activeStudent = students[activeStudentIndex]
   const canAddMorePhotos = activeStudent?.photos.length < maxPhotosPerStudent
 
+  // Проверяем, есть ли хотя бы одна фотография
+  const hasAnyPhotos = students.some(student => student.photos.length > 0)
+
   return (
     <div ref={modalRef} role="dialog" aria-modal="true" className="fixed inset-0 bg-black z-50 flex flex-col">
       {/* Video stream area */}
@@ -340,22 +343,33 @@ export function FullscreenCameraModal({
               playsInline
             />
             <canvas ref={canvasRef} className="hidden" />
-            
+
             {/* Gray overlay representing viewfinder */}
             <div className="absolute inset-0 bg-black bg-opacity-20 pointer-events-none" />
           </>
         )}
 
-        {/* Close button */}
-        <Button
-          ref={closeButtonRef}
-          variant="ghost"
-          size="icon"
-          className="absolute top-6 right-7 text-white hover:bg-white/20"
-          onClick={onClose}
-        >
-          <X className="w-8 h-8" />
-        </Button>
+        {/* Close/Go to Check button */}
+        {hasAnyPhotos ? (
+          <Button
+            ref={closeButtonRef}
+            className="absolute top-6 right-7 bg-blue-500 hover:bg-blue-600 text-white font-semibold px-6 py-3 h-auto gap-2 shadow-lg"
+            onClick={onClose}
+          >
+            <CheckCircle className="w-5 h-5" />
+            К проверке
+          </Button>
+        ) : (
+          <Button
+            ref={closeButtonRef}
+            variant="ghost"
+            size="icon"
+            className="absolute top-6 right-7 text-white hover:bg-white/20"
+            onClick={onClose}
+          >
+            <X className="w-8 h-8" />
+          </Button>
+        )}
 
         {/* Camera switch button */}
         <Button
