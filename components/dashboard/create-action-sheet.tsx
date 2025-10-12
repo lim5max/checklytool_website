@@ -13,7 +13,7 @@ interface CreateActionSheetProps {
 const actions = [
 	{
 		id: 'check',
-		title: 'Проверка работ',
+		title: 'Новую проверку работ',
 		description: 'Загрузи фото — получи оценки',
 		icon: FileCheck,
 		color: 'bg-blue-500',
@@ -21,7 +21,7 @@ const actions = [
 	},
 	{
 		id: 'test',
-		title: 'Создать тест',
+		title: 'Шаблон контрольной или теста',
 		description: 'Конструктор тестов с AI',
 		icon: FileText,
 		color: 'bg-green-500',
