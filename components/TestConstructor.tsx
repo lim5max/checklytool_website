@@ -100,6 +100,25 @@ export default function TestConstructor({
 		// Автосохраняем только если есть вопросы
 		if (!test.questions.length) return
 
+		// Не автосохраняем если название пустое
+		if (!test.title.trim()) return
+
+		// Не автосохраняем если есть невалидные вопросы
+		const hasInvalidQuestions = test.questions.some(q => {
+			// Проверяем текст вопроса
+			if (!q.question.trim()) return true
+
+			// Для вопросов с вариантами проверяем варианты
+			if (q.type !== 'open') {
+				// Проверяем что все варианты заполнены
+				if (q.options.some(opt => !opt.text.trim())) return true
+			}
+
+			return false
+		})
+
+		if (hasInvalidQuestions) return
+
 		const timer = setTimeout(() => {
 			if (onSave) {
 				onSave(test, true) // true = silent autosave
