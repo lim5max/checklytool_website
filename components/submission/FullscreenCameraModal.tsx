@@ -33,6 +33,7 @@ export function FullscreenCameraModal({
   const [currentFacingMode, setCurrentFacingMode] = useState<'user' | 'environment'>('environment')
   const [error, setError] = useState<string | null>(null)
   const [isCapturing, setIsCapturing] = useState(false)
+  const [hasPhotosInSession, setHasPhotosInSession] = useState(false)
 
   const videoRef = useRef<HTMLVideoElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
@@ -137,12 +138,12 @@ export function FullscreenCameraModal({
     if (!videoRef.current || !canvasRef.current || isCapturing) return
 
     setIsCapturing(true)
-    
+
     try {
       const video = videoRef.current
       const canvas = canvasRef.current
       const context = canvas.getContext('2d')
-      
+
       if (!context) {
         throw new Error('Cannot get canvas context')
       }
@@ -157,7 +158,10 @@ export function FullscreenCameraModal({
       // Convert to data URL
       const dataUrl = canvas.toDataURL('image/jpeg', 0.9)
       onCapture(dataUrl)
-      
+
+      // Mark that we have photos in this session
+      setHasPhotosInSession(true)
+
       console.log('Photo captured successfully')
     } catch (err) {
       console.error('Error capturing photo:', err)
@@ -171,6 +175,8 @@ export function FullscreenCameraModal({
   useEffect(() => {
     if (isOpen) {
       startCamera()
+      // Reset session state when opening
+      setHasPhotosInSession(false)
       // Ensure focus moves into the modal to prevent background buttons from receiving Space/Enter
       requestAnimationFrame(() => {
         captureButtonRef.current?.focus()
@@ -178,7 +184,7 @@ export function FullscreenCameraModal({
     } else {
       stopCamera()
     }
-    
+
     return () => {
       stopCamera()
     }
@@ -317,8 +323,8 @@ export function FullscreenCameraModal({
   const activeStudent = students[activeStudentIndex]
   const canAddMorePhotos = activeStudent?.photos.length < maxPhotosPerStudent
 
-  // Проверяем, есть ли хотя бы одна фотография
-  const hasAnyPhotos = students.some(student => student.photos.length > 0)
+  // Проверяем, есть ли хотя бы одна фотография (в текущей сессии или ранее)
+  const hasAnyPhotos = hasPhotosInSession || students.some(student => student.photos.length > 0)
 
   return (
     <div ref={modalRef} role="dialog" aria-modal="true" className="fixed inset-0 bg-black z-50 flex flex-col">
