@@ -32,7 +32,6 @@ import {
 	Circle,
 	GripVertical,
 	Eye,
-	Save,
 	AlertCircle,
 	Copy,
 	List,
@@ -67,9 +66,9 @@ export default function TestConstructor({
 
 	const selectedVariant = 1
 	const [isGeneratingPDF, setIsGeneratingPDF] = useState(false)
-	const [isSaving, setIsSaving] = useState(false)
 	const [expandedQuestion, setExpandedQuestion] = useState<string | null>(null)
 	const [touchedFields, setTouchedFields] = useState<Set<string>>(new Set())
+	const [showBottomBar, setShowBottomBar] = useState(true)
 
 	// Drag and drop sensors
 	const sensors = useSensors(
@@ -108,6 +107,31 @@ export default function TestConstructor({
 
 		return () => clearTimeout(timer)
 	}, [test, onSave, initialTest])
+
+	// Скрывать нижний бар при открытии клавиатуры на мобильных
+	useEffect(() => {
+		let visualViewport: VisualViewport | null = null
+
+		const handleResize = () => {
+			if (window.visualViewport) {
+				const viewportHeight = window.visualViewport.height
+				const windowHeight = window.innerHeight
+				// Если высота viewport меньше высоты окна на 150+ пикселей, значит клавиатура открыта
+				setShowBottomBar(windowHeight - viewportHeight < 150)
+			}
+		}
+
+		if (window.visualViewport) {
+			visualViewport = window.visualViewport
+			visualViewport.addEventListener('resize', handleResize)
+		}
+
+		return () => {
+			if (visualViewport) {
+				visualViewport.removeEventListener('resize', handleResize)
+			}
+		}
+	}, [])
 
 	// Валидация в реальном времени (только для затронутых полей)
 	const validationErrors = useMemo(() => {
@@ -364,24 +388,6 @@ export default function TestConstructor({
 		}
 	}, [test, validateTest, selectedVariant])
 
-	const handleSave = useCallback(async () => {
-		if (!validateTest()) return
-		if (isSaving) return
-
-		if (onSave) {
-			setIsSaving(true)
-			try {
-				await onSave(test, false) // false = show toast
-				toast.success('Тест сохранён!')
-			} catch (error) {
-				console.error('Save error:', error)
-				toast.error('Не удалось сохранить тест')
-			} finally {
-				setIsSaving(false)
-			}
-		}
-	}, [test, validateTest, onSave, isSaving])
-
 	const getOptionLabel = (index: number) => {
 		return (index + 1).toString() // 1, 2, 3, 4, ...
 	}
@@ -525,19 +531,28 @@ export default function TestConstructor({
 					)}
 				</div>
 
-				{/* Действия */}
+				{/* Spacer для нижнего бара */}
 				{test.questions.length > 0 && (
-					<motion.div
-						initial={{ opacity: 0, y: 20 }}
-						animate={{ opacity: 1, y: 0 }}
-						className="sticky bottom-4 bg-white/95 backdrop-blur-sm rounded-2xl border-2 border-slate-200 p-6 shadow-lg"
-					>
-						<div className="flex flex-col sm:flex-row gap-3">
+					<div className="h-24" />
+				)}
+			</motion.div>
+
+			{/* Нижний закрепленный бар */}
+			{test.questions.length > 0 && showBottomBar && (
+				<motion.div
+					initial={{ y: 100, opacity: 0 }}
+					animate={{ y: 0, opacity: 1 }}
+					exit={{ y: 100, opacity: 0 }}
+					transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+					className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 z-50"
+				>
+					<div className="max-w-7xl mx-auto px-4 py-4">
+						<div className="flex flex-col gap-3">
 							<Button
 								onClick={() => generatePDF()}
 								disabled={isGeneratingPDF || !isValid}
 								size="lg"
-								className="w-full sm:flex-1 gap-2 min-h-[56px] sm:h-12 text-base"
+								className="w-full gap-2 h-14 text-base"
 							>
 								{isGeneratingPDF ? (
 									<div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -552,33 +567,16 @@ export default function TestConstructor({
 								</span>
 							</Button>
 
-							{onSave && (
-								<Button
-									variant="outline"
-									onClick={handleSave}
-									disabled={isSaving || !isValid}
-									size="lg"
-									className="w-full sm:flex-1 gap-2 min-h-[56px] sm:h-12 text-base"
-								>
-									{isSaving ? (
-										<div className="w-4 h-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" />
-									) : (
-										<Save className="w-4 h-4" />
-									)}
-									{isSaving ? 'Сохранение...' : 'Сохранить тест'}
-								</Button>
+							{!isValid && (
+								<p className="text-sm text-orange-600 flex items-center justify-center gap-2">
+									<AlertCircle className="w-4 h-4" />
+									Исправьте ошибки перед скачиванием
+								</p>
 							)}
 						</div>
-
-						{!isValid && (
-							<p className="text-sm text-orange-600 mt-3 flex items-center gap-2">
-								<AlertCircle className="w-4 h-4" />
-								Исправьте ошибки перед сохранением
-							</p>
-						)}
-					</motion.div>
-				)}
-			</motion.div>
+					</div>
+				</motion.div>
+			)}
 		</div>
 	)
 }
