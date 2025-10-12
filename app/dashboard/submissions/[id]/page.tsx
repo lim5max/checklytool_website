@@ -381,28 +381,51 @@ export default function SubmissionDetailPage({ params }: PageProps) {
 				)}
 
 				{/* Детализация по заданиям для written_work */}
-				{isWrittenWork && evaluation?.detailed_answers && Array.isArray(evaluation.detailed_answers) && evaluation.detailed_answers.length > 0 && (
+				{isWrittenWork && evaluation?.detailed_answers && (
 					<div>
 						<div className="bg-white rounded-2xl border border-slate-200 p-6">
 							<div className="space-y-2">
-								{evaluation.detailed_answers.map((answer, index) => {
-									const questionNum = answer.question_number || (index + 1)
-									return (
-										<div
-											key={index}
-											className="flex items-center justify-between p-3 bg-slate-50 rounded-xl"
-										>
-											<span className="font-medium text-slate-900">
-												Задание {questionNum}:
-											</span>
-											<span className={`font-semibold ${
-												answer.is_correct ? 'text-green-600' : 'text-red-600'
-											}`}>
-												{answer.is_correct ? 'Верно' : 'Неверно'}
-											</span>
-										</div>
-									)
-								})}
+								{/* Обработка массива заданий */}
+								{Array.isArray(evaluation.detailed_answers) && evaluation.detailed_answers.length > 0 && (
+									evaluation.detailed_answers.map((answer, index) => {
+										const questionNum = answer.question_number || (index + 1)
+										return (
+											<div
+												key={index}
+												className="flex items-center justify-between p-3 bg-slate-50 rounded-xl"
+											>
+												<span className="font-medium text-slate-900">
+													Задание {questionNum}:
+												</span>
+												<span className={`font-semibold ${
+													answer.is_correct ? 'text-green-600' : 'text-red-600'
+												}`}>
+													{answer.is_correct ? 'Верно' : 'Неверно'}
+												</span>
+											</div>
+										)
+									})
+								)}
+								{/* Обработка объекта заданий */}
+								{!Array.isArray(evaluation.detailed_answers) && Object.keys(evaluation.detailed_answers).length > 0 && (
+									Object.entries(evaluation.detailed_answers)
+										.sort(([a], [b]) => Number(a) - Number(b))
+										.map(([questionNum, answer]) => (
+											<div
+												key={questionNum}
+												className="flex items-center justify-between p-3 bg-slate-50 rounded-xl"
+											>
+												<span className="font-medium text-slate-900">
+													Задание {questionNum}:
+												</span>
+												<span className={`font-semibold ${
+													answer.is_correct ? 'text-green-600' : 'text-red-600'
+												}`}>
+													{answer.is_correct ? 'Верно' : 'Неверно'}
+												</span>
+											</div>
+										))
+								)}
 							</div>
 						</div>
 					</div>
