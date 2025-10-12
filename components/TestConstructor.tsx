@@ -97,16 +97,17 @@ export default function TestConstructor({
 
 	// Автосохранение с debounce (тихое, без тостов)
 	useEffect(() => {
-		if (!initialTest) return // Не автосохраняем новые тесты
+		// Автосохраняем только если есть вопросы
+		if (!test.questions.length) return
 
 		const timer = setTimeout(() => {
-			if (onSave && test.questions.length > 0) {
+			if (onSave) {
 				onSave(test, true) // true = silent autosave
 			}
 		}, 2000)
 
 		return () => clearTimeout(timer)
-	}, [test, onSave, initialTest])
+	}, [test, onSave])
 
 	// Скрывать нижний бар при открытии клавиатуры на мобильных
 	useEffect(() => {

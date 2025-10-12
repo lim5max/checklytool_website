@@ -36,29 +36,34 @@ export default function TestBuilderPage() {
   /**
    * Обработчик сохранения теста с улучшенной обработкой ошибок
    * @param test - Объект теста для сохранения
+   * @param silent - Тихое автосохранение без тостов
    */
-  const handleSaveTest = async (test: GeneratedTest) => {
+  const handleSaveTest = async (test: GeneratedTest, silent = false) => {
     if (isSaving) {
-      toast.warning('Сохранение уже выполняется, подождите...')
+      if (!silent) {
+        toast.warning('Сохранение уже выполняется, подождите...')
+      }
       return
     }
 
     // Валидация перед сохранением
     if (!test.title.trim()) {
-      toast.error('Не указано название теста')
+      if (!silent) toast.error('Не указано название теста')
       return
     }
 
     if (test.questions.length === 0) {
-      toast.error('Нельзя сохранить пустой тест')
+      if (!silent) toast.error('Нельзя сохранить пустой тест')
       return
     }
 
     try {
       setIsSaving(true)
 
-      // Показываем индикатор начала сохранения
-      toast.loading('Сохраняем тест...', { id: 'saving-test' })
+      // Показываем индикатор начала сохранения только если не silent
+      if (!silent) {
+        toast.loading('Сохраняем тест...', { id: 'saving-test' })
+      }
 
       const response = await fetch('/api/tests/save', {
         method: 'POST',
@@ -77,34 +82,43 @@ export default function TestBuilderPage() {
       const result = await response.json()
 
       // Удаляем loading toast
-      toast.dismiss('saving-test')
+      if (!silent) {
+        toast.dismiss('saving-test')
+      }
 
       if (result.success) {
-        toast.success(`Тест "${result.test.title}" успешно сохранен!`, {
-          description: `Создано ${result.test.questionsCount} вопросов`,
-          duration: 4000
-        })
+        // Показываем успешный тост только если не silent
+        if (!silent) {
+          toast.success(`Тест "${result.test.title}" успешно сохранен!`, {
+            description: `Создано ${result.test.questionsCount} вопросов`,
+            duration: 4000
+          })
+        }
       } else {
         console.error('Server error:', result.error)
-        toast.error('Ошибка на сервере', {
-          description: result.error || 'Неизвестная ошибка сервера',
-          duration: 6000
-        })
+        if (!silent) {
+          toast.error('Ошибка на сервере', {
+            description: result.error || 'Неизвестная ошибка сервера',
+            duration: 6000
+          })
+        }
       }
     } catch (error) {
       console.error('Network error:', error)
-      toast.dismiss('saving-test')
+      if (!silent) {
+        toast.dismiss('saving-test')
 
-      if (error instanceof Error) {
-        toast.error('Ошибка соединения', {
-          description: 'Проверьте интернет-соединение и попробуйте снова',
-          duration: 6000
-        })
-      } else {
-        toast.error('Непредвиденная ошибка', {
-          description: 'Попробуйте обновить страницу и повторить попытку',
-          duration: 6000
-        })
+        if (error instanceof Error) {
+          toast.error('Ошибка соединения', {
+            description: 'Проверьте интернет-соединение и попробуйте снова',
+            duration: 6000
+          })
+        } else {
+          toast.error('Непредвиденная ошибка', {
+            description: 'Попробуйте обновить страницу и повторить попытку',
+            duration: 6000
+          })
+        }
       }
     } finally {
       setIsSaving(false)
