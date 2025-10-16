@@ -197,7 +197,7 @@ export default function CheckCreationStep1({
           </div>
 
           {/* Информационный блок для выбранного теста */}
-          {selectedWorkTypeId === 'test' && selectedTest && (
+          {(selectedWorkTypeId === 'test' || selectedWorkTypeId === 'written_work') && selectedTest && (
             <div className="bg-green-50 border border-green-200 rounded-[32px] p-6 w-full">
               <div className="flex items-start gap-4">
                 <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center text-white font-bold text-sm">
@@ -217,7 +217,7 @@ export default function CheckCreationStep1({
                     </div>
                   </div>
                   <div className="text-sm text-green-700">
-                    ✨ Этот тест будет использован для создания проверки
+                    ✨ Этот тест будет использован для создания {selectedWorkTypeId === 'written_work' ? 'контрольной работы' : 'проверки'}
                   </div>
                   <button
                     onClick={() => {
@@ -380,10 +380,8 @@ export default function CheckCreationStep1({
         >
           <div className="flex flex-col font-inter font-medium justify-center leading-[0] text-[16px] text-nowrap text-white">
             <p className="leading-[1.6] whitespace-pre">
-              {selectedWorkTypeId === 'test' && checkMethod === 'existing' && !selectedTest
+              {(selectedWorkTypeId === 'test' || selectedWorkTypeId === 'written_work') && checkMethod === 'existing' && !selectedTest
                 ? 'Выбрать готовый тест'
-                : selectedWorkTypeId === 'test' && checkMethod === 'existing' && selectedTest
-                ? 'Продолжить настройку'
                 : 'Продолжить настройку'
               }
             </p>

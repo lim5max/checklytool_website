@@ -80,6 +80,7 @@ export default function CheckCreationStep2({
     satisfactory: "Структура нарушена, логика местами сбивается, ошибок достаточно много",
     unsatisfactory: "Структура отсутствует, логики почти нет, ошибок очень много"
   },
+  onEssayDescriptiveCriteriaChange,
   checkingMethod = "manual",
   onCheckingMethodChange,
   // answers = [],
@@ -152,6 +153,11 @@ export default function CheckCreationStep2({
     const newCriteria = { ...criteria, [key]: value }
     setCriteria(newCriteria)
     onGradingCriteriaChange?.(newCriteria)
+  }
+
+  const updateEssayDescriptiveCriteria = (key: keyof EssayDescriptiveCriteria, value: string) => {
+    const newCriteria = { ...essayDescriptiveCriteria, [key]: value }
+    onEssayDescriptiveCriteriaChange?.(newCriteria)
   }
 
   // const updateEssayCriteria = (key: keyof EssayGradingCriteria, value: number) => {
@@ -445,17 +451,21 @@ export default function CheckCreationStep2({
             {!isCollapsed && (
               <div className="space-y-3 md:space-y-4 w-full">
                 {isEssay ? (
-                  // Descriptive criteria for essays
+                  // Descriptive criteria for essays - NOW EDITABLE
                   <>
                     {/* Excellent (5) */}
                     <div className="space-y-2">
                       <div className="font-inter font-semibold text-[16px] leading-[1.6] text-slate-800">
                         Отлично (5 баллов):
                       </div>
-                      <div className="bg-white rounded-[20px] p-4 border border-slate-100">
-                        <p className="font-inter text-[14px] leading-[1.6] text-slate-700">
-                          {essayDescriptiveCriteria?.excellent}
-                        </p>
+                      <div className="bg-white rounded-[20px] border border-slate-200">
+                        <textarea
+                          value={essayDescriptiveCriteria?.excellent}
+                          onChange={(e) => updateEssayDescriptiveCriteria('excellent', e.target.value)}
+                          placeholder="Опишите критерии для отличной оценки"
+                          className="font-inter text-[14px] leading-[1.6] text-slate-700 w-full p-4 bg-transparent border-none outline-none resize-none min-h-[80px] placeholder:text-slate-400"
+                          rows={3}
+                        />
                       </div>
                     </div>
 
@@ -464,10 +474,14 @@ export default function CheckCreationStep2({
                       <div className="font-inter font-semibold text-[16px] leading-[1.6] text-slate-800">
                         Хорошо (4 балла):
                       </div>
-                      <div className="bg-white rounded-[20px] p-4 border border-slate-100">
-                        <p className="font-inter text-[14px] leading-[1.6] text-slate-700">
-                          {essayDescriptiveCriteria?.good}
-                        </p>
+                      <div className="bg-white rounded-[20px] border border-slate-200">
+                        <textarea
+                          value={essayDescriptiveCriteria?.good}
+                          onChange={(e) => updateEssayDescriptiveCriteria('good', e.target.value)}
+                          placeholder="Опишите критерии для хорошей оценки"
+                          className="font-inter text-[14px] leading-[1.6] text-slate-700 w-full p-4 bg-transparent border-none outline-none resize-none min-h-[80px] placeholder:text-slate-400"
+                          rows={3}
+                        />
                       </div>
                     </div>
 
@@ -476,10 +490,14 @@ export default function CheckCreationStep2({
                       <div className="font-inter font-semibold text-[16px] leading-[1.6] text-slate-800">
                         Удовлетворительно (3 балла):
                       </div>
-                      <div className="bg-white rounded-[20px] p-4 border border-slate-100">
-                        <p className="font-inter text-[14px] leading-[1.6] text-slate-700">
-                          {essayDescriptiveCriteria?.satisfactory}
-                        </p>
+                      <div className="bg-white rounded-[20px] border border-slate-200">
+                        <textarea
+                          value={essayDescriptiveCriteria?.satisfactory}
+                          onChange={(e) => updateEssayDescriptiveCriteria('satisfactory', e.target.value)}
+                          placeholder="Опишите критерии для удовлетворительной оценки"
+                          className="font-inter text-[14px] leading-[1.6] text-slate-700 w-full p-4 bg-transparent border-none outline-none resize-none min-h-[80px] placeholder:text-slate-400"
+                          rows={3}
+                        />
                       </div>
                     </div>
 
@@ -488,10 +506,14 @@ export default function CheckCreationStep2({
                       <div className="font-inter font-semibold text-[16px] leading-[1.6] text-slate-800">
                         Неудовлетворительно (2 балла):
                       </div>
-                      <div className="bg-white rounded-[20px] p-4 border border-slate-100">
-                        <p className="font-inter text-[14px] leading-[1.6] text-slate-700">
-                          {essayDescriptiveCriteria?.unsatisfactory}
-                        </p>
+                      <div className="bg-white rounded-[20px] border border-slate-200">
+                        <textarea
+                          value={essayDescriptiveCriteria?.unsatisfactory}
+                          onChange={(e) => updateEssayDescriptiveCriteria('unsatisfactory', e.target.value)}
+                          placeholder="Опишите критерии для неудовлетворительной оценки"
+                          className="font-inter text-[14px] leading-[1.6] text-slate-700 w-full p-4 bg-transparent border-none outline-none resize-none min-h-[80px] placeholder:text-slate-400"
+                          rows={3}
+                        />
                       </div>
                     </div>
                   </>

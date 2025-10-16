@@ -62,7 +62,6 @@ export default function CheckPage({ params }: CheckPageProps) {
 	const [isCameraOpen, setIsCameraOpen] = useState(false)
 	const [isProcessing, setIsProcessing] = useState(false)
 	const [drafts, setDrafts] = useState<DraftStudent[]>([])
-	const [processingCount, setProcessingCount] = useState(0) // Количество работ в процессе проверки
 	const [showSubscriptionModal, setShowSubscriptionModal] = useState(false)
 
 	// Check balance
@@ -192,7 +191,6 @@ export default function CheckPage({ params }: CheckPageProps) {
 			setTimeout(() => {
 				loadSubmissions()
 				setIsProcessing(false) // Сбрасываем флаг обработки после завершения всех проверок
-				setProcessingCount(0) // Сбрасываем количество обрабатываемых работ
 			}, 2000)
 		}
 
@@ -358,8 +356,6 @@ export default function CheckPage({ params }: CheckPageProps) {
 
 		try {
 			setIsProcessing(true)
-			// Сохраняем количество работ для отображения скелетонов
-			setProcessingCount(drafts.length)
 
 			console.log('[SUBMIT] Отправка работ на сервер...')
 			const { items } = await submitStudents(checkId, draft?.students || [])
@@ -389,12 +385,10 @@ export default function CheckPage({ params }: CheckPageProps) {
 					toast.error('Недостаточно проверок для оценки работ')
 					setShowSubscriptionModal(true)
 					setIsProcessing(false)
-					setProcessingCount(0)
 				} else {
 					// Другая ошибка - просто логируем
 					console.error('Unexpected evaluation error:', error)
 					setIsProcessing(false)
-					setProcessingCount(0)
 				}
 			}
 		} catch (error) {
@@ -402,7 +396,6 @@ export default function CheckPage({ params }: CheckPageProps) {
 			toast.error('Ошибка при отправке работ')
 			// Только при ошибке отправки сбрасываем сразу
 			setIsProcessing(false)
-			setProcessingCount(0)
 		}
 	}
 
