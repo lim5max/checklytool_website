@@ -367,6 +367,8 @@ export interface TestQuestion {
   strictMatch?: boolean // Требуется ли точное совпадение ответа (для открытых вопросов)
   hideOptionsInPDF?: boolean // Скрывать варианты ответа в PDF (только вопрос)
   points?: number // Баллы за вопрос (по умолчанию 1)
+  correctAnswer?: string // Правильный ответ для открытого вопроса (если useAIGrading === false)
+  useAIGrading?: boolean // Использовать ИИ для проверки открытого вопроса (по умолчанию false)
 }
 
 export interface TestOption {

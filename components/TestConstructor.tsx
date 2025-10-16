@@ -39,6 +39,8 @@ import {
 	FileText,
 	ChevronDown,
 	Minus,
+	Sparkles,
+	Edit3,
 } from 'lucide-react'
 import type { TestQuestion, TestOption, GeneratedTest, PDFGenerationRequest } from '@/types/check'
 
@@ -185,6 +187,13 @@ export default function TestConstructor({
 					errors[`q${idx}_correct`] = 'Выберите правильный ответ'
 				}
 			}
+
+			// Валидация для открытых вопросов с ручной проверкой
+			if (questionTouched && q.type === 'open' && !q.useAIGrading) {
+				if (!q.correctAnswer || !q.correctAnswer.trim()) {
+					errors[`q${idx}_answer`] = 'Укажите правильный ответ'
+				}
+			}
 		})
 
 		return errors
@@ -203,7 +212,9 @@ export default function TestConstructor({
 			explanation: '',
 			strictMatch: false,
 			hideOptionsInPDF: false,
-			points: 1
+			points: 1,
+			correctAnswer: '',
+			useAIGrading: false // По умолчанию ручная проверка
 		}
 
 		setTest(prev => ({
@@ -348,6 +359,14 @@ export default function TestConstructor({
 				const correctCount = question.options.filter(opt => opt.isCorrect).length
 				if (correctCount === 0) {
 					toast.error(`Вопрос ${index + 1}: Выберите хотя бы один правильный ответ`)
+					return false
+				}
+			}
+
+			// Валидация для открытых вопросов с ручной проверкой
+			if (question.type === 'open' && !question.useAIGrading) {
+				if (!question.correctAnswer || !question.correctAnswer.trim()) {
+					toast.error(`Вопрос ${index + 1}: Укажите правильный ответ для проверки`)
 					return false
 				}
 			}
@@ -680,6 +699,56 @@ function PointsSelector({ value, onChange, min = 1, max = 100 }: PointsSelectorP
 	)
 }
 
+// Компонент выбора режима проверки (Ручная vs ИИ) в стиле Airbnb
+interface GradingModeSelectorProps {
+	value: boolean // true = AI grading, false = manual grading
+	onChange: (useAI: boolean) => void
+}
+
+function GradingModeSelector({ value, onChange }: GradingModeSelectorProps) {
+	return (
+		<div className="relative w-full">
+			<div className="flex items-stretch bg-slate-100 rounded-xl p-1.5 gap-1.5">
+				<button
+					type="button"
+					onClick={() => onChange(false)}
+					className={`
+						relative flex-1 px-4 py-3 rounded-lg font-semibold text-sm
+						transition-all duration-200 ease-out
+						${!value
+							? 'bg-white text-slate-900 shadow-sm'
+							: 'text-slate-600 hover:text-slate-900'
+						}
+					`}
+				>
+					<div className="flex items-center justify-center gap-2">
+						<Edit3 className="w-4 h-4" />
+						<span>Ручная проверка</span>
+					</div>
+				</button>
+
+				<button
+					type="button"
+					onClick={() => onChange(true)}
+					className={`
+						relative flex-1 px-4 py-3 rounded-lg font-semibold text-sm
+						transition-all duration-200 ease-out
+						${value
+							? 'bg-gradient-to-r from-violet-500 to-purple-500 text-white shadow-sm'
+							: 'text-slate-600 hover:text-slate-900'
+						}
+					`}
+				>
+					<div className="flex items-center justify-center gap-2">
+						<Sparkles className="w-4 h-4" />
+						<span>С помощью ИИ</span>
+					</div>
+				</button>
+			</div>
+		</div>
+	)
+}
+
 // Компонент выбора типа вопроса
 interface QuestionTypeSelectorProps {
 	value: TestQuestion['type']
@@ -948,40 +1017,106 @@ function QuestionCard({
 								</div>
 							</div>
 
-							{/* Дополнительные опции */}
-							<div className="space-y-3 bg-slate-50 rounded-xl p-4">
-								<div className="flex items-center justify-between">
-									<div>
-										<p className="font-semibold text-sm text-slate-800">
-											Скрыть варианты в PDF
-										</p>
-										<p className="text-xs text-slate-600 mt-1">
-											В PDF будет только вопрос, без вариантов ответа
-										</p>
-									</div>
-									<Switch
-										checked={question.hideOptionsInPDF || false}
-										onCheckedChange={(checked) => onUpdate({ hideOptionsInPDF: checked })}
-									/>
-								</div>
-
-								{question.type === 'open' && (
-									<div className="flex items-center justify-between pt-3 border-t border-slate-200">
+							{/* Дополнительные опции - только для вопросов с вариантами */}
+							{question.type !== 'open' && (
+								<div className="space-y-3 bg-slate-50 rounded-xl p-4">
+									<div className="flex items-center justify-between">
 										<div>
 											<p className="font-semibold text-sm text-slate-800">
-												Точное совпадение
+												Скрыть варианты в PDF
 											</p>
 											<p className="text-xs text-slate-600 mt-1">
-												Требовать точное совпадение ответа при проверке
+												В PDF будет только вопрос, без вариантов ответа
 											</p>
 										</div>
 										<Switch
-											checked={question.strictMatch || false}
-											onCheckedChange={(checked) => onUpdate({ strictMatch: checked })}
+											checked={question.hideOptionsInPDF || false}
+											onCheckedChange={(checked) => onUpdate({ hideOptionsInPDF: checked })}
 										/>
 									</div>
-								)}
-							</div>
+								</div>
+							)}
+
+							{/* Режим проверки для открытых вопросов */}
+							{question.type === 'open' && (
+								<div className="space-y-4">
+									<div>
+										<label className="block text-sm font-semibold text-slate-700 mb-3">
+											Режим проверки ответа
+										</label>
+										<GradingModeSelector
+											value={question.useAIGrading || false}
+											onChange={(useAI) => onUpdate({ useAIGrading: useAI })}
+										/>
+									</div>
+
+									{/* Ручная проверка - поле для правильного ответа */}
+									{!question.useAIGrading && (
+										<motion.div
+											initial={{ opacity: 0, height: 0 }}
+											animate={{ opacity: 1, height: 'auto' }}
+											exit={{ opacity: 0, height: 0 }}
+											transition={{ duration: 0.2 }}
+											className="space-y-3"
+										>
+											<div>
+												<label className="block text-sm font-semibold text-slate-700 mb-2">
+													Правильный ответ
+												</label>
+												<Textarea
+													value={question.correctAnswer || ''}
+													onChange={(e) => onUpdate({ correctAnswer: e.target.value })}
+													onBlur={onMarkTouched}
+													placeholder="Введите правильный ответ для сравнения..."
+													className={`min-h-[80px] resize-none ${validationErrors[`q${questionIndex}_answer`] ? 'border-red-400 bg-red-50' : ''}`}
+													rows={2}
+												/>
+												{validationErrors[`q${questionIndex}_answer`] && (
+													<p className="text-sm text-red-600 mt-1">
+														{validationErrors[`q${questionIndex}_answer`]}
+													</p>
+												)}
+											</div>
+
+											<div className="flex items-center justify-between bg-white rounded-xl p-3 border-2 border-slate-200">
+												<div>
+													<p className="font-semibold text-sm text-slate-800">
+														Точное совпадение
+													</p>
+													<p className="text-xs text-slate-600 mt-1">
+														Учитывать регистр и пунктуацию
+													</p>
+												</div>
+												<Switch
+													checked={question.strictMatch || false}
+													onCheckedChange={(checked) => onUpdate({ strictMatch: checked })}
+												/>
+											</div>
+										</motion.div>
+									)}
+
+									{/* ИИ проверка - предупреждение */}
+									{question.useAIGrading && (
+										<motion.div
+											initial={{ opacity: 0, height: 0 }}
+											animate={{ opacity: 1, height: 'auto' }}
+											exit={{ opacity: 0, height: 0 }}
+											transition={{ duration: 0.2 }}
+											className="flex items-start gap-3 bg-gradient-to-br from-amber-50 to-orange-50 border-2 border-amber-200 rounded-xl p-4"
+										>
+											<AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+											<div>
+												<p className="font-semibold text-sm text-amber-900 mb-1">
+													Проверка с помощью ИИ
+												</p>
+												<p className="text-xs text-amber-800 leading-relaxed">
+													ИИ может ошибаться в сложных вопросах. Рекомендуем проверять результаты вручную для критически важных заданий.
+												</p>
+											</div>
+										</motion.div>
+									)}
+								</div>
+							)}
 
 							{/* Варианты ответов */}
 							{question.type !== 'open' && (

@@ -10,8 +10,17 @@ interface RouteParams {
 
 /**
  * Умная функция сравнения ответов - поддерживает разные форматы выбора вариантов
+ * @param studentAnswer - ответ студента
+ * @param correctAnswer - правильный ответ
+ * @param strictMatch - требовать точное совпадение (учитывать регистр и пунктуацию)
  */
-function compareAnswers(studentAnswer: string, correctAnswer: string): boolean {
+function compareAnswers(studentAnswer: string, correctAnswer: string, strictMatch: boolean = false): boolean {
+	// Для строгого режима - точное совпадение с учетом регистра и пунктуации
+	if (strictMatch) {
+		return studentAnswer.trim() === correctAnswer.trim()
+	}
+
+	// Нестрогий режим (по умолчанию)
 	const student = studentAnswer.toLowerCase().trim()
 	const correct = correctAnswer.toLowerCase().trim()
 
@@ -377,20 +386,32 @@ export async function POST(
 				if (generatedTest && generatedTest.questions) {
 					// Extract correct answers and points from questions JSON
 					const questions = generatedTest.questions as Array<{
+						type: 'single' | 'multiple' | 'open'
 						options: Array<{ text: string; isCorrect: boolean }>
 						points?: number
+						correctAnswer?: string
+						useAIGrading?: boolean
+						strictMatch?: boolean
 					}>
 
 					questions.forEach((question, index) => {
-						// Find the correct option(s)
-						const correctOptions = question.options
-							.map((option, optIndex) => ({ option, index: optIndex + 1 }))
-							.filter(({ option }) => option.isCorrect)
+						const questionKey = (index + 1).toString()
 
-						if (correctOptions.length > 0) {
-							// For single choice questions, use the first correct option number
-							correctAnswersMap[(index + 1).toString()] = correctOptions[0].index.toString()
+						// For open questions with manual grading
+						if (question.type === 'open' && !question.useAIGrading && question.correctAnswer) {
+							correctAnswersMap[questionKey] = question.correctAnswer
+						} else if (question.type !== 'open') {
+							// For closed questions (single/multiple choice)
+							const correctOptions = question.options
+								.map((option, optIndex) => ({ option, index: optIndex + 1 }))
+								.filter(({ option }) => option.isCorrect)
+
+							if (correctOptions.length > 0) {
+								// For single choice questions, use the first correct option number
+								correctAnswersMap[questionKey] = correctOptions[0].index.toString()
+							}
 						}
+						// Note: Open questions with AI grading (useAIGrading = true) don't need correct answers here
 					})
 
 					console.log('Loaded correct answers from ChecklyTool test:', correctAnswersMap)
@@ -458,8 +479,9 @@ export async function POST(
 				points?: number
 			}> = {}
 
-			// Load question points from generated_tests if this is a ChecklyTool test
+			// Load question metadata from generated_tests if this is a ChecklyTool test
 			const questionPointsMap: Record<string, number> = {}
+			const questionMetadataMap: Record<string, { strictMatch?: boolean; type?: string }> = {}
 			if (aiResult.checkly_tool_test && aiResult.test_identifier) {
 				const testId = aiResult.test_identifier.replace('#CT', '')
 				const { data: generatedTest } = await supabase
@@ -470,14 +492,22 @@ export async function POST(
 
 				if (generatedTest && generatedTest.questions) {
 					const questions = generatedTest.questions as Array<{
+						type?: 'single' | 'multiple' | 'open'
 						points?: number
+						strictMatch?: boolean
 					}>
 					questions.forEach((question, index) => {
+						const questionKey = (index + 1).toString()
 						const points = question.points || 1
-						questionPointsMap[(index + 1).toString()] = points
+						questionPointsMap[questionKey] = points
+						questionMetadataMap[questionKey] = {
+							strictMatch: question.strictMatch || false,
+							type: question.type || 'single',
+						}
 						totalPoints += points
 					})
 					console.log('Loaded question points:', questionPointsMap, 'Total:', totalPoints)
+					console.log('Loaded question metadata:', questionMetadataMap)
 				}
 			}
 
@@ -489,6 +519,7 @@ export async function POST(
 				const studentAnswer = answerData.detected_answer
 				const correctAnswer = correctAnswersMap[questionKey]
 				const points = questionPointsMap[questionKey] || 1
+				const metadata = questionMetadataMap[questionKey] || { strictMatch: false, type: 'single' }
 
 				// Add to total points if not using ChecklyTool test
 				if (!usePointsSystem) {
@@ -497,8 +528,9 @@ export async function POST(
 
 				let isCorrect = false
 				if (correctAnswer && studentAnswer) {
-						// Умное сравнение ответов с поддержкой разных форматов
-				isCorrect = compareAnswers(studentAnswer, correctAnswer)
+					// Умное сравнение ответов с поддержкой разных форматов
+					// Используем strictMatch из метаданных вопроса
+					isCorrect = compareAnswers(studentAnswer, correctAnswer, metadata.strictMatch || false)
 				}
 
 				if (isCorrect) {
