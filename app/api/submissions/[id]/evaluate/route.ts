@@ -375,9 +375,10 @@ export async function POST(
 				}
 
 				if (generatedTest && generatedTest.questions) {
-					// Extract correct answers from questions JSON
+					// Extract correct answers and points from questions JSON
 					const questions = generatedTest.questions as Array<{
 						options: Array<{ text: string; isCorrect: boolean }>
+						points?: number
 					}>
 
 					questions.forEach((question, index) => {
@@ -445,19 +446,54 @@ export async function POST(
 			}
 			}
 
-			// Count correct answers
+			// Count correct answers and calculate score with points
 			let correctAnswers = 0
+			let totalPoints = 0
+			let earnedPoints = 0
 			const detailedAnswers: Record<string, {
 				given: string
 				correct: string | null
 				is_correct: boolean
 				confidence?: number
+				points?: number
 			}> = {}
+
+			// Load question points from generated_tests if this is a ChecklyTool test
+			const questionPointsMap: Record<string, number> = {}
+			if (aiResult.checkly_tool_test && aiResult.test_identifier) {
+				const testId = aiResult.test_identifier.replace('#CT', '')
+				const { data: generatedTest } = await supabase
+					.from('generated_tests')
+					.select('questions')
+					.ilike('id', `%${testId}%`)
+					.single()
+
+				if (generatedTest && generatedTest.questions) {
+					const questions = generatedTest.questions as Array<{
+						points?: number
+					}>
+					questions.forEach((question, index) => {
+						const points = question.points || 1
+						questionPointsMap[(index + 1).toString()] = points
+						totalPoints += points
+					})
+					console.log('Loaded question points:', questionPointsMap, 'Total:', totalPoints)
+				}
+			}
+
+			// If not using points system or no points loaded, use simple counting
+			const usePointsSystem = totalPoints > 0
 
 			Object.entries(aiResult.answers).forEach(([questionNum, answerData]) => {
 				const questionKey = questionNum.toString()
 				const studentAnswer = answerData.detected_answer
 				const correctAnswer = correctAnswersMap[questionKey]
+				const points = questionPointsMap[questionKey] || 1
+
+				// Add to total points if not using ChecklyTool test
+				if (!usePointsSystem) {
+					totalPoints += 1
+				}
 
 				let isCorrect = false
 				if (correctAnswer && studentAnswer) {
@@ -465,14 +501,26 @@ export async function POST(
 				isCorrect = compareAnswers(studentAnswer, correctAnswer)
 				}
 
-				if (isCorrect) correctAnswers++
+				if (isCorrect) {
+					correctAnswers++
+					earnedPoints += points
+				}
 
 				detailedAnswers[questionKey] = {
 					given: studentAnswer,
 					correct: correctAnswer || null,
 					is_correct: isCorrect,
-					confidence: answerData.confidence
+					confidence: answerData.confidence,
+					points: usePointsSystem ? points : undefined
 				}
+			})
+
+			console.log('Score calculation:', {
+				correctAnswers,
+				totalQuestions: aiResult.total_questions,
+				earnedPoints,
+				totalPoints,
+				usePointsSystem
 			})
 			
 			// Calculate grade based on check type
@@ -486,14 +534,35 @@ export async function POST(
 				grade = gradeResult.grade
 				percentage = gradeResult.percentage
 			} else {
-				// For tests, use traditional percentage-based calculation
-				const gradeResult = calculateGrade(
-					correctAnswers,
-					aiResult.total_questions,
-					checkData.grading_criteria
-				)
-				grade = gradeResult.grade
-				percentage = gradeResult.percentage
+				// For tests, use points-based or traditional percentage-based calculation
+				if (usePointsSystem && totalPoints > 0) {
+					// Calculate percentage based on earned points
+					percentage = Math.round((earnedPoints / totalPoints) * 100)
+					console.log(`Points-based calculation: ${earnedPoints}/${totalPoints} = ${percentage}%`)
+
+					// Calculate grade from percentage using grading criteria
+					const sortedCriteria = [...checkData.grading_criteria].sort((a, b) => b.grade - a.grade)
+					grade = 2 // Default grade
+					for (const criterion of sortedCriteria) {
+						if (percentage >= criterion.min_percentage) {
+							grade = criterion.grade
+							break
+						}
+					}
+					console.log(`Points-based grading: ${percentage}% = grade ${grade}`)
+				} else {
+					// Traditional calculation based on correct answers count
+					percentage = Math.round((correctAnswers / aiResult.total_questions) * 100)
+					console.log(`Traditional calculation: ${correctAnswers}/${aiResult.total_questions} = ${percentage}%`)
+
+					// Use calculateGrade for traditional calculation
+					const gradeResult = calculateGrade(
+						correctAnswers,
+						aiResult.total_questions,
+						checkData.grading_criteria
+					)
+					grade = gradeResult.grade
+				}
 			}
 			
 			// Save evaluation results

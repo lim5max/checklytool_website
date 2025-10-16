@@ -38,6 +38,7 @@ import {
 	Check,
 	FileText,
 	ChevronDown,
+	Minus,
 } from 'lucide-react'
 import type { TestQuestion, TestOption, GeneratedTest, PDFGenerationRequest } from '@/types/check'
 
@@ -629,6 +630,56 @@ function SortableQuestionCard(props: QuestionCardProps) {
 	)
 }
 
+// Компонент выбора баллов как в Airbnb
+interface PointsSelectorProps {
+	value: number
+	onChange: (points: number) => void
+	min?: number
+	max?: number
+}
+
+function PointsSelector({ value, onChange, min = 1, max = 100 }: PointsSelectorProps) {
+	const handleDecrement = () => {
+		if (value > min) {
+			onChange(value - 1)
+		}
+	}
+
+	const handleIncrement = () => {
+		if (value < max) {
+			onChange(value + 1)
+		}
+	}
+
+	return (
+		<div className="flex items-center gap-0 h-12 border-2 border-slate-200 rounded-xl overflow-hidden">
+			<button
+				type="button"
+				onClick={handleDecrement}
+				disabled={value <= min}
+				className="h-full px-4 flex items-center justify-center hover:bg-slate-50 active:bg-slate-100 transition-colors disabled:opacity-30 disabled:cursor-not-allowed touch-manipulation"
+			>
+				<Minus className="w-4 h-4 text-slate-600" />
+			</button>
+
+			<div className="flex-1 h-full flex items-center justify-center border-x-2 border-slate-200 bg-white">
+				<span className="font-semibold text-slate-900 text-lg min-w-[3ch] text-center">
+					{value}
+				</span>
+			</div>
+
+			<button
+				type="button"
+				onClick={handleIncrement}
+				disabled={value >= max}
+				className="h-full px-4 flex items-center justify-center hover:bg-slate-50 active:bg-slate-100 transition-colors disabled:opacity-30 disabled:cursor-not-allowed touch-manipulation"
+			>
+				<Plus className="w-4 h-4 text-slate-600" />
+			</button>
+		</div>
+	)
+}
+
 // Компонент выбора типа вопроса
 interface QuestionTypeSelectorProps {
 	value: TestQuestion['type']
@@ -888,13 +939,11 @@ function QuestionCard({
 									<label className="block text-sm font-semibold text-slate-700 mb-2">
 										Баллы
 									</label>
-									<Input
-										type="number"
-										min="1"
-										max="100"
+									<PointsSelector
 										value={question.points || 1}
-										onChange={(e) => onUpdate({ points: parseInt(e.target.value) || 1 })}
-										className="h-12"
+										onChange={(points) => onUpdate({ points })}
+										min={1}
+										max={100}
 									/>
 								</div>
 							</div>
