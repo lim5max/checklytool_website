@@ -110,8 +110,12 @@ export default function TestConstructor({
 
 			// Для вопросов с вариантами проверяем варианты
 			if (q.type !== 'open') {
-				// Проверяем что все варианты заполнены
-				if (q.options.some(opt => !opt.text.trim())) return true
+				// Проверяем что есть хотя бы один заполненный вариант
+				if (q.options.length === 0) return true
+				if (q.options.every(opt => !opt.text.trim())) return true
+
+				// Проверяем что хотя бы один вариант отмечен как правильный
+				if (!q.options.some(opt => opt.isCorrect)) return true
 			}
 
 			return false

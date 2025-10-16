@@ -15,10 +15,20 @@ const SaveTestSchema = z.object({
 		type: z.enum(['single', 'multiple', 'open']),
 		options: z.array(z.object({
 			id: z.string(),
-			text: z.string().min(1, 'Текст варианта не может быть пустым'),
+			text: z.string(),
 			isCorrect: z.boolean()
-		})).min(1, 'Должен быть минимум 1 вариант ответа'),
-		explanation: z.string().optional()
+		})),
+		explanation: z.string().optional(),
+		strictMatch: z.boolean().optional(),
+		hideOptionsInPDF: z.boolean().optional(),
+		points: z.number().optional()
+	}).refine((q) => {
+		// Для открытых вопросов варианты необязательны
+		if (q.type === 'open') return true
+		// Для закрытых вопросов должен быть хотя бы 1 вариант с текстом
+		return q.options.length > 0 && q.options.some(opt => opt.text.trim().length > 0)
+	}, {
+		message: 'Для вопросов с выбором ответа должен быть минимум 1 заполненный вариант'
 	})).min(1, 'Должен быть минимум 1 вопрос')
 })
 
