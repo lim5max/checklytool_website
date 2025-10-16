@@ -220,28 +220,22 @@ export function validateStep1(data: Pick<CheckCreationData, 'workTitle' | 'workT
   isValid: boolean
   errors: Record<string, string[]>
 } {
-  const step1Schema = mobileCheckCreationSchema.pick({
-    workTitle: true,
-    workType: true
-  })
-  
-  try {
-    step1Schema.parse(data)
-    return { isValid: true, errors: {} }
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      const errors: Record<string, string[]> = {}
-      error.issues.forEach((err) => {
-        const path = err.path.join('.')
-        if (!errors[path]) {
-          errors[path] = []
-        }
-        errors[path].push(err.message)
-      })
-      return { isValid: false, errors }
-    }
-    return { isValid: false, errors: { general: ['Произошла ошибка валидации'] } }
+  const errors: Record<string, string[]> = {}
+
+  // Validate workType
+  if (!data.workType) {
+    errors.workType = ['Выберите тип работы']
+    return { isValid: false, errors }
   }
+
+  // For essays, workTitle is required on Step 1
+  // For tests and written_work, workTitle is set automatically when test is selected
+  if (data.workType.id === 'essay' && (!data.workTitle || data.workTitle.trim() === '')) {
+    errors.workTitle = ['Название работы обязательно']
+    return { isValid: false, errors }
+  }
+
+  return { isValid: true, errors: {} }
 }
 
 export function validateStep2(data: Pick<CheckCreationData, 'gradingCriteria' | 'checkingMethod' | 'answers'>): {
