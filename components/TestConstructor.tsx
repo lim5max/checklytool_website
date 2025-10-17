@@ -106,29 +106,35 @@ export default function TestConstructor({
 		// Не автосохраняем если название пустое
 		if (!test.title.trim()) return
 
-		// Не автосохраняем если есть невалидные вопросы
-		const hasInvalidQuestions = test.questions.some(q => {
+		// Фильтруем только валидные вопросы для автосохранения
+		const validQuestions = test.questions.filter(q => {
 			// Проверяем текст вопроса
-			if (!q.question.trim()) return true
+			if (!q.question.trim()) return false
 
 			// Для вопросов с вариантами проверяем варианты
 			if (q.type !== 'open') {
 				// Проверяем что есть хотя бы один заполненный вариант
-				if (q.options.length === 0) return true
-				if (q.options.every(opt => !opt.text.trim())) return true
+				if (q.options.length === 0) return false
+				if (q.options.every(opt => !opt.text.trim())) return false
 
 				// Проверяем что хотя бы один вариант отмечен как правильный
-				if (!q.options.some(opt => opt.isCorrect)) return true
+				if (!q.options.some(opt => opt.isCorrect)) return false
 			}
 
-			return false
+			return true
 		})
 
-		if (hasInvalidQuestions) return
+		// Автосохраняем только если есть хотя бы один валидный вопрос
+		if (validQuestions.length === 0) return
 
 		const timer = setTimeout(() => {
 			if (onSave) {
-				onSave(test, true) // true = silent autosave
+				// Сохраняем только валидные вопросы
+				const testToSave = {
+					...test,
+					questions: validQuestions
+				}
+				onSave(testToSave, true) // true = silent autosave
 			}
 		}, 2000)
 
@@ -375,6 +381,91 @@ export default function TestConstructor({
 		return true
 	}, [test])
 
+	// Ручное сохранение с валидацией
+	const handleManualSave = useCallback(() => {
+		const errors: string[] = []
+
+		// Проверяем название
+		if (!test.title.trim()) {
+			errors.push('Укажите название теста')
+		}
+
+		// Проверяем наличие вопросов
+		if (test.questions.length === 0) {
+			errors.push('Добавьте хотя бы один вопрос')
+		}
+
+		// Проверяем каждый вопрос
+		test.questions.forEach((question, index) => {
+			const questionNum = index + 1
+
+			// Текст вопроса
+			if (!question.question.trim()) {
+				errors.push(`Вопрос ${questionNum}: Укажите текст вопроса`)
+			}
+
+			// Для вопросов с вариантами
+			if (question.type !== 'open') {
+				// Проверяем заполненность вариантов
+				if (question.options.some(opt => !opt.text.trim())) {
+					errors.push(`Вопрос ${questionNum}: Заполните все варианты ответов`)
+				}
+
+				// Проверяем наличие правильного ответа
+				const correctCount = question.options.filter(opt => opt.isCorrect).length
+				if (correctCount === 0) {
+					errors.push(`Вопрос ${questionNum}: Выберите правильный ответ`)
+				}
+			}
+
+			// Для открытых вопросов с ручной проверкой
+			if (question.type === 'open' && !question.useAIGrading) {
+				if (!question.correctAnswer || !question.correctAnswer.trim()) {
+					errors.push(`Вопрос ${questionNum}: Укажите правильный ответ`)
+				}
+			}
+		})
+
+		// Если есть ошибки
+		if (errors.length > 0) {
+			// Помечаем все поля как "touched" чтобы показать ошибки
+			const allFields = new Set(['title'])
+			test.questions.forEach(q => {
+				allFields.add(`question_${q.id}`)
+			})
+			setTouchedFields(allFields)
+
+			// Показываем toast с ошибками
+			if (errors.length === 1) {
+				toast.error(errors[0])
+			} else {
+				toast.error(
+					<div className="space-y-1">
+						<div className="font-semibold">Исправьте ошибки:</div>
+						<ul className="list-disc list-inside space-y-1 text-sm">
+							{errors.slice(0, 5).map((error, idx) => (
+								<li key={idx}>{error}</li>
+							))}
+							{errors.length > 5 && (
+								<li>и ещё {errors.length - 5}...</li>
+							)}
+						</ul>
+					</div>
+				)
+			}
+
+			return false
+		}
+
+		// Если всё ок - сохраняем
+		if (onSave) {
+			onSave(test, false) // false = не тихое сохранение
+			toast.success('Тест успешно сохранён!')
+		}
+
+		return true
+	}, [test, onSave])
+
 	const generatePDF = useCallback(async (variantNumber?: number) => {
 		if (!validateTest()) return
 
@@ -592,6 +683,18 @@ export default function TestConstructor({
 				>
 					<div className="max-w-7xl mx-auto px-4 py-4">
 						<div className="flex flex-col gap-3">
+							{/* Кнопка сохранения */}
+							<Button
+								onClick={handleManualSave}
+								size="lg"
+								variant="outline"
+								className="w-full gap-2 h-12 text-base border-2"
+							>
+								<Check className="w-5 h-5" />
+								<span>Сохранить тест</span>
+							</Button>
+
+							{/* Кнопка генерации PDF */}
 							<Button
 								onClick={() => generatePDF()}
 								disabled={isGeneratingPDF || !isValid}
