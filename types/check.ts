@@ -113,10 +113,13 @@ export interface EvaluationResult {
       score: number
     }
     errors: {
-      grammar_errors: number
-      syntax_errors: number
+      spelling_errors: number      // Орфографические ошибки
+      punctuation_errors: number   // Пунктуационные ошибки
+      grammar_errors: number       // Грамматические ошибки
+      speech_errors: number        // Речевые ошибки
+      syntax_errors: number        // Синтаксические ошибки
       total_errors: number
-      examples: string[]
+      examples: string[]           // Примеры ошибок с типом
     }
     content_quality: string
     final_grade: number
@@ -254,10 +257,13 @@ export interface AIAnalysisResponse {
       score: number
     }
     errors: {
-      grammar_errors: number
-      syntax_errors: number
+      spelling_errors: number      // Орфографические ошибки
+      punctuation_errors: number   // Пунктуационные ошибки
+      grammar_errors: number       // Грамматические ошибки
+      speech_errors: number        // Речевые ошибки
+      syntax_errors: number        // Синтаксические ошибки
       total_errors: number
-      examples: string[]
+      examples: string[]           // Примеры ошибок с типом
     }
     content_quality: string
     final_grade: number
