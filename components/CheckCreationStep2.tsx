@@ -1,7 +1,6 @@
 "use client"
 
 import React, { useState, useEffect } from "react"
-import { Input } from "@/components/ui/input"
 import { ArrowLeft, ChevronDown, X, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import {
@@ -518,88 +517,224 @@ export default function CheckCreationStep2({
                     </div>
                   </>
                 ) : (
-                  // Percentage-based criteria for tests
-                  <>
+                  // Percentage-based criteria for tests - Airbnb style
+                  <div className="space-y-6">
                     {/* Excellent (5) */}
-                    <div className="flex items-center gap-4">
-                      <div className="font-inter font-medium text-[16px] leading-[1.6] text-slate-800 w-28">
-                        Отлично (5):
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="font-inter font-semibold text-[16px] text-slate-800">
+                          Отлично (5)
+                        </div>
+                        <div className="relative">
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            pattern="[0-9]*"
+                            value={criteria.excellent}
+                            onChange={(e) => {
+                              const val = e.target.value.replace(/[^0-9]/g, '')
+                              const num = val === '' ? 0 : Math.min(100, Math.max(0, parseInt(val)))
+                              updateCriteria("excellent", num)
+                            }}
+                            className="w-16 h-10 text-center font-semibold text-lg bg-white border-2 border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 transition-colors"
+                          />
+                          <div className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 text-sm font-medium pointer-events-none">
+                            %
+                          </div>
+                        </div>
                       </div>
-                      <div className="flex-1 relative">
-                        <Input
-                          type="number"
+                      <div className="relative">
+                        <input
+                          type="range"
                           min="0"
                           max="100"
                           value={criteria.excellent}
-                          onChange={(e) => updateCriteria("excellent", parseInt(e.target.value) || 0)}
-                          className="w-full h-14 rounded-[27px] border-slate-100 bg-white pr-12"
+                          onChange={(e) => updateCriteria("excellent", parseInt(e.target.value))}
+                          className="w-full h-2 bg-slate-200 rounded-full appearance-none cursor-pointer focus:outline-none
+                            [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-6 [&::-webkit-slider-thumb]:h-6
+                            [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-gradient-to-r
+                            [&::-webkit-slider-thumb]:from-green-400 [&::-webkit-slider-thumb]:to-green-600
+                            [&::-webkit-slider-thumb]:shadow-lg [&::-webkit-slider-thumb]:border-2
+                            [&::-webkit-slider-thumb]:border-white [&::-webkit-slider-thumb]:cursor-pointer
+                            [&::-webkit-slider-thumb]:transition-transform [&::-webkit-slider-thumb]:hover:scale-110
+                            [&::-moz-range-thumb]:w-6 [&::-moz-range-thumb]:h-6 [&::-moz-range-thumb]:rounded-full
+                            [&::-moz-range-thumb]:bg-gradient-to-r [&::-moz-range-thumb]:from-green-400
+                            [&::-moz-range-thumb]:to-green-600 [&::-moz-range-thumb]:shadow-lg
+                            [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-white
+                            [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:transition-transform"
+                          style={{
+                            background: `linear-gradient(to right, rgb(34, 197, 94) 0%, rgb(34, 197, 94) ${criteria.excellent}%, rgb(226, 232, 240) ${criteria.excellent}%, rgb(226, 232, 240) 100%)`
+                          }}
                         />
-                        <div className="absolute right-[21px] top-1/2 transform -translate-y-1/2 font-inter font-medium text-[16px] text-slate-900">
-                          %
+                        <div className="flex justify-between mt-1 text-xs text-slate-500">
+                          <span>0%</span>
+                          <span>100%</span>
                         </div>
                       </div>
                     </div>
 
                     {/* Good (4) */}
-                    <div className="flex items-center gap-4">
-                      <div className="font-inter font-medium text-[16px] leading-[1.6] text-slate-800 w-28">
-                        Хорошо (4):
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="font-inter font-semibold text-[16px] text-slate-800">
+                          Хорошо (4)
+                        </div>
+                        <div className="relative">
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            pattern="[0-9]*"
+                            value={criteria.good}
+                            onChange={(e) => {
+                              const val = e.target.value.replace(/[^0-9]/g, '')
+                              const num = val === '' ? 0 : Math.min(100, Math.max(0, parseInt(val)))
+                              updateCriteria("good", num)
+                            }}
+                            className="w-16 h-10 text-center font-semibold text-lg bg-white border-2 border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 transition-colors"
+                          />
+                          <div className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 text-sm font-medium pointer-events-none">
+                            %
+                          </div>
+                        </div>
                       </div>
-                      <div className="flex-1 relative">
-                        <Input
-                          type="number"
+                      <div className="relative">
+                        <input
+                          type="range"
                           min="0"
                           max="100"
                           value={criteria.good}
-                          onChange={(e) => updateCriteria("good", parseInt(e.target.value) || 0)}
-                          className="w-full h-14 rounded-[27px] border-slate-100 bg-white pr-12"
+                          onChange={(e) => updateCriteria("good", parseInt(e.target.value))}
+                          className="w-full h-2 bg-slate-200 rounded-full appearance-none cursor-pointer focus:outline-none
+                            [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-6 [&::-webkit-slider-thumb]:h-6
+                            [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-gradient-to-r
+                            [&::-webkit-slider-thumb]:from-blue-400 [&::-webkit-slider-thumb]:to-blue-600
+                            [&::-webkit-slider-thumb]:shadow-lg [&::-webkit-slider-thumb]:border-2
+                            [&::-webkit-slider-thumb]:border-white [&::-webkit-slider-thumb]:cursor-pointer
+                            [&::-webkit-slider-thumb]:transition-transform [&::-webkit-slider-thumb]:hover:scale-110
+                            [&::-moz-range-thumb]:w-6 [&::-moz-range-thumb]:h-6 [&::-moz-range-thumb]:rounded-full
+                            [&::-moz-range-thumb]:bg-gradient-to-r [&::-moz-range-thumb]:from-blue-400
+                            [&::-moz-range-thumb]:to-blue-600 [&::-moz-range-thumb]:shadow-lg
+                            [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-white
+                            [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:transition-transform"
+                          style={{
+                            background: `linear-gradient(to right, rgb(59, 130, 246) 0%, rgb(59, 130, 246) ${criteria.good}%, rgb(226, 232, 240) ${criteria.good}%, rgb(226, 232, 240) 100%)`
+                          }}
                         />
-                        <div className="absolute right-[21px] top-1/2 transform -translate-y-1/2 font-inter font-medium text-[16px] text-slate-900">
-                          %
+                        <div className="flex justify-between mt-1 text-xs text-slate-500">
+                          <span>0%</span>
+                          <span>100%</span>
                         </div>
                       </div>
                     </div>
 
                     {/* Satisfactory (3) */}
-                    <div className="flex items-center gap-4">
-                      <div className="font-inter font-medium text-[16px] leading-[1.6] text-slate-800 w-28">
-                        Удовл. (3):
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="font-inter font-semibold text-[16px] text-slate-800">
+                          Удовл. (3)
+                        </div>
+                        <div className="relative">
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            pattern="[0-9]*"
+                            value={criteria.satisfactory}
+                            onChange={(e) => {
+                              const val = e.target.value.replace(/[^0-9]/g, '')
+                              const num = val === '' ? 0 : Math.min(100, Math.max(0, parseInt(val)))
+                              updateCriteria("satisfactory", num)
+                            }}
+                            className="w-16 h-10 text-center font-semibold text-lg bg-white border-2 border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 transition-colors"
+                          />
+                          <div className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 text-sm font-medium pointer-events-none">
+                            %
+                          </div>
+                        </div>
                       </div>
-                      <div className="flex-1 relative">
-                        <Input
-                          type="number"
+                      <div className="relative">
+                        <input
+                          type="range"
                           min="0"
                           max="100"
                           value={criteria.satisfactory}
-                          onChange={(e) => updateCriteria("satisfactory", parseInt(e.target.value) || 0)}
-                          className="w-full h-14 rounded-[27px] border-slate-100 bg-white pr-12"
+                          onChange={(e) => updateCriteria("satisfactory", parseInt(e.target.value))}
+                          className="w-full h-2 bg-slate-200 rounded-full appearance-none cursor-pointer focus:outline-none
+                            [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-6 [&::-webkit-slider-thumb]:h-6
+                            [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-gradient-to-r
+                            [&::-webkit-slider-thumb]:from-yellow-400 [&::-webkit-slider-thumb]:to-orange-500
+                            [&::-webkit-slider-thumb]:shadow-lg [&::-webkit-slider-thumb]:border-2
+                            [&::-webkit-slider-thumb]:border-white [&::-webkit-slider-thumb]:cursor-pointer
+                            [&::-webkit-slider-thumb]:transition-transform [&::-webkit-slider-thumb]:hover:scale-110
+                            [&::-moz-range-thumb]:w-6 [&::-moz-range-thumb]:h-6 [&::-moz-range-thumb]:rounded-full
+                            [&::-moz-range-thumb]:bg-gradient-to-r [&::-moz-range-thumb]:from-yellow-400
+                            [&::-moz-range-thumb]:to-orange-500 [&::-moz-range-thumb]:shadow-lg
+                            [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-white
+                            [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:transition-transform"
+                          style={{
+                            background: `linear-gradient(to right, rgb(251, 146, 60) 0%, rgb(251, 146, 60) ${criteria.satisfactory}%, rgb(226, 232, 240) ${criteria.satisfactory}%, rgb(226, 232, 240) 100%)`
+                          }}
                         />
-                        <div className="absolute right-[21px] top-1/2 transform -translate-y-1/2 font-inter font-medium text-[16px] text-slate-900">
-                          %
+                        <div className="flex justify-between mt-1 text-xs text-slate-500">
+                          <span>0%</span>
+                          <span>100%</span>
                         </div>
                       </div>
                     </div>
 
                     {/* Unsatisfactory (2) */}
-                    <div className="flex items-center gap-4">
-                      <div className="font-inter font-medium text-[16px] leading-[1.6] text-slate-800 w-28">
-                        Неудовл (2):
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="font-inter font-semibold text-[16px] text-slate-800">
+                          Неудовл. (2)
+                        </div>
+                        <div className="relative">
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            pattern="[0-9]*"
+                            value={criteria.unsatisfactory}
+                            onChange={(e) => {
+                              const val = e.target.value.replace(/[^0-9]/g, '')
+                              const num = val === '' ? 0 : Math.min(100, Math.max(0, parseInt(val)))
+                              updateCriteria("unsatisfactory", num)
+                            }}
+                            className="w-16 h-10 text-center font-semibold text-lg bg-white border-2 border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 transition-colors"
+                          />
+                          <div className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 text-sm font-medium pointer-events-none">
+                            %
+                          </div>
+                        </div>
                       </div>
-                      <div className="flex-1 relative">
-                        <Input
-                          type="number"
+                      <div className="relative">
+                        <input
+                          type="range"
                           min="0"
                           max="100"
                           value={criteria.unsatisfactory}
-                          onChange={(e) => updateCriteria("unsatisfactory", parseInt(e.target.value) || 0)}
-                          className="w-full h-14 rounded-[27px] border-slate-100 bg-white pr-12"
+                          onChange={(e) => updateCriteria("unsatisfactory", parseInt(e.target.value))}
+                          className="w-full h-2 bg-slate-200 rounded-full appearance-none cursor-pointer focus:outline-none
+                            [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-6 [&::-webkit-slider-thumb]:h-6
+                            [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-gradient-to-r
+                            [&::-webkit-slider-thumb]:from-red-400 [&::-webkit-slider-thumb]:to-red-600
+                            [&::-webkit-slider-thumb]:shadow-lg [&::-webkit-slider-thumb]:border-2
+                            [&::-webkit-slider-thumb]:border-white [&::-webkit-slider-thumb]:cursor-pointer
+                            [&::-webkit-slider-thumb]:transition-transform [&::-webkit-slider-thumb]:hover:scale-110
+                            [&::-moz-range-thumb]:w-6 [&::-moz-range-thumb]:h-6 [&::-moz-range-thumb]:rounded-full
+                            [&::-moz-range-thumb]:bg-gradient-to-r [&::-moz-range-thumb]:from-red-400
+                            [&::-moz-range-thumb]:to-red-600 [&::-moz-range-thumb]:shadow-lg
+                            [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-white
+                            [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:transition-transform"
+                          style={{
+                            background: `linear-gradient(to right, rgb(239, 68, 68) 0%, rgb(239, 68, 68) ${criteria.unsatisfactory}%, rgb(226, 232, 240) ${criteria.unsatisfactory}%, rgb(226, 232, 240) 100%)`
+                          }}
                         />
-                        <div className="absolute right-[21px] top-1/2 transform -translate-y-1/2 font-inter font-medium text-[16px] text-slate-900">
-                          %
+                        <div className="flex justify-between mt-1 text-xs text-slate-500">
+                          <span>0%</span>
+                          <span>100%</span>
                         </div>
                       </div>
                     </div>
-                  </>
+                  </div>
                 )}
               </div>
             )}

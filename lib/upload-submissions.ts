@@ -4,7 +4,7 @@
  * - POST /api/checks/[checkId]/submissions
  * - POST /api/submissions/[submissionId]/evaluate
  */
-import type { DraftStudent } from './drafts'
+import type { DraftStudent } from './drafts-idb'
 
 export interface SubmitResultItem {
   student: DraftStudent
@@ -74,7 +74,7 @@ export async function submitStudents(
         }
         // mark this student as failed locally and continue
         try {
-          const { addTempFailedName } = await import('./drafts')
+          const { addTempFailedName } = await import('./drafts-idb')
           console.log('[UPLOAD] Adding temp failed name to localStorage:', {
             checkId,
             studentName: student.name,
@@ -101,7 +101,7 @@ export async function submitStudents(
       if (!submissionId) {
         // if no id — treat as failed for reshoot
         try {
-          const { addTempFailedName } = await import('./drafts')
+          const { addTempFailedName } = await import('./drafts-idb')
           console.log('[UPLOAD] Adding temp failed name (no submission ID):', {
             checkId,
             studentName: student.name,
@@ -119,7 +119,7 @@ export async function submitStudents(
     } catch (error) {
       // Network or unexpected error — mark as failed and continue
       try {
-        const { addTempFailedName } = await import('./drafts')
+        const { addTempFailedName } = await import('./drafts-idb')
         console.log('[UPLOAD] Adding temp failed name (network error):', {
           checkId,
           studentName: student.name,

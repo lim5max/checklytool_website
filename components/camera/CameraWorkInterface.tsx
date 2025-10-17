@@ -12,7 +12,7 @@ import {
   addStudent as addStudentDraft,
   renameStudent as renameStudentDraft,
   type DraftStudent,
-} from '@/lib/drafts'
+} from '@/lib/drafts-idb'
 
 interface Photo {
   id: string
@@ -178,11 +178,18 @@ export function CameraWorkInterface({
 
     // Получаем актуальное состояние из draft
     const currentDraft = getDraft(checkId)
+    console.log('[CAMERA] capturePhoto - activeStudentIndex:', activeStudentIndex)
+    console.log('[CAMERA] capturePhoto - draft students count:', currentDraft?.students.length)
+    console.log('[CAMERA] capturePhoto - draft students:', currentDraft?.students.map(s => s.name))
+
     const activeStudent = currentDraft?.students[activeStudentIndex]
     if (!activeStudent) {
-      console.error('No active student found')
+      console.error('[CAMERA] No active student found at index:', activeStudentIndex)
+      console.error('[CAMERA] Available students:', currentDraft?.students)
       return
     }
+
+    console.log('[CAMERA] Active student:', activeStudent.name, 'photos:', activeStudent.photos.length)
 
     if (activeStudent.photos.length >= maxPhotosPerStudent) {
       console.warn(`Maximum ${maxPhotosPerStudent} photos per student`)
@@ -210,14 +217,16 @@ export function CameraWorkInterface({
       canvas.height = video.videoHeight
       context.drawImage(video, 0, 0, canvas.width, canvas.height)
 
-      const dataUrl = canvas.toDataURL('image/jpeg', 0.9)
+      // Используем качество 0.5 вместо 0.9 для экономии места в localStorage
+      // Это уменьшит размер файла примерно в 3 раза
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.5)
 
       if (!dataUrl || dataUrl.length < 100) {
         throw new Error('Generated image data is too small or empty')
       }
 
       console.log('[CAMERA] Photo captured successfully, data size:', dataUrl.length)
-      
+
       // Базовая клиентская валидация - проверяем размер изображения
       // Очень маленькие изображения (меньше 50KB) могут быть проблематичными
       if (dataUrl.length < 50000) {
@@ -225,8 +234,28 @@ export function CameraWorkInterface({
         console.warn('Image is very small')
       }
 
+      console.log('[CAMERA] Before adding photo - calling addPhotoDraft')
       const bundle = addPhotoDraft(checkId, activeStudentIndex, dataUrl)
-      setStudents(mapDraftToLocal(bundle.students))
+      console.log('[CAMERA] After addPhotoDraft - bundle received:', {
+        totalStudents: bundle.students.length,
+        studentsWithPhotos: bundle.students.map((s, i) => ({
+          index: i,
+          name: s.name,
+          photoCount: s.photos.length
+        }))
+      })
+
+      const mappedStudents = mapDraftToLocal(bundle.students)
+      console.log('[CAMERA] After mapping - local students:', {
+        totalStudents: mappedStudents.length,
+        studentsWithPhotos: mappedStudents.map((s, i) => ({
+          index: i,
+          name: s.name,
+          photoCount: s.photos.length
+        }))
+      })
+
+      setStudents(mappedStudents)
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new Event('drafts:updated'))
       }
@@ -322,13 +351,26 @@ export function CameraWorkInterface({
 
   // Student management
   const addStudent = useCallback(() => {
-    // Получаем актуальное состояние из draft вместо использования students.length
+    console.log('[CAMERA] addStudent called')
+    // Получаем актуальное состояние из draft
     const currentDraft = getDraft(checkId)
-    const currentLength = currentDraft?.students.length || 0
-    const { bundle, index } = addStudentDraft(checkId, `Ученик ${currentLength + 1}`)
+    console.log('[CAMERA] Current draft students:', currentDraft?.students.length)
+
+    // addStudent из drafts.ts сам генерирует уникальное имя если передать пустую строку
+    // Функция generateUniqueStudentName будет вызвана автоматически
+    const { bundle, index } = addStudentDraft(checkId, '', undefined)
+    console.log('[CAMERA] New student added at index:', index, 'total students:', bundle.students.length)
+
+    // Обновляем локальный стейт
     setStudents(mapDraftToLocal(bundle.students))
     setActiveStudentIndex(index)
-    console.log('Student added, new index:', index, 'total students:', bundle.students.length)
+
+    // Уведомляем об обновлении
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('drafts:updated'))
+    }
+
+    console.log('[CAMERA] Student added successfully')
   }, [checkId])
 
   const updateStudentName = useCallback((name: string) => {
@@ -384,6 +426,31 @@ export function CameraWorkInterface({
       stopCamera()
     }
   }, [isOpen, viewMode, startCamera, stopCamera])
+
+  // Отслеживаем изменения activeStudentIndex
+  useEffect(() => {
+    console.log('[CAMERA] activeStudentIndex changed:', {
+      index: activeStudentIndex,
+      studentName: students[activeStudentIndex]?.name,
+      totalStudents: students.length,
+      allStudents: students.map((s, i) => ({
+        index: i,
+        name: s.name,
+        photoCount: s.photos.length,
+        photoIds: s.photos.map(p => p.id)
+      }))
+    })
+
+    // Также проверим draft напрямую
+    const draft = getDraft(checkId)
+    console.log('[CAMERA] Draft state:', {
+      draftStudents: draft?.students.map((s, i) => ({
+        index: i,
+        name: s.name,
+        photoCount: s.photos.length
+      }))
+    })
+  }, [activeStudentIndex, students, checkId])
 
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
@@ -601,7 +668,15 @@ export function CameraWorkInterface({
             {students[Math.max(0, activeStudentIndex - 1)] && activeStudentIndex > 0 ? (
               <button
                 className="flex items-center gap-1 opacity-50"
-                onClick={() => setActiveStudentIndex(activeStudentIndex - 1)}
+                onClick={() => {
+                  const newIndex = activeStudentIndex - 1
+                  console.log('[CAMERA] Switching to previous student:', {
+                    from: activeStudentIndex,
+                    to: newIndex,
+                    studentName: students[newIndex]?.name
+                  })
+                  setActiveStudentIndex(newIndex)
+                }}
               >
                 <span className="font-extrabold text-lg text-white">
                   {students[activeStudentIndex - 1].name}
@@ -638,7 +713,15 @@ export function CameraWorkInterface({
             {students[activeStudentIndex + 1] ? (
               <button
                 className="flex items-center gap-1 opacity-50"
-                onClick={() => setActiveStudentIndex(activeStudentIndex + 1)}
+                onClick={() => {
+                  const newIndex = activeStudentIndex + 1
+                  console.log('[CAMERA] Switching to next student:', {
+                    from: activeStudentIndex,
+                    to: newIndex,
+                    studentName: students[newIndex]?.name
+                  })
+                  setActiveStudentIndex(newIndex)
+                }}
               >
                 <span className="font-extrabold text-lg text-white">
                   {students[activeStudentIndex + 1].name}

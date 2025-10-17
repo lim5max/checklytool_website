@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Header from '@/components/Header'
 import TestConstructor from '@/components/TestConstructor'
@@ -13,6 +13,7 @@ export default function TestBuilderPage() {
   const router = useRouter()
   const [user, setUser] = useState<{ name?: string; email?: string; image?: string } | null>(null)
   const [isUserLoading, setIsUserLoading] = useState(true)
+  const showValidationOnExitRef = useRef<(() => void) | null>(null)
 
   // Загружаем данные пользователя (аналогично checks page)
   useEffect(() => {
@@ -32,6 +33,7 @@ export default function TestBuilderPage() {
   }, [router])
 
   const [isSaving, setIsSaving] = useState(false)
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
 
   /**
    * Обработчик сохранения теста с улучшенной обработкой ошибок
@@ -126,6 +128,20 @@ export default function TestBuilderPage() {
   }
 
   const handleBackClick = () => {
+    // Проверяем наличие несохраненных изменений
+    if (hasUnsavedChanges) {
+      // Показываем все ошибки валидации перед выходом
+      if (showValidationOnExitRef.current) {
+        showValidationOnExitRef.current()
+      }
+
+      const confirmLeave = window.confirm(
+        'У вас есть несохраненные изменения в тесте. Вы уверены, что хотите покинуть страницу?'
+      )
+      if (!confirmLeave) {
+        return // Отменяем переход
+      }
+    }
     router.push('/dashboard')
   }
 
@@ -168,7 +184,14 @@ export default function TestBuilderPage() {
         </div>
 
         {/* Конструктор тестов */}
-        <TestConstructor onSave={handleSaveTest} className="" />
+        <TestConstructor
+          onSave={handleSaveTest}
+          className=""
+          onUnsavedChanges={setHasUnsavedChanges}
+          onRequestShowValidation={(callback) => {
+            showValidationOnExitRef.current = callback
+          }}
+        />
 
         {/* Информационная панель */}
         <div className="mt-16 bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-8">

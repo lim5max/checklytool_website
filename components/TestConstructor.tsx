@@ -1,12 +1,13 @@
 'use client'
 
-import React, { useState, useCallback, useEffect, useMemo } from 'react'
+import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
 import { toast } from 'sonner'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useUnsavedChangesWarning } from '@/hooks/use-unsaved-changes-warning'
 import {
 	DndContext,
 	closestCenter,
@@ -48,12 +49,16 @@ interface TestConstructorProps {
 	initialTest?: GeneratedTest
 	onSave?: (test: GeneratedTest, silent?: boolean) => void
 	className?: string
+	onUnsavedChanges?: (hasChanges: boolean) => void
+	onRequestShowValidation?: (callback: () => void) => void
 }
 
 export default function TestConstructor({
 	initialTest,
 	onSave,
-	className = ''
+	className = '',
+	onUnsavedChanges,
+	onRequestShowValidation
 }: TestConstructorProps) {
 	const [test, setTest] = useState<GeneratedTest>(
 		initialTest || {
@@ -72,25 +77,41 @@ export default function TestConstructor({
 	const [expandedQuestion, setExpandedQuestion] = useState<string | null>(null)
 	const [touchedFields, setTouchedFields] = useState<Set<string>>(new Set())
 	const [showBottomBar, setShowBottomBar] = useState(true)
-	const [isSaved, setIsSaved] = useState(false)
-	const [lastSavedTestHash, setLastSavedTestHash] = useState<string>('')
+
+	// Ref для хранения актуального состояния test
+	const testRef = useRef(test)
+	useEffect(() => {
+		testRef.current = test
+	}, [test])
+
+	// Инициализируем isSaved как true (ничего не изменено) и сохраняем начальный хэш
+	const [isSaved, setIsSaved] = useState(true)
+	const [lastSavedTestHash, setLastSavedTestHash] = useState<string>(() => {
+		// Создаем начальный хэш из начального состояния теста
+		return JSON.stringify(initialTest || test)
+	})
 
 	// Отслеживание изменений теста для состояния сохранения
 	useEffect(() => {
 		// Создаем хэш текущего состояния теста
 		const currentHash = JSON.stringify(test)
 
-		// Если есть сохраненный хэш и он отличается от текущего - значит были изменения
-		if (lastSavedTestHash && currentHash !== lastSavedTestHash) {
+		// Если текущий хэш отличается от сохраненного - значит были изменения
+		if (currentHash !== lastSavedTestHash) {
 			setIsSaved(false)
+			// Уведомляем родительский компонент о несохраненных изменениях
+			if (onUnsavedChanges) {
+				onUnsavedChanges(true)
+			}
 		}
-	}, [test, lastSavedTestHash])
+	}, [test, lastSavedTestHash, onUnsavedChanges])
 
 	// Предупреждение при выходе со страницы с несохраненными изменениями
 	useEffect(() => {
 		const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-			// Показываем предупреждение только если есть вопросы и тест не сохранен
-			if (!isSaved && test.questions.length > 0) {
+			// Показываем предупреждение ВСЕГДА если тест не сохранен
+			// Даже если вопросы не заполнены - пользователь должен явно выбрать "не сохранять"
+			if (!isSaved) {
 				e.preventDefault()
 				e.returnValue = 'У вас есть несохраненные изменения. Вы уверены, что хотите покинуть страницу?'
 				return e.returnValue
@@ -99,7 +120,30 @@ export default function TestConstructor({
 
 		window.addEventListener('beforeunload', handleBeforeUnload)
 		return () => window.removeEventListener('beforeunload', handleBeforeUnload)
-	}, [isSaved, test.questions.length])
+	}, [isSaved])
+
+	// Предупреждение при навигации внутри приложения
+	// Показываем ВСЕГДА если тест не сохранен (даже с пустыми вопросами)
+	useUnsavedChangesWarning(
+		!isSaved,
+		'У вас есть несохраненные изменения в тесте. Вы уверены, что хотите покинуть страницу?'
+	)
+
+	// Передаем функцию показа валидации родительскому компоненту только один раз при монтировании
+	useEffect(() => {
+		if (onRequestShowValidation) {
+			onRequestShowValidation(() => {
+				// Эта функция будет вызвана только при попытке выхода
+				// Помечаем все поля как "touched" чтобы показать ошибки
+				const allFields = new Set(['title'])
+				// Используем актуальное состояние test из ref
+				testRef.current.questions.forEach(q => {
+					allFields.add(`question_${q.id}`)
+				})
+				setTouchedFields(allFields)
+			})
+		}
+	}, [onRequestShowValidation])
 
 	// Drag and drop sensors
 	const sensors = useSensors(
@@ -198,8 +242,8 @@ export default function TestConstructor({
 	const validationErrors = useMemo(() => {
 		const errors: Record<string, string> = {}
 
-		// Валидируем название только если поле было затронуто И есть вопросы
-		if (touchedFields.has('title') && test.questions.length > 0 && !test.title.trim()) {
+		// Валидируем название только если поле было затронуто (независимо от количества вопросов)
+		if (touchedFields.has('title') && !test.title.trim()) {
 			errors.title = 'Укажите название теста'
 		}
 
@@ -494,10 +538,15 @@ export default function TestConstructor({
 			const savedHash = JSON.stringify(test)
 			setLastSavedTestHash(savedHash)
 			setIsSaved(true)
+
+			// Уведомляем родительский компонент что изменения сохранены
+			if (onUnsavedChanges) {
+				onUnsavedChanges(false)
+			}
 		}
 
 		return true
-	}, [test, onSave])
+	}, [test, onSave, onUnsavedChanges])
 
 	const generatePDF = useCallback(async (variantNumber?: number) => {
 		if (!validateTest()) return
@@ -583,6 +632,7 @@ export default function TestConstructor({
 								updated_at: new Date().toISOString()
 							}))}
 							onBlur={() => {
+								// Помечаем поле как "затронутое" только при потере фокуса
 								setTouchedFields(prev => new Set(prev).add('title'))
 							}}
 							placeholder="Например: Контрольная работа по математике"

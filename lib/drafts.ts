@@ -61,9 +61,27 @@ export function getDraft(checkId: string): DraftBundle | null {
 export function upsertDraft(bundle: DraftBundle): void {
   if (!isBrowser()) return
   try {
-    const serialized = JSON.stringify({ ...bundle, updatedAt: Date.now() })
-    window.localStorage.setItem(storageKey(bundle.checkId), serialized)
-  } catch {
+    const bundleWithTimestamp = { ...bundle, updatedAt: Date.now() }
+    console.log('[DRAFTS] upsertDraft - saving bundle:', {
+      checkId: bundle.checkId,
+      studentCount: bundleWithTimestamp.students.length,
+      students: bundleWithTimestamp.students.map((s, i) => ({
+        index: i,
+        name: s.name,
+        photoCount: s.photos.length,
+        photoSizes: s.photos.map(p => p.dataUrl.length)
+      }))
+    })
+
+    const serialized = JSON.stringify(bundleWithTimestamp)
+    const key = storageKey(bundle.checkId)
+    console.log('[DRAFTS] upsertDraft - serialized size:', serialized.length, 'bytes')
+    console.log('[DRAFTS] upsertDraft - storage key:', key)
+
+    window.localStorage.setItem(key, serialized)
+    console.log('[DRAFTS] upsertDraft - saved successfully')
+  } catch (err) {
+    console.error('[DRAFTS] upsertDraft - error saving:', err)
     // best-effort: ignore quota errors
   }
 }
@@ -86,8 +104,41 @@ export function clearDraft(checkId: string): void {
  */
 export function mutateDraft(checkId: string, fn: (bundle: DraftBundle) => DraftBundle): DraftBundle {
   const existing = getDraft(checkId) ?? { checkId, students: [], updatedAt: Date.now() }
+  console.log('[DRAFTS] mutateDraft - existing bundle:', {
+    checkId,
+    studentCount: existing.students.length,
+    students: existing.students.map((s, i) => ({
+      index: i,
+      name: s.name,
+      photoCount: s.photos.length
+    }))
+  })
+
   const next = fn(existing)
+  console.log('[DRAFTS] mutateDraft - new bundle after mutation:', {
+    checkId,
+    studentCount: next.students.length,
+    students: next.students.map((s, i) => ({
+      index: i,
+      name: s.name,
+      photoCount: s.photos.length
+    }))
+  })
+
   upsertDraft(next)
+  console.log('[DRAFTS] mutateDraft - bundle saved to localStorage')
+
+  // Verify save
+  const verification = getDraft(checkId)
+  console.log('[DRAFTS] mutateDraft - verification read from localStorage:', {
+    studentCount: verification?.students.length,
+    students: verification?.students.map((s, i) => ({
+      index: i,
+      name: s.name,
+      photoCount: s.photos.length
+    }))
+  })
+
   return next
 }
 
@@ -117,8 +168,27 @@ export function ensureStudent(checkId: string, name?: string): { bundle: DraftBu
  * Utility: add photo to student by index
  */
 export function addPhotoToStudent(checkId: string, studentIndex: number, dataUrl: string): DraftBundle {
+  console.log('[DRAFTS] addPhotoToStudent called:', {
+    checkId,
+    studentIndex,
+    dataUrlLength: dataUrl.length
+  })
+
   return mutateDraft(checkId, (b) => {
-    if (!b.students[studentIndex]) return b
+    console.log('[DRAFTS] Current bundle before adding photo:', {
+      totalStudents: b.students.length,
+      students: b.students.map((s, i) => ({
+        index: i,
+        name: s.name,
+        photoCount: s.photos.length
+      }))
+    })
+
+    if (!b.students[studentIndex]) {
+      console.error('[DRAFTS] Student not found at index:', studentIndex)
+      return b
+    }
+
     const nextStudents = b.students.map((s, i) =>
       i === studentIndex
         ? {
@@ -134,6 +204,16 @@ export function addPhotoToStudent(checkId: string, studentIndex: number, dataUrl
           }
         : s
     )
+
+    console.log('[DRAFTS] Bundle after adding photo:', {
+      totalStudents: nextStudents.length,
+      students: nextStudents.map((s, i) => ({
+        index: i,
+        name: s.name,
+        photoCount: s.photos.length
+      }))
+    })
+
     return { ...b, students: nextStudents }
   })
 }
