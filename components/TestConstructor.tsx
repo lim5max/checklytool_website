@@ -72,6 +72,19 @@ export default function TestConstructor({
 	const [expandedQuestion, setExpandedQuestion] = useState<string | null>(null)
 	const [touchedFields, setTouchedFields] = useState<Set<string>>(new Set())
 	const [showBottomBar, setShowBottomBar] = useState(true)
+	const [isSaved, setIsSaved] = useState(false)
+	const [lastSavedTestHash, setLastSavedTestHash] = useState<string>('')
+
+	// Отслеживание изменений теста для состояния сохранения
+	useEffect(() => {
+		// Создаем хэш текущего состояния теста
+		const currentHash = JSON.stringify(test)
+
+		// Если есть сохраненный хэш и он отличается от текущего - значит были изменения
+		if (lastSavedTestHash && currentHash !== lastSavedTestHash) {
+			setIsSaved(false)
+		}
+	}, [test, lastSavedTestHash])
 
 	// Drag and drop sensors
 	const sensors = useSensors(
@@ -461,6 +474,11 @@ export default function TestConstructor({
 		if (onSave) {
 			onSave(test, false) // false = не тихое сохранение
 			toast.success('Тест успешно сохранён!')
+
+			// Обновляем состояние сохранения
+			const savedHash = JSON.stringify(test)
+			setLastSavedTestHash(savedHash)
+			setIsSaved(true)
 		}
 
 		return true
@@ -683,36 +701,40 @@ export default function TestConstructor({
 				>
 					<div className="max-w-7xl mx-auto px-4 py-4">
 						<div className="flex flex-col gap-3">
-							{/* Кнопка сохранения */}
-							<Button
-								onClick={handleManualSave}
-								size="lg"
-								variant="outline"
-								className="w-full gap-2 h-12 text-base border-2"
-							>
-								<Check className="w-5 h-5" />
-								<span>Сохранить тест</span>
-							</Button>
+							{/* Кнопки действий - в ряд на десктопе */}
+							<div className="flex flex-col sm:flex-row gap-3">
+								{/* Кнопка сохранения */}
+								<Button
+									onClick={handleManualSave}
+									disabled={isSaved}
+									size="lg"
+									variant="outline"
+									className="w-full sm:flex-1 gap-2 h-12 text-base border-2"
+								>
+									<Check className="w-5 h-5" />
+									<span>{isSaved ? 'Сохранено' : 'Сохранить'}</span>
+								</Button>
 
-							{/* Кнопка генерации PDF */}
-							<Button
-								onClick={() => generatePDF()}
-								disabled={isGeneratingPDF || !isValid}
-								size="lg"
-								className="w-full gap-2 h-14 text-base"
-							>
-								{isGeneratingPDF ? (
-									<div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-								) : (
-									<Download className="w-4 h-4" />
-								)}
-								<span className="hidden sm:inline">
-									{isGeneratingPDF ? 'Генерация PDF...' : `Скачать PDF (Вариант ${selectedVariant})`}
-								</span>
-								<span className="inline sm:hidden">
-									{isGeneratingPDF ? 'Генерация...' : `PDF (В${selectedVariant})`}
-								</span>
-							</Button>
+								{/* Кнопка генерации PDF */}
+								<Button
+									onClick={() => generatePDF()}
+									disabled={isGeneratingPDF || !isValid}
+									size="lg"
+									className="w-full sm:flex-1 gap-2 h-12 text-base"
+								>
+									{isGeneratingPDF ? (
+										<div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+									) : (
+										<Download className="w-4 h-4" />
+									)}
+									<span className="hidden sm:inline">
+										{isGeneratingPDF ? 'Генерация PDF...' : `Скачать PDF (Вариант ${selectedVariant})`}
+									</span>
+									<span className="inline sm:hidden">
+										{isGeneratingPDF ? 'Генерация...' : `PDF (В${selectedVariant})`}
+									</span>
+								</Button>
+							</div>
 
 							{!isValid && (
 								<p className="text-sm text-orange-600 flex items-center justify-center gap-2">
