@@ -701,18 +701,19 @@ export default function TestConstructor({
 				>
 					<div className="max-w-7xl mx-auto px-4 py-4">
 						<div className="flex flex-col gap-3">
-							{/* Кнопки действий - в ряд на десктопе */}
-							<div className="flex flex-col sm:flex-row gap-3">
+							{/* Кнопки действий - горизонтально всегда */}
+							<div className="flex gap-2">
 								{/* Кнопка сохранения */}
 								<Button
 									onClick={handleManualSave}
 									disabled={isSaved}
 									size="lg"
 									variant="outline"
-									className="w-full sm:flex-1 gap-2 h-12 text-base border-2"
+									className="flex-1 gap-2 h-12 text-sm sm:text-base border-2"
 								>
-									<Check className="w-5 h-5" />
-									<span>{isSaved ? 'Сохранено' : 'Сохранить'}</span>
+									<Check className="w-4 h-4 sm:w-5 sm:h-5" />
+									<span className="hidden sm:inline">{isSaved ? 'Сохранено' : 'Сохранить'}</span>
+									<span className="inline sm:hidden text-xs">{isSaved ? 'Готово' : 'Сохранить'}</span>
 								</Button>
 
 								{/* Кнопка генерации PDF */}
@@ -720,18 +721,18 @@ export default function TestConstructor({
 									onClick={() => generatePDF()}
 									disabled={isGeneratingPDF || !isValid}
 									size="lg"
-									className="w-full sm:flex-1 gap-2 h-12 text-base"
+									className="flex-1 gap-2 h-12 text-sm sm:text-base"
 								>
 									{isGeneratingPDF ? (
 										<div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
 									) : (
-										<Download className="w-4 h-4" />
+										<Download className="w-4 h-4 sm:w-5 sm:h-5" />
 									)}
 									<span className="hidden sm:inline">
 										{isGeneratingPDF ? 'Генерация PDF...' : `Скачать PDF (Вариант ${selectedVariant})`}
 									</span>
-									<span className="inline sm:hidden">
-										{isGeneratingPDF ? 'Генерация...' : `PDF (В${selectedVariant})`}
+									<span className="inline sm:hidden text-xs">
+										{isGeneratingPDF ? 'PDF...' : 'PDF'}
 									</span>
 								</Button>
 							</div>
