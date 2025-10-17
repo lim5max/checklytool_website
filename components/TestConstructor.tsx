@@ -86,6 +86,21 @@ export default function TestConstructor({
 		}
 	}, [test, lastSavedTestHash])
 
+	// Предупреждение при выходе со страницы с несохраненными изменениями
+	useEffect(() => {
+		const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+			// Показываем предупреждение только если есть вопросы и тест не сохранен
+			if (!isSaved && test.questions.length > 0) {
+				e.preventDefault()
+				e.returnValue = 'У вас есть несохраненные изменения. Вы уверены, что хотите покинуть страницу?'
+				return e.returnValue
+			}
+		}
+
+		window.addEventListener('beforeunload', handleBeforeUnload)
+		return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+	}, [isSaved, test.questions.length])
+
 	// Drag and drop sensors
 	const sensors = useSensors(
 		useSensor(PointerSensor),

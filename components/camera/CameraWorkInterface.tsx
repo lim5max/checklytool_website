@@ -176,7 +176,14 @@ export function CameraWorkInterface({
       return
     }
 
-    const activeStudent = students[activeStudentIndex]
+    // Получаем актуальное состояние из draft
+    const currentDraft = getDraft(checkId)
+    const activeStudent = currentDraft?.students[activeStudentIndex]
+    if (!activeStudent) {
+      console.error('No active student found')
+      return
+    }
+
     if (activeStudent.photos.length >= maxPhotosPerStudent) {
       console.warn(`Maximum ${maxPhotosPerStudent} photos per student`)
       return
@@ -244,7 +251,7 @@ export function CameraWorkInterface({
     } finally {
       setIsCapturing(false)
     }
-  }, [isCapturing, isStreaming, students, activeStudentIndex, maxPhotosPerStudent, checkId, startCamera, stopCamera])
+  }, [isCapturing, isStreaming, activeStudentIndex, maxPhotosPerStudent, checkId, startCamera, stopCamera])
 
   // File upload
   const handleFileUpload = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -252,7 +259,14 @@ export function CameraWorkInterface({
     console.log('[CAMERA] File upload started, files:', files?.length)
     if (!files) return
 
-    const activeStudent = students[activeStudentIndex]
+    // Получаем актуальное состояние из draft
+    const currentDraft = getDraft(checkId)
+    const activeStudent = currentDraft?.students[activeStudentIndex]
+    if (!activeStudent) {
+      console.error('No active student found')
+      return
+    }
+
     const remainingSlots = maxPhotosPerStudent - activeStudent.photos.length
     console.log('[CAMERA] Active student:', activeStudent.name, 'remaining slots:', remainingSlots)
 
@@ -304,15 +318,18 @@ export function CameraWorkInterface({
 
     // Clear input
     event.target.value = ''
-  }, [students, activeStudentIndex, maxPhotosPerStudent, checkId])
+  }, [activeStudentIndex, maxPhotosPerStudent, checkId])
 
   // Student management
   const addStudent = useCallback(() => {
-    const { bundle, index } = addStudentDraft(checkId, `Ученик ${students.length + 1}`)
+    // Получаем актуальное состояние из draft вместо использования students.length
+    const currentDraft = getDraft(checkId)
+    const currentLength = currentDraft?.students.length || 0
+    const { bundle, index } = addStudentDraft(checkId, `Ученик ${currentLength + 1}`)
     setStudents(mapDraftToLocal(bundle.students))
     setActiveStudentIndex(index)
-    console.log('Student added')
-  }, [students.length, checkId])
+    console.log('Student added, new index:', index, 'total students:', bundle.students.length)
+  }, [checkId])
 
   const updateStudentName = useCallback((name: string) => {
     const trimmed = name.trim().slice(0, 24) || `Ученик ${activeStudentIndex + 1}`
