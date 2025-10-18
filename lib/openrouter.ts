@@ -356,8 +356,8 @@ ${essayCriteria?.map(c => `${c.grade} баллов — ${c.description}`).join('
 		throw new Error('OPENROUTER_API_KEY is required')
 	}
 
-	// Используем QWEN для всех типов проверки - лучше распознает рукописный текст
-	const model = 'qwen/qwen3-vl-235b-a22b-instruct'
+	// Используем Gemini 2.5 Flash для всех типов проверки
+	const model = 'google/gemini-2.5-flash'
 
 	const requestBody: OpenRouterRequest = {
 		model,

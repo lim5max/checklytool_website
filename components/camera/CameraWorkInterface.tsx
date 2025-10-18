@@ -217,22 +217,14 @@ export function CameraWorkInterface({
       canvas.height = video.videoHeight
       context.drawImage(video, 0, 0, canvas.width, canvas.height)
 
-      // Используем качество 0.5 вместо 0.9 для экономии места в localStorage
-      // Это уменьшит размер файла примерно в 3 раза
-      const dataUrl = canvas.toDataURL('image/jpeg', 0.5)
+      // Используем максимальное качество 1.0 для лучшего распознавания текста AI
+      const dataUrl = canvas.toDataURL('image/jpeg', 1.0)
 
       if (!dataUrl || dataUrl.length < 100) {
         throw new Error('Generated image data is too small or empty')
       }
 
       console.log('[CAMERA] Photo captured successfully, data size:', dataUrl.length)
-
-      // Базовая клиентская валидация - проверяем размер изображения
-      // Очень маленькие изображения (меньше 50KB) могут быть проблематичными
-      if (dataUrl.length < 50000) {
-        console.warn('[CAMERA] Image seems too small, might be low quality')
-        console.warn('Image is very small')
-      }
 
       console.log('[CAMERA] Before adding photo - calling addPhotoDraft')
       const bundle = addPhotoDraft(checkId, activeStudentIndex, dataUrl)
