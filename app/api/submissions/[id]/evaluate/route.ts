@@ -62,6 +62,104 @@ function compareAnswers(studentAnswer: string, correctAnswer: string, strictMatc
 	return normalizeText(student) === normalizeText(correct)
 }
 
+/**
+ * Умная проверка открытых вопросов с двухэтапным подходом
+ * Определяет тип ответа и применяет соответствующую логику сравнения
+ */
+function smartCompareOpenAnswer(studentAnswer: string, correctAnswer: string): boolean {
+	const student = studentAnswer.trim()
+	const correct = correctAnswer.trim()
+
+	// ЭТАП 1: Определение типа ответа
+	const isNumeric = (text: string) => /^-?[\d.,\s]+$/.test(text.replace(/[<>=≤≥]/g, ''))
+	const hasComparisonSign = (text: string) => /[<>=≤≥]/.test(text)
+	const isFormula = (text: string) => /[a-zA-Zа-яА-Я]+[\d]*|[+\-*/^()=]/.test(text) && text.length < 50
+
+	// Определяем тип эталонного ответа
+	let answerType: 'numeric' | 'comparison' | 'formula' | 'text'
+	if (hasComparisonSign(correct)) {
+		answerType = 'comparison'
+	} else if (isNumeric(correct)) {
+		answerType = 'numeric'
+	} else if (isFormula(correct)) {
+		answerType = 'formula'
+	} else {
+		answerType = 'text'
+	}
+
+	// ЭТАП 2: Контекстная проверка
+	if (answerType === 'numeric') {
+		// Для чисел: нормализуем и сравниваем
+		const normalizeNumber = (text: string) => text.replace(/\s/g, '').replace(/,/g, '.')
+		return normalizeNumber(student) === normalizeNumber(correct)
+	}
+
+	if (answerType === 'comparison') {
+		// Для сравнений: проверяем, что знаки и числа совпадают
+		const normalizeComparison = (text: string) => {
+			return text
+				.replace(/\s/g, '') // убираем пробелы
+				.replace(/,/g, '.') // запятые -> точки
+				.toLowerCase()
+		}
+
+		const studentNorm = normalizeComparison(student)
+		const correctNorm = normalizeComparison(correct)
+
+		// ВАЖНО: для сравнений знаки минусов критичны!
+		// Проверяем, что у эталона есть минусы, а у ученика нет - это ошибка
+		const correctHasMinus = /-\d/.test(correctNorm)
+		const studentHasMinus = /-\d/.test(studentNorm)
+
+		if (correctHasMinus && !studentHasMinus) {
+			// Эталон с минусами, а ответ без - неверно
+			return false
+		}
+
+		return studentNorm === correctNorm
+	}
+
+	if (answerType === 'formula') {
+		// Для формул: простое сравнение с нормализацией пробелов
+		const normalizeFormula = (text: string) => text.replace(/\s/g, '').toLowerCase()
+		return normalizeFormula(student) === normalizeFormula(correct)
+	}
+
+	// answerType === 'text'
+	// Для текстов: проверяем наличие ключевых понятий из эталона
+	const correctLower = correct.toLowerCase()
+	const studentLower = student.toLowerCase()
+
+	// Извлекаем ключевые слова (слова длиннее 3 символов)
+	const extractKeywords = (text: string) => {
+		return text
+			.split(/[\s,.:;!?()]+/)
+			.filter(word => word.length > 3)
+			.map(word => word.toLowerCase())
+	}
+
+	const correctKeywords = extractKeywords(correctLower)
+	const studentKeywords = extractKeywords(studentLower)
+
+	// Проверяем, что хотя бы 50% ключевых слов из эталона присутствуют в ответе
+	const matchedKeywords = correctKeywords.filter(keyword =>
+		studentKeywords.some(sw => sw.includes(keyword) || keyword.includes(sw))
+	)
+
+	const matchPercentage = correctKeywords.length > 0
+		? matchedKeywords.length / correctKeywords.length
+		: 0
+
+	// Если ответ слишком короткий (< 30% длины эталона) - скорее всего поверхностный
+	const lengthRatio = studentLower.length / correctLower.length
+	if (lengthRatio < 0.3) {
+		return false
+	}
+
+	// Если совпало >= 50% ключевых слов - считаем правильным
+	return matchPercentage >= 0.5
+}
+
 // POST /api/submissions/[id]/evaluate - Evaluate submission using AI
 export async function POST(
 	request: NextRequest,
@@ -71,10 +169,10 @@ export async function POST(
 	try {
 		const { id: submissionId } = await params
 		console.log('[EVALUATE] Submission ID:', submissionId)
-		
+
 		const { supabase, userId } = await getAuthenticatedSupabase()
 		console.log('[EVALUATE] Authentication successful, userId:', userId)
-		
+
 		// Get submission with check details
 		const { data: submission, error: submissionError } = await supabase
 			.from('student_submissions')
@@ -90,14 +188,14 @@ export async function POST(
 			.eq('id', submissionId)
 			.eq('checks.user_id', userId)
 			.single()
-		
+
 		if (submissionError || !submission) {
 			return NextResponse.json(
 				{ error: 'Submission not found' },
 				{ status: 404 }
 			)
 		}
-		
+
 		const submissionData = submission as {
 			id: string
 			status: string
@@ -125,7 +223,7 @@ export async function POST(
 			}
 		}
 		const checkData = submissionData.checks
-		
+
 		// Check if already being processed or completed
 		if (submissionData.status === 'processing') {
 			return NextResponse.json(
@@ -174,21 +272,21 @@ export async function POST(
 				processing_started_at: new Date().toISOString()
 			})
 			.eq('id', submissionId)
-		
+
 		try {
 			// Refresh signed URLs for submission images before AI analysis
 			const refreshedImageUrls: string[] = []
-			
+
 			for (const imageUrl of submissionData.submission_images) {
 				// Extract file path from existing URL
 				let filePath: string
-				
+
 				if (imageUrl.includes('/storage/v1/object/sign/')) {
 					// Already a signed URL, extract path
 					const urlParts = imageUrl.split('/storage/v1/object/sign/checks/')
 					filePath = urlParts[1]?.split('?')[0] || ''
 				} else if (imageUrl.includes('/storage/v1/object/public/')) {
-					// Public URL, extract path  
+					// Public URL, extract path
 					const urlParts = imageUrl.split('/storage/v1/object/public/checks/')
 					filePath = urlParts[1] || ''
 				} else {
@@ -196,13 +294,13 @@ export async function POST(
 					refreshedImageUrls.push(imageUrl)
 					continue
 				}
-				
+
 				if (filePath) {
 					// Create fresh signed URL
 					const { data: urlData, error: signError } = await supabase.storage
 						.from('checks')
 						.createSignedUrl(filePath, 86400) // 24 hours
-					
+
 					if (signError) {
 						console.error('Error creating signed URL:', signError)
 						refreshedImageUrls.push(imageUrl) // Keep original
@@ -213,24 +311,24 @@ export async function POST(
 					refreshedImageUrls.push(imageUrl)
 				}
 			}
-			
+
 			// Update submission with fresh URLs
 			await (supabase as any)
 				.from('student_submissions')
 				.update({ submission_images: refreshedImageUrls })
 				.eq('id', submissionId)
-			
+
 			// Prepare reference data with fresh signed URLs for reference images too
 			const variants = checkData.check_variants || []
 			const referenceAnswers = variants.length > 0 ? variants[0].reference_answers : null
 			let referenceImages = variants.length > 0 ? variants[0].reference_image_urls : null
-			
+
 			// Refresh reference image URLs if they exist
 			if (referenceImages && referenceImages.length > 0) {
 				const refreshedRefImages: string[] = []
 				for (const refImageUrl of referenceImages) {
 					let filePath: string
-					
+
 					if (refImageUrl.includes('/storage/v1/object/sign/')) {
 						const urlParts = refImageUrl.split('/storage/v1/object/sign/checks/')
 						filePath = urlParts[1]?.split('?')[0] || ''
@@ -241,12 +339,12 @@ export async function POST(
 						refreshedRefImages.push(refImageUrl)
 						continue
 					}
-					
+
 					if (filePath) {
 						const { data: urlData, error: signError } = await supabase.storage
 							.from('checks')
 							.createSignedUrl(filePath, 86400)
-						
+
 						if (!signError) {
 							refreshedRefImages.push(urlData.signedUrl)
 						} else {
@@ -258,13 +356,13 @@ export async function POST(
 				}
 				referenceImages = refreshedRefImages
 			}
-			
+
 			console.log('Starting AI analysis for submission:', submissionId)
 			console.log('Reference answers available:', !!referenceAnswers)
 			console.log('Reference images available:', !!referenceImages)
 			console.log('Fresh signed URLs created for', refreshedImageUrls.length, 'submission images')
 			console.log('Image URLs being sent to AI:', refreshedImageUrls.map((url, i) => `Image ${i+1}: ${url.substring(0, 100)}...`).join('\n'))
-			
+
 			// Call OpenRouter API with retry mechanism using refreshed URLs
 			const aiResult = await analyzeWithRetry(
 				refreshedImageUrls,
@@ -390,15 +488,13 @@ export async function POST(
 						options: Array<{ text: string; isCorrect: boolean }>
 						points?: number
 						correctAnswer?: string
-						useAIGrading?: boolean
-						strictMatch?: boolean
 					}>
 
 					questions.forEach((question, index) => {
 						const questionKey = (index + 1).toString()
 
-						// For open questions with manual grading
-						if (question.type === 'open' && !question.useAIGrading && question.correctAnswer) {
+						// For open questions - always add correct answer (AI will check with tolerance)
+						if (question.type === 'open' && question.correctAnswer) {
 							correctAnswersMap[questionKey] = question.correctAnswer
 						} else if (question.type !== 'open') {
 							// For closed questions (single/multiple choice)
@@ -411,7 +507,6 @@ export async function POST(
 								correctAnswersMap[questionKey] = correctOptions[0].index.toString()
 							}
 						}
-						// Note: Open questions with AI grading (useAIGrading = true) don't need correct answers here
 					})
 
 					console.log('Loaded correct answers from ChecklyTool test:', correctAnswersMap)
@@ -419,36 +514,45 @@ export async function POST(
 					throw new Error('Тест ChecklyTool не найден или не содержит вопросов')
 				}
 			} else {
-				console.log('[EVALUATE] Regular check, loading answers from variant_answers table')
+				console.log('[EVALUATE] Regular check, loading answers from reference_answers field')
 
 				if (detectedVariant <= checkData.variant_count) {
 				// Find the variant in database
 				const targetVariant = checkData.check_variants.find(v => v.variant_number === detectedVariant)
-				if (targetVariant) {
-					// Load answers from variant_answers table
-					const { data: variantAnswers } = await supabase
-						.from('variant_answers')
-						.select('question_number, correct_answer')
-						.eq('variant_id', targetVariant.id)
+				if (targetVariant && targetVariant.reference_answers) {
+					// Use reference_answers directly from the variant
+					correctAnswersMap = targetVariant.reference_answers
+					console.log('Loaded correct answers for variant', detectedVariant, ':', correctAnswersMap)
+				} else {
+					console.warn('No answers found in reference_answers for variant', detectedVariant)
 
-					if (variantAnswers && variantAnswers.length > 0) {
-						// Convert to map format
-						const answers = variantAnswers as Array<{ question_number: number; correct_answer: string }>
-						const answerMap: Record<string, string> = {}
-						answers.forEach(answer => {
-							answerMap[answer.question_number.toString()] = answer.correct_answer
-						})
-						correctAnswersMap = answerMap
-						console.log('Loaded correct answers for variant', detectedVariant, ':', correctAnswersMap)
-					} else {
-						console.warn('No answers found for variant', detectedVariant)
+					// Fallback: try variant_answers table (old system)
+					if (targetVariant) {
+						const { data: variantAnswers } = await supabase
+							.from('variant_answers')
+							.select('question_number, correct_answer')
+							.eq('variant_id', targetVariant.id)
+
+						if (variantAnswers && variantAnswers.length > 0) {
+							const answers = variantAnswers as Array<{ question_number: number; correct_answer: string }>
+							const answerMap: Record<string, string> = {}
+							answers.forEach(answer => {
+								answerMap[answer.question_number.toString()] = answer.correct_answer
+							})
+							correctAnswersMap = answerMap
+							console.log('Loaded from variant_answers table for variant', detectedVariant, ':', correctAnswersMap)
+						}
 					}
 				}
 			} else {
 				console.warn('Detected variant', detectedVariant, 'exceeds available variants', checkData.variant_count)
 				// If detected variant is higher than available, fallback to variant 1
 				const targetVariant = checkData.check_variants.find(v => v.variant_number === 1)
-				if (targetVariant) {
+				if (targetVariant && targetVariant.reference_answers) {
+					correctAnswersMap = targetVariant.reference_answers
+					console.log('Fallback to variant 1 reference_answers:', correctAnswersMap)
+				} else if (targetVariant) {
+					// Fallback to variant_answers table
 					const { data: variantAnswers } = await supabase
 						.from('variant_answers')
 						.select('question_number, correct_answer')
@@ -461,7 +565,7 @@ export async function POST(
 							answerMap[answer.question_number.toString()] = answer.correct_answer
 						})
 						correctAnswersMap = answerMap
-						console.log('Fallback to variant 1 answers:', correctAnswersMap)
+						console.log('Fallback to variant 1 variant_answers:', correctAnswersMap)
 					}
 				}
 			}
@@ -527,10 +631,23 @@ export async function POST(
 				}
 
 				let isCorrect = false
-				if (correctAnswer && studentAnswer) {
-					// Умное сравнение ответов с поддержкой разных форматов
-					// Используем strictMatch из метаданных вопроса
+
+				// Для открытых вопросов - используем результат проверки ИИ (is_correct)
+				// ИИ проверяет с учетом небольших отклонений от эталона
+				if (metadata.type === 'open' && answerData.is_correct !== undefined && answerData.is_correct !== null) {
+					isCorrect = answerData.is_correct
+					console.log(`Question ${questionKey} is open question, AI result: ${isCorrect ? 'correct' : 'incorrect'}`)
+				} else if (metadata.type === 'open' && correctAnswer && studentAnswer) {
+					// Для открытых вопросов - если ИИ вернул null, используем умную проверку
+					isCorrect = smartCompareOpenAnswer(studentAnswer, correctAnswer)
+					console.log(`Question ${questionKey} is open question, AI returned null - using smart compare: ${isCorrect ? 'correct' : 'incorrect'}`)
+				} else if (correctAnswer && studentAnswer) {
+					// Для закрытых вопросов - точное сравнение
 					isCorrect = compareAnswers(studentAnswer, correctAnswer, metadata.strictMatch || false)
+				} else if (metadata.type === 'open' && answerData.is_correct === null) {
+					// ИИ вернул null для is_correct (нет эталонов) и correctAnswer отсутствует
+					isCorrect = false
+					console.log(`Question ${questionKey} is open question, AI returned null and no reference answer available - marking as incorrect`)
 				}
 
 				if (isCorrect) {
@@ -554,7 +671,7 @@ export async function POST(
 				totalPoints,
 				usePointsSystem
 			})
-			
+
 			// Calculate grade based on check type
 			let grade: number
 			let percentage: number
@@ -596,7 +713,7 @@ export async function POST(
 					grade = gradeResult.grade
 				}
 			}
-			
+
 			// Save evaluation results
 			const evaluationData: any = {
 				submission_id: submissionId,
@@ -635,37 +752,37 @@ export async function POST(
 				.insert(evaluationData)
 				.select()
 				.single()
-			
+
 			if (evaluationError) {
 				console.error('Error saving evaluation results:', evaluationError)
 				throw new Error('Failed to save evaluation results')
 			}
-			
+
 			// Update submission status
 			await (supabase as any)
 				.from('student_submissions')
-				.update({ 
+				.update({
 					status: 'completed',
 					variant_detected: aiResult.variant_detected || 1,
 					processing_completed_at: new Date().toISOString(),
 					student_name: aiResult.student_name || submissionData.student_name
 				})
 				.eq('id', submissionId)
-			
+
 			console.log('Evaluation completed successfully for submission:', submissionId)
-			
+
 			return NextResponse.json({
 				result: evaluationResult as { id: string; [key: string]: unknown },
 				submission_id: submissionId,
 				message: 'Evaluation completed successfully'
 			})
-			
+
 		} catch (evaluationError) {
 			console.error('Evaluation failed for submission:', submissionId)
 			console.error('Error details:', evaluationError)
 			console.error('Error message:', evaluationError instanceof Error ? evaluationError.message : 'No error message')
 			console.error('Error stack:', evaluationError instanceof Error ? evaluationError.stack : 'No stack')
-			
+
 			// Update submission status to failed
 			const updateData: any = {
 				status: 'failed',
@@ -685,20 +802,20 @@ export async function POST(
 				.from('student_submissions')
 				.update(updateData)
 				.eq('id', submissionId)
-			
+
 			return NextResponse.json(
-				{ 
-					error: 'Evaluation failed', 
+				{
+					error: 'Evaluation failed',
 					details: evaluationError instanceof Error ? evaluationError.message : String(evaluationError),
 					submission_id: submissionId
 				},
 				{ status: 500 }
 			)
 		}
-		
+
 	} catch (error) {
 		console.error('[EVALUATE] Top-level error:', error)
-		
+
 		if (error instanceof Error && error.message === 'Unauthorized') {
 			console.log('[EVALUATE] Authentication error')
 			return NextResponse.json(
@@ -706,7 +823,7 @@ export async function POST(
 				{ status: 401 }
 			)
 		}
-		
+
 		console.error('[EVALUATE] Unexpected error during evaluation:', error)
 		return NextResponse.json(
 			{ error: 'Internal server error', details: error instanceof Error ? error.message : String(error) },
@@ -723,7 +840,7 @@ export async function GET(
 	try {
 		const { id: submissionId } = await params
 		const { supabase, userId } = await getAuthenticatedSupabase()
-		
+
 		// Get submission status
 		const { data: submission, error } = await supabase
 			.from('student_submissions')
@@ -737,14 +854,14 @@ export async function GET(
 			.eq('id', submissionId)
 			.eq('checks.user_id', userId)
 			.single()
-		
+
 		if (error || !submission) {
 			return NextResponse.json(
 				{ error: 'Submission not found' },
 				{ status: 404 }
 			)
 		}
-		
+
 		const submissionData = submission as {
 			id: string
 			status: string
@@ -752,14 +869,14 @@ export async function GET(
 			processing_completed_at?: string
 			checks: { user_id: string }
 		}
-		
+
 		return NextResponse.json({
 			submission_id: submissionId,
 			status: submissionData.status,
 			processing_started_at: submissionData.processing_started_at,
 			processing_completed_at: submissionData.processing_completed_at
 		})
-		
+
 	} catch (error) {
 		if (error instanceof Error && error.message === 'Unauthorized') {
 			return NextResponse.json(
@@ -767,7 +884,7 @@ export async function GET(
 				{ status: 401 }
 			)
 		}
-		
+
 		console.error('Unexpected error:', error)
 		return NextResponse.json(
 			{ error: 'Internal server error' },

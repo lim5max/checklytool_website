@@ -234,6 +234,7 @@ export interface AIAnalysisResponse {
   answers?: Record<string, {
     detected_answer: string
     confidence: number
+    is_correct?: boolean // Результат проверки ИИ для открытых вопросов (с учетом небольших отклонений)
   }>
   total_questions?: number
   student_name?: string
@@ -370,11 +371,9 @@ export interface TestQuestion {
   type: 'single' | 'multiple' | 'open'
   options: TestOption[]
   explanation?: string
-  strictMatch?: boolean // Требуется ли точное совпадение ответа (для открытых вопросов)
   hideOptionsInPDF?: boolean // Скрывать варианты ответа в PDF (только вопрос)
   points?: number // Баллы за вопрос (по умолчанию 1)
-  correctAnswer?: string // Правильный ответ для открытого вопроса (если useAIGrading === false)
-  useAIGrading?: boolean // Использовать ИИ для проверки открытого вопроса (по умолчанию false)
+  correctAnswer?: string // Правильный ответ для открытого вопроса - ИИ будет сравнивать с учетом небольших отклонений
 }
 
 export interface TestOption {

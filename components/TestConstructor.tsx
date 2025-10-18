@@ -40,8 +40,6 @@ import {
 	FileText,
 	ChevronDown,
 	Minus,
-	Sparkles,
-	Edit3,
 } from 'lucide-react'
 import type { TestQuestion, TestOption, GeneratedTest, PDFGenerationRequest } from '@/types/check'
 
@@ -170,48 +168,8 @@ export default function TestConstructor({
 		}
 	}, [])
 
-	// Автосохранение с debounce (тихое, без тостов)
-	useEffect(() => {
-		// Автосохраняем только если есть вопросы
-		if (!test.questions.length) return
-
-		// Не автосохраняем если название пустое
-		if (!test.title.trim()) return
-
-		// Фильтруем только валидные вопросы для автосохранения
-		const validQuestions = test.questions.filter(q => {
-			// Проверяем текст вопроса
-			if (!q.question.trim()) return false
-
-			// Для вопросов с вариантами проверяем варианты
-			if (q.type !== 'open') {
-				// Проверяем что есть хотя бы один заполненный вариант
-				if (q.options.length === 0) return false
-				if (q.options.every(opt => !opt.text.trim())) return false
-
-				// Проверяем что хотя бы один вариант отмечен как правильный
-				if (!q.options.some(opt => opt.isCorrect)) return false
-			}
-
-			return true
-		})
-
-		// Автосохраняем только если есть хотя бы один валидный вопрос
-		if (validQuestions.length === 0) return
-
-		const timer = setTimeout(() => {
-			if (onSave) {
-				// Сохраняем только валидные вопросы
-				const testToSave = {
-					...test,
-					questions: validQuestions
-				}
-				onSave(testToSave, true) // true = silent autosave
-			}
-		}, 2000)
-
-		return () => clearTimeout(timer)
-	}, [test, onSave])
+	// АВТОСОХРАНЕНИЕ ОТКЛЮЧЕНО по просьбе пользователя
+	// Пользователь сохраняет тест вручную через кнопку "Сохранить"
 
 	// Скрывать нижний бар при открытии клавиатуры на мобильных
 	useEffect(() => {
@@ -267,7 +225,7 @@ export default function TestConstructor({
 			}
 
 			// Валидация для открытых вопросов с ручной проверкой
-			if (questionTouched && q.type === 'open' && !q.useAIGrading) {
+			if (questionTouched && q.type === 'open') {
 				if (!q.correctAnswer || !q.correctAnswer.trim()) {
 					errors[`q${idx}_answer`] = 'Укажите правильный ответ'
 				}
@@ -288,11 +246,10 @@ export default function TestConstructor({
 				{ id: `opt_${Date.now()}_1`, text: '', isCorrect: false }
 			],
 			explanation: '',
-			strictMatch: false,
 			hideOptionsInPDF: false,
 			points: 1,
 			correctAnswer: '',
-			useAIGrading: false // По умолчанию ручная проверка
+			// useAIGrading удалено - теперь всегда используется ИИ с допуском отклонений
 		}
 
 		setTest(prev => ({
@@ -442,7 +399,7 @@ export default function TestConstructor({
 			}
 
 			// Валидация для открытых вопросов с ручной проверкой
-			if (question.type === 'open' && !question.useAIGrading) {
+			if (question.type === 'open') {
 				if (!question.correctAnswer || !question.correctAnswer.trim()) {
 					toast.error(`Вопрос ${index + 1}: Укажите правильный ответ для проверки`)
 					return false
@@ -491,7 +448,7 @@ export default function TestConstructor({
 			}
 
 			// Для открытых вопросов с ручной проверкой
-			if (question.type === 'open' && !question.useAIGrading) {
+			if (question.type === 'open') {
 				if (!question.correctAnswer || !question.correctAnswer.trim()) {
 					errors.push(`Вопрос ${questionNum}: Укажите правильный ответ`)
 				}
@@ -890,55 +847,7 @@ function PointsSelector({ value, onChange, min = 1, max = 100 }: PointsSelectorP
 	)
 }
 
-// Компонент выбора режима проверки (Ручная vs ИИ) в стиле Airbnb
-interface GradingModeSelectorProps {
-	value: boolean // true = AI grading, false = manual grading
-	onChange: (useAI: boolean) => void
-}
-
-function GradingModeSelector({ value, onChange }: GradingModeSelectorProps) {
-	return (
-		<div className="relative w-full">
-			<div className="flex items-stretch bg-slate-100 rounded-xl p-1.5 gap-1.5">
-				<button
-					type="button"
-					onClick={() => onChange(false)}
-					className={`
-						relative flex-1 px-4 py-3 rounded-lg font-semibold text-sm
-						transition-all duration-200 ease-out
-						${!value
-							? 'bg-white text-slate-900 shadow-sm'
-							: 'text-slate-600 hover:text-slate-900'
-						}
-					`}
-				>
-					<div className="flex items-center justify-center gap-2">
-						<Edit3 className="w-4 h-4" />
-						<span>Ручная проверка</span>
-					</div>
-				</button>
-
-				<button
-					type="button"
-					onClick={() => onChange(true)}
-					className={`
-						relative flex-1 px-4 py-3 rounded-lg font-semibold text-sm
-						transition-all duration-200 ease-out
-						${value
-							? 'bg-gradient-to-r from-violet-500 to-purple-500 text-white shadow-sm'
-							: 'text-slate-600 hover:text-slate-900'
-						}
-					`}
-				>
-					<div className="flex items-center justify-center gap-2">
-						<Sparkles className="w-4 h-4" />
-						<span>С помощью ИИ</span>
-					</div>
-				</button>
-			</div>
-		</div>
-	)
-}
+// GradingModeSelector удален - теперь ИИ всегда проверяет открытые вопросы с допуском отклонений
 
 // Компонент выбора типа вопроса
 interface QuestionTypeSelectorProps {
@@ -1232,80 +1141,36 @@ function QuestionCard({
 							{question.type === 'open' && (
 								<div className="space-y-4">
 									<div>
-										<label className="block text-sm font-semibold text-slate-700 mb-3">
-											Режим проверки ответа
+										<label className="block text-sm font-semibold text-slate-700 mb-2">
+											Правильный ответ
 										</label>
-										<GradingModeSelector
-											value={question.useAIGrading || false}
-											onChange={(useAI) => onUpdate({ useAIGrading: useAI })}
+										<Textarea
+											value={question.correctAnswer || ''}
+											onChange={(e) => onUpdate({ correctAnswer: e.target.value })}
+											onBlur={onMarkTouched}
+											placeholder="Введите правильный ответ для сравнения..."
+											className={`min-h-[80px] resize-none ${validationErrors[`q${questionIndex}_answer`] ? 'border-red-400 bg-red-50' : ''}`}
+											rows={2}
 										/>
+										{validationErrors[`q${questionIndex}_answer`] && (
+											<p className="text-sm text-red-600 mt-1">
+												{validationErrors[`q${questionIndex}_answer`]}
+											</p>
+										)}
 									</div>
 
-									{/* Ручная проверка - поле для правильного ответа */}
-									{!question.useAIGrading && (
-										<motion.div
-											initial={{ opacity: 0, height: 0 }}
-											animate={{ opacity: 1, height: 'auto' }}
-											exit={{ opacity: 0, height: 0 }}
-											transition={{ duration: 0.2 }}
-											className="space-y-3"
-										>
-											<div>
-												<label className="block text-sm font-semibold text-slate-700 mb-2">
-													Правильный ответ
-												</label>
-												<Textarea
-													value={question.correctAnswer || ''}
-													onChange={(e) => onUpdate({ correctAnswer: e.target.value })}
-													onBlur={onMarkTouched}
-													placeholder="Введите правильный ответ для сравнения..."
-													className={`min-h-[80px] resize-none ${validationErrors[`q${questionIndex}_answer`] ? 'border-red-400 bg-red-50' : ''}`}
-													rows={2}
-												/>
-												{validationErrors[`q${questionIndex}_answer`] && (
-													<p className="text-sm text-red-600 mt-1">
-														{validationErrors[`q${questionIndex}_answer`]}
-													</p>
-												)}
-											</div>
-
-											<div className="flex items-center justify-between bg-white rounded-xl p-3 border-2 border-slate-200">
-												<div>
-													<p className="font-semibold text-sm text-slate-800">
-														Точное совпадение
-													</p>
-													<p className="text-xs text-slate-600 mt-1">
-														Учитывать регистр и пунктуацию
-													</p>
-												</div>
-												<Switch
-													checked={question.strictMatch || false}
-													onCheckedChange={(checked) => onUpdate({ strictMatch: checked })}
-												/>
-											</div>
-										</motion.div>
-									)}
-
-									{/* ИИ проверка - предупреждение */}
-									{question.useAIGrading && (
-										<motion.div
-											initial={{ opacity: 0, height: 0 }}
-											animate={{ opacity: 1, height: 'auto' }}
-											exit={{ opacity: 0, height: 0 }}
-											transition={{ duration: 0.2 }}
-											className="flex items-start gap-3 bg-gradient-to-br from-amber-50 to-orange-50 border-2 border-amber-200 rounded-xl p-4"
-										>
-											<AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-											<div>
-												<p className="font-semibold text-sm text-amber-900 mb-1">
-													Проверка с помощью ИИ
-												</p>
-												<p className="text-xs text-amber-800 leading-relaxed">
-													ИИ может ошибаться в сложных вопросах. Рекомендуем проверять результаты вручную для критически важных заданий.
-												</p>
-											</div>
-										</motion.div>
-									)}
+									{/* Информация о проверке ИИ */}
+									<div className="flex items-start gap-3 bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-4">
+										<AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+										<div>
+											<p className="font-semibold text-sm text-blue-900 mb-1">
+												Проверка с помощью ИИ
+											</p>
+											<p className="text-xs text-blue-800 leading-relaxed">
+												ИИ сравнит ответ ученика с вашим эталоном, допуская небольшие отклонения в формулировке, орфографии и полноте ответа.
+											</p>
+										</div>
+									</div>
 								</div>
 							)}
 

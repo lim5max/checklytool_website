@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
 import { z } from 'zod'
+import type { TestQuestion } from '@/types/check'
 
 // Схема валидации для сохранения теста
 const SaveTestSchema = z.object({
@@ -19,11 +20,9 @@ const SaveTestSchema = z.object({
 			isCorrect: z.boolean()
 		})),
 		explanation: z.string().optional(),
-		strictMatch: z.boolean().optional(),
 		hideOptionsInPDF: z.boolean().optional(),
 		points: z.number().optional(),
 		correctAnswer: z.string().optional(),
-		useAIGrading: z.boolean().optional()
 	}).refine((q) => {
 		// Для открытых вопросов варианты необязательны
 		if (q.type === 'open') return true
@@ -48,7 +47,20 @@ export async function POST(req: Request) {
 
 		// Валидируем данные
 		const body = await req.json()
+
+		// ОТЛАДКА: логируем первый открытый вопрос ДО валидации
+		const openQuestionBefore = body.questions?.find((q: TestQuestion) => q.type === 'open')
+		if (openQuestionBefore) {
+			console.log('API: Открытый вопрос ДО валидации:', JSON.stringify(openQuestionBefore, null, 2))
+		}
+
 		const validatedData = SaveTestSchema.parse(body)
+
+		// ОТЛАДКА: логируем первый открытый вопрос ПОСЛЕ валидации
+		const openQuestionAfter = validatedData.questions?.find((q: TestQuestion) => q.type === 'open')
+		if (openQuestionAfter) {
+			console.log('API: Открытый вопрос ПОСЛЕ валидации:', JSON.stringify(openQuestionAfter, null, 2))
+		}
 
 		const supabase = await createClient()
 		console.log('API: Supabase client created')

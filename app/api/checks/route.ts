@@ -195,7 +195,8 @@ export async function POST(request: NextRequest) {
 
 			console.log('[API] Grading criteria created successfully')
 		}
-		
+
+
 		// Create default variants if needed
 		console.log('[API] Creating variants...')
 		const variantsData = Array.from({ length: validatedData.variant_count }, (_, i) => ({
@@ -203,18 +204,18 @@ export async function POST(request: NextRequest) {
 			variant_number: i + 1,
 			name: `Вариант ${i + 1}`, // Fix: Set correct name for each variant
 			reference_answers: {},
-			reference_image_urls: []
-		}))
-		
+			reference_image_urls: [],
+			}))
+
 		const { error: variantsError } = await (supabase as any)
 			.from('check_variants')
 			.insert(variantsData)
-		
+
 		if (variantsError) {
 			console.error('[API] Error creating variants:', variantsError)
 			// Don't fail the entire operation, variants can be created later
 		}
-		
+
 		console.log('[API] Check creation completed successfully')
 
 		// If variant data was provided, update the variants with actual answers

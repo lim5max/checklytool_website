@@ -7,7 +7,7 @@ import TestConstructor from '@/components/TestConstructor'
 import { ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
-import type { GeneratedTest } from '@/types/check'
+import type { GeneratedTest, TestQuestion } from '@/types/check'
 
 interface TestPageProps {
 	params: Promise<{ id: string }>
@@ -61,6 +61,17 @@ export default function TestPage({ params }: TestPageProps) {
 				}
 
 				const data = await response.json()
+
+				// ОТЛАДКА: логируем загруженный тест
+				console.log('=== ЗАГРУЗКА ТЕСТА ===')
+				console.log('ID теста:', data.test.id)
+				console.log('Название:', data.test.title)
+				const openQuestions = data.test.questions?.filter((q: TestQuestion) => q.type === 'open') || []
+				console.log('Открытых вопросов:', openQuestions.length)
+				if (openQuestions.length > 0) {
+					console.log('Первый открытый вопрос при загрузке:', openQuestions[0])
+				}
+
 				setExistingTest(data.test)
 			} catch (error) {
 				console.error('Error loading test:', error)
@@ -77,6 +88,9 @@ export default function TestPage({ params }: TestPageProps) {
 	const [isSaving, setIsSaving] = useState(false)
 
 	const handleSaveTest = async (test: GeneratedTest, silent = false) => {
+		// ОТЛАДКА: Трассируем откуда вызывается сохранение
+		console.trace('handleSaveTest вызван! silent:', silent)
+
 		if (isSaving) {
 			if (!silent) {
 				toast.warning('Сохранение уже выполняется, подождите...')
@@ -93,6 +107,15 @@ export default function TestPage({ params }: TestPageProps) {
 		if (test.questions.length === 0) {
 			if (!silent) toast.error('Нельзя сохранить пустой тест')
 			return
+		}
+
+		// ОТЛАДКА: логируем открытые вопросы перед сохранением
+		const openQuestions = test.questions.filter(q => q.type === 'open')
+		console.log('=== СОХРАНЕНИЕ ТЕСТА ===')
+		console.log('Всего вопросов:', test.questions.length)
+		console.log('Открытых вопросов:', openQuestions.length)
+		if (openQuestions.length > 0) {
+			console.log('Первый открытый вопрос:', openQuestions[0])
 		}
 
 		try {
@@ -131,6 +154,15 @@ export default function TestPage({ params }: TestPageProps) {
 						description: `Создано ${result.test.questionsCount} вопросов`,
 						duration: 4000
 					})
+
+					// Перезагружаем тест из базы данных, чтобы убедиться что данные сохранились
+					console.log('=== ПЕРЕЗАГРУЗКА ПОСЛЕ СОХРАНЕНИЯ ===')
+					const reloadResponse = await fetch(`/api/tests/${testId}`)
+					if (reloadResponse.ok) {
+						const reloadData = await reloadResponse.json()
+						setExistingTest(reloadData.test)
+						console.log('Тест перезагружен из БД')
+					}
 				}
 			} else {
 				console.error('Server error:', result.error)
