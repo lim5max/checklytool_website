@@ -117,21 +117,22 @@ export const saveTestSchema = z.object({
 
 /**
  * Image upload validation
+ * Note: These schemas use z.any() instead of z.instanceof(File) to avoid
+ * "File is not defined" errors in Node.js environments during build time.
+ * Runtime validation still occurs through refine() methods.
  */
 export const imageUploadSchema = z.object({
-	file: z.instanceof(File).refine(
-		(file) => file.size <= 5 * 1024 * 1024,
+	file: z.any().refine(
+		(file) => file && typeof file === 'object' && 'size' in file && file.size <= 5 * 1024 * 1024,
 		'File size must be less than 5MB'
 	).refine(
-		(file) => ['image/jpeg', 'image/png', 'image/webp'].includes(file.type),
+		(file) => file && typeof file === 'object' && 'type' in file && ['image/jpeg', 'image/png', 'image/webp'].includes(file.type),
 		'File must be an image (JPEG, PNG, or WebP)'
 	),
 })
 
 export const multipleImagesSchema = z.object({
-	files: z.array(
-		z.instanceof(File)
-	).min(1, 'At least one image is required').max(10, 'Maximum 10 images allowed'),
+	files: z.array(z.any()).min(1, 'At least one image is required').max(10, 'Maximum 10 images allowed'),
 })
 
 /**

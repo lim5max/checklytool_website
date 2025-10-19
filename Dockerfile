@@ -1,7 +1,7 @@
-FROM node:18-alpine AS deps
+FROM node:20-alpine AS deps
 # Используем российские зеркала для Alpine Linux
-RUN echo "https://mirror.yandex.ru/mirrors/alpine/v3.18/main" > /etc/apk/repositories && \
-    echo "https://mirror.yandex.ru/mirrors/alpine/v3.18/community" >> /etc/apk/repositories && \
+RUN echo "https://mirror.yandex.ru/mirrors/alpine/v3.20/main" > /etc/apk/repositories && \
+    echo "https://mirror.yandex.ru/mirrors/alpine/v3.20/community" >> /etc/apk/repositories && \
     apk update && apk add --no-cache libc6-compat
 WORKDIR /app
 
@@ -11,7 +11,7 @@ RUN npm config set registry https://registry.npmjs.org/ && \
     npm config set cache /tmp/.npm && \
     npm ci --only=production --prefer-offline
 
-FROM node:18-alpine AS builder
+FROM node:20-alpine AS builder
 WORKDIR /app
 COPY package.json package-lock.json ./
 # Устанавливаем ВСЕ зависимости для сборки (включая dev)
@@ -24,7 +24,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 
 RUN npm run build
 
-FROM node:18-alpine AS runner
+FROM node:20-alpine AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
