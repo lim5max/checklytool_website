@@ -1,8 +1,12 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest, NextResponse } from 'next/server'
 import { getAuthenticatedSupabase } from '@/lib/database'
 import { analyzeWithRetry, calculateGrade, calculateEssayGrade } from '@/lib/openrouter'
 import { deductCheckCredits } from '@/lib/subscription'
+import { withErrorHandler, ValidationError, DatabaseError, type ApiHandler } from '@/lib/api/error-handler'
+import { submissionIdSchema } from '@/lib/validations/api'
+
+// Увеличиваем таймаут до 60 секунд для обработки больших изображений
+export const maxDuration = 60
 
 interface RouteParams {
 	params: Promise<{ id: string }>
@@ -161,14 +165,21 @@ function smartCompareOpenAnswer(studentAnswer: string, correctAnswer: string): b
 }
 
 // POST /api/submissions/[id]/evaluate - Evaluate submission using AI
-export async function POST(
+const postHandler = async (
 	request: NextRequest,
-	{ params }: RouteParams
-) {
+	context: { params: Promise<Record<string, string>> }
+) => {
 	console.log('[EVALUATE] Starting evaluation request...')
-	try {
-		const { id: submissionId } = await params
-		console.log('[EVALUATE] Submission ID:', submissionId)
+	const resolvedParams = await context.params
+
+	// Validate submission ID
+	const validation = submissionIdSchema.safeParse(resolvedParams)
+	if (!validation.success) {
+		throw new ValidationError('Invalid submission ID')
+	}
+
+	const submissionId = validation.data.id
+	console.log('[EVALUATE] Submission ID:', submissionId)
 
 		const { supabase, userId } = await getAuthenticatedSupabase()
 		console.log('[EVALUATE] Authentication successful, userId:', userId)
@@ -245,7 +256,7 @@ export async function POST(
 			userId,
 			checkId: checkData.id,
 			submissionId,
-			checkType: (checkData.check_type || 'test') as 'test' | 'essay' | 'written_work',
+			checkType: (checkData.check_type || 'test') as 'test' | 'essay',
 			pagesCount,
 		})
 
@@ -265,13 +276,17 @@ export async function POST(
 		console.log('[EVALUATE] Credits deducted:', deductResult.creditsDeducted, 'New balance:', deductResult.newBalance)
 
 		// Update status to processing
-		await (supabase as any)
+		const updateResult = await supabase
 			.from('student_submissions')
 			.update({
 				status: 'processing',
 				processing_started_at: new Date().toISOString()
 			})
 			.eq('id', submissionId)
+
+		if (updateResult.error) {
+			throw new DatabaseError('Failed to update submission status', updateResult.error)
+		}
 
 		try {
 			// Refresh signed URLs for submission images before AI analysis
@@ -313,7 +328,7 @@ export async function POST(
 			}
 
 			// Update submission with fresh URLs
-			await (supabase as any)
+			await supabase
 				.from('student_submissions')
 				.update({ submission_images: refreshedImageUrls })
 				.eq('id', submissionId)
@@ -370,7 +385,7 @@ export async function POST(
 				referenceImages || null,
 				checkData.variant_count,
 				3, // maxRetries
-				(checkData.check_type || 'test') as 'test' | 'essay' | 'written_work',
+				(checkData.check_type || 'test') as 'test' | 'essay',
 				checkData.essay_grading_criteria || undefined
 			)
 
@@ -381,20 +396,20 @@ export async function POST(
 				console.log('[EVALUATE] Inappropriate content detected by AI')
 
 				// Обновляем статус submission как failed
-				const updateData: any = {
+				const updateData = {
 					status: 'failed',
 					processing_completed_at: new Date().toISOString(),
 					error_message: aiResult.error_message || 'Загружены неподходящие изображения',
-					error_details: {
+					error_details: JSON.parse(JSON.stringify({
 						error_type: 'inappropriate_content',
 						content_type_detected: aiResult.content_type_detected,
 						ai_response: aiResult
-					}
+					}))
 				}
 
 				console.log('[EVALUATE] Updating submission with failed status')
 
-				await (supabase as any)
+				await supabase
 					.from('student_submissions')
 					.update(updateData)
 					.eq('id', submissionId)
@@ -418,20 +433,20 @@ export async function POST(
 				console.log('[EVALUATE] Unsupported test format detected by AI')
 
 				// Обновляем статус submission как failed
-				const updateData: any = {
+				const updateData = {
 					status: 'failed',
 					processing_completed_at: new Date().toISOString(),
 					error_message: aiResult.error_message || 'Неподдерживаемый формат теста',
-					error_details: {
+					error_details: JSON.parse(JSON.stringify({
 						error_type: 'unsupported_test_format',
 						content_type_detected: aiResult.content_type_detected,
 						ai_response: aiResult
-					}
+					}))
 				}
 
 				console.log('[EVALUATE] Updating submission with failed status')
 
-				await (supabase as any)
+				await supabase
 					.from('student_submissions')
 					.update(updateData)
 					.eq('id', submissionId)
@@ -487,16 +502,13 @@ export async function POST(
 						type: 'single' | 'multiple' | 'open'
 						options: Array<{ text: string; isCorrect: boolean }>
 						points?: number
-						correctAnswer?: string
 					}>
 
 					questions.forEach((question, index) => {
 						const questionKey = (index + 1).toString()
 
-						// For open questions - always add correct answer (AI will check with tolerance)
-						if (question.type === 'open' && question.correctAnswer) {
-							correctAnswersMap[questionKey] = question.correctAnswer
-						} else if (question.type !== 'open') {
+						// For closed questions (single/multiple choice)
+						if (question.type !== 'open') {
 							// For closed questions (single/multiple choice)
 							const correctOptions = question.options
 								.map((option, optIndex) => ({ option, index: optIndex + 1 }))
@@ -578,7 +590,7 @@ export async function POST(
 			const detailedAnswers: Record<string, {
 				given: string
 				correct: string | null
-				is_correct: boolean
+				
 				confidence?: number
 				points?: number
 			}> = {}
@@ -632,22 +644,17 @@ export async function POST(
 
 				let isCorrect = false
 
-				// Для открытых вопросов - используем результат проверки ИИ (is_correct)
-				// ИИ проверяет с учетом небольших отклонений от эталона
-				if (metadata.type === 'open' && answerData.is_correct !== undefined && answerData.is_correct !== null) {
-					isCorrect = answerData.is_correct
-					console.log(`Question ${questionKey} is open question, AI result: ${isCorrect ? 'correct' : 'incorrect'}`)
-				} else if (metadata.type === 'open' && correctAnswer && studentAnswer) {
-					// Для открытых вопросов - если ИИ вернул null, используем умную проверку
+				// Определяем правильность ответа
+				if (metadata.type === 'open' && correctAnswer && studentAnswer) {
+					// Для открытых вопросов используем умную проверку
 					isCorrect = smartCompareOpenAnswer(studentAnswer, correctAnswer)
-					console.log(`Question ${questionKey} is open question, AI returned null - using smart compare: ${isCorrect ? 'correct' : 'incorrect'}`)
+					console.log(`Question ${questionKey} is open question - using smart compare: ${isCorrect ? 'correct' : 'incorrect'}`)
 				} else if (correctAnswer && studentAnswer) {
 					// Для закрытых вопросов - точное сравнение
 					isCorrect = compareAnswers(studentAnswer, correctAnswer, metadata.strictMatch || false)
-				} else if (metadata.type === 'open' && answerData.is_correct === null) {
-					// ИИ вернул null для is_correct (нет эталонов) и correctAnswer отсутствует
-					isCorrect = false
-					console.log(`Question ${questionKey} is open question, AI returned null and no reference answer available - marking as incorrect`)
+					console.log(`Question ${questionKey} comparison result: ${isCorrect ? 'correct' : 'incorrect'}`)
+				} else {
+					console.log(`Question ${questionKey} - no reference answer or empty student answer`)
 				}
 
 				if (isCorrect) {
@@ -658,7 +665,6 @@ export async function POST(
 				detailedAnswers[questionKey] = {
 					given: studentAnswer,
 					correct: correctAnswer || null,
-					is_correct: isCorrect,
 					confidence: answerData.confidence,
 					points: usePointsSystem ? points : undefined
 				}
@@ -715,7 +721,7 @@ export async function POST(
 			}
 
 			// Save evaluation results
-			const evaluationData: any = {
+			const evaluationData = {
 				submission_id: submissionId,
 				total_questions: aiResult.total_questions,
 				// For essays, correct_answers should represent grade quality, not comparison
@@ -724,30 +730,20 @@ export async function POST(
 				percentage_score: percentage,
 				final_grade: grade,
 				variant_used: aiResult.variant_detected || 1,
-				detailed_answers: detailedAnswers,
-				ai_response: aiResult,
-				confidence_score: aiResult.confidence_score
+				detailed_answers: JSON.parse(JSON.stringify(detailedAnswers)),
+				ai_response: JSON.parse(JSON.stringify(aiResult)),
+				confidence_score: aiResult.confidence_score,
+				...(checkData.check_type === 'essay' && aiResult.essay_analysis ? {
+					essay_metadata: JSON.parse(JSON.stringify({
+						structure: aiResult.essay_analysis.structure,
+						logic: aiResult.essay_analysis.logic,
+						errors: aiResult.essay_analysis.errors,
+						content_quality: aiResult.essay_analysis.content_quality
+					}))
+				} : {})
 			}
 
-			// Add essay metadata if this is an essay
-			if (checkData.check_type === 'essay' && aiResult.essay_analysis) {
-				evaluationData.essay_metadata = {
-					structure: aiResult.essay_analysis.structure,
-					logic: aiResult.essay_analysis.logic,
-					errors: aiResult.essay_analysis.errors,
-					content_quality: aiResult.essay_analysis.content_quality
-				}
-			}
-
-			// Add written work feedback if this is a written work
-			if (checkData.check_type === 'written_work' && aiResult.written_work_analysis) {
-				evaluationData.written_work_feedback = {
-					brief_summary: aiResult.written_work_analysis.brief_summary,
-					errors_found: aiResult.written_work_analysis.errors_found
-				}
-			}
-
-			const { data: evaluationResult, error: evaluationError } = await (supabase as any)
+			const { data: evaluationResult, error: evaluationError } = await supabase
 				.from('evaluation_results')
 				.insert(evaluationData)
 				.select()
@@ -759,7 +755,7 @@ export async function POST(
 			}
 
 			// Update submission status
-			await (supabase as any)
+			await supabase
 				.from('student_submissions')
 				.update({
 					status: 'completed',
@@ -784,21 +780,21 @@ export async function POST(
 			console.error('Error stack:', evaluationError instanceof Error ? evaluationError.stack : 'No stack')
 
 			// Update submission status to failed
-			const updateData: any = {
+			const updateData = {
 				status: 'failed',
 				processing_completed_at: new Date().toISOString(),
 				error_message: evaluationError instanceof Error ? evaluationError.message : 'Произошла ошибка при обработке работы',
-				error_details: {
+				error_details: JSON.parse(JSON.stringify({
 					error_type: 'processing_error',
 					error_message: evaluationError instanceof Error ? evaluationError.message : String(evaluationError),
 					error_stack: evaluationError instanceof Error ? evaluationError.stack : undefined,
 					timestamp: new Date().toISOString()
-				}
+				}))
 			}
 
 			console.log('[EVALUATE] Updating submission with failed status (error case)')
 
-			await (supabase as any)
+			await supabase
 				.from('student_submissions')
 				.update(updateData)
 				.eq('id', submissionId)
@@ -812,24 +808,6 @@ export async function POST(
 				{ status: 500 }
 			)
 		}
-
-	} catch (error) {
-		console.error('[EVALUATE] Top-level error:', error)
-
-		if (error instanceof Error && error.message === 'Unauthorized') {
-			console.log('[EVALUATE] Authentication error')
-			return NextResponse.json(
-				{ error: 'Authentication required' },
-				{ status: 401 }
-			)
-		}
-
-		console.error('[EVALUATE] Unexpected error during evaluation:', error)
-		return NextResponse.json(
-			{ error: 'Internal server error', details: error instanceof Error ? error.message : String(error) },
-			{ status: 500 }
-		)
-	}
 }
 
 // GET /api/submissions/[id]/evaluate - Check evaluation status
@@ -885,10 +863,20 @@ export async function GET(
 			)
 		}
 
-		console.error('Unexpected error:', error)
+		const resolvedParams = await params
+		console.error('Unexpected error in evaluate route:', error)
+		console.error('Error details:', {
+			message: error instanceof Error ? error.message : 'Unknown error',
+			stack: error instanceof Error ? error.stack : undefined,
+			submissionId: resolvedParams.id
+		})
+
 		return NextResponse.json(
-			{ error: 'Internal server error' },
+			{ error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' },
 			{ status: 500 }
 		)
 	}
 }
+
+// Export wrapped handlers
+export const POST = withErrorHandler<unknown>(postHandler as ApiHandler<unknown>)
