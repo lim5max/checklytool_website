@@ -1,4 +1,10 @@
+# Robots.txt для ChecklyTool
 User-agent: *
 Allow: /
 
+# Запретить индексацию API и внутренних страниц
+Disallow: /api/
+Disallow: /dashboard/
+
+# Карта сайта
 Sitemap: https://checklytool.com/sitemap.xml

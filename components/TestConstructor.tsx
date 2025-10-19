@@ -40,9 +40,11 @@ import {
 	FileText,
 	ChevronDown,
 	Minus,
+	Paperclip,
+	X as XIcon,
 } from 'lucide-react'
 import type { TestQuestion, TestOption, GeneratedTest, PDFGenerationRequest } from '@/types/check'
-import { QuestionImageUpload } from '@/components/QuestionImageUpload'
+import Image from 'next/image'
 
 interface TestConstructorProps {
 	initialTest?: GeneratedTest
@@ -210,8 +212,9 @@ export default function TestConstructor({
 			// Валидируем только если вопрос был затронут
 			const questionTouched = touchedFields.has(`question_${q.id}`)
 
-			if (questionTouched && !q.question.trim()) {
-				errors[`q${idx}_text`] = 'Укажите текст вопроса'
+			// Текст вопроса необязателен, если загружено изображение
+			if (questionTouched && !q.question.trim() && !q.imageUrl) {
+				errors[`q${idx}_text`] = 'Укажите текст вопроса или загрузите изображение'
 			}
 
 			if (questionTouched && q.type !== 'open') {
@@ -1077,22 +1080,96 @@ function QuestionCard({
 								<label className="block text-sm font-semibold text-slate-700 mb-2">
 									Текст вопроса
 								</label>
-								<Textarea
-									value={question.question}
-									onChange={(e) => onUpdate({ question: e.target.value })}
-									onBlur={onMarkTouched}
-									placeholder="Введите текст вопроса"
-									className={`min-h-[100px] resize-none ${validationErrors[`q${questionIndex}_text`] ? 'border-red-400 bg-red-50' : ''}`}
-									rows={3}
-								/>
-							</div>
+								<div className="relative">
+									<Textarea
+										value={question.question}
+										onChange={(e) => onUpdate({ question: e.target.value })}
+										onBlur={onMarkTouched}
+										placeholder="Введите текст вопроса"
+										className={`min-h-[100px] resize-none pr-12 ${validationErrors[`q${questionIndex}_text`] ? 'border-red-400 bg-red-50' : ''}`}
+										rows={3}
+									/>
+									<input
+										type="file"
+										accept="image/jpeg,image/png,image/webp,image/heic"
+										className="hidden"
+										id={`image-upload-${question.id}`}
+										onChange={async (e) => {
+											const file = e.target.files?.[0]
+											if (!file) return
 
-							{/* Изображение к вопросу */}
-							<QuestionImageUpload
-								imageUrl={question.imageUrl}
-								onImageChange={(url) => onUpdate({ imageUrl: url })}
-								questionId={question.id}
-							/>
+											// Валидация типа и размера
+											if (!file.type.startsWith('image/')) {
+												toast.error('Можно загружать только изображения')
+												return
+											}
+											if (file.size > 5 * 1024 * 1024) {
+												toast.error('Размер файла не должен превышать 5 МБ')
+												return
+											}
+
+											// Загрузка изображения через API
+											const formData = new FormData()
+											formData.append('file', file)
+											formData.append('questionId', question.id)
+
+											try {
+												const response = await fetch('/api/upload-question-image', {
+													method: 'POST',
+													body: formData
+												})
+
+												if (!response.ok) {
+													throw new Error('Ошибка загрузки')
+												}
+
+												const { url } = await response.json()
+												onUpdate({ imageUrl: url })
+												toast.success('Изображение загружено!')
+											} catch (error) {
+												console.error('Upload error:', error)
+												toast.error('Ошибка загрузки изображения')
+											}
+
+											// Очищаем input
+											e.target.value = ''
+										}}
+									/>
+									<button
+										type="button"
+										onClick={() => {
+											const input = document.getElementById(`image-upload-${question.id}`) as HTMLInputElement
+											input?.click()
+										}}
+										className="absolute right-3 top-3 p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-lg transition-colors"
+										title="Прикрепить изображение"
+									>
+										<Paperclip className="w-5 h-5" />
+									</button>
+								</div>
+
+								{/* Preview загруженного изображения */}
+								{question.imageUrl && (
+									<div className="mt-3 relative inline-block">
+										<div className="relative w-32 h-32 rounded-lg overflow-hidden border-2 border-slate-200 bg-slate-50">
+											<Image
+												src={question.imageUrl}
+												alt="Изображение к вопросу"
+												fill
+												className="object-cover"
+											/>
+										</div>
+										<button
+											type="button"
+											onClick={() => onUpdate({ imageUrl: undefined })}
+											className="absolute -top-2 -right-2 p-1.5 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors shadow-lg"
+											title="Удалить изображение"
+										>
+											<XIcon className="w-4 h-4" />
+										</button>
+									</div>
+								)}
+							</div>
 
 							{/* Настройки вопроса */}
 							<div className="grid grid-cols-1 md:grid-cols-2 gap-4">

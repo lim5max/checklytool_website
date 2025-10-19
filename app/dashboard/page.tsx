@@ -8,6 +8,8 @@ import { toast } from 'sonner'
 import { SegmentControl } from '@/components/dashboard/segment-control'
 import { CreateActionSheet } from '@/components/dashboard/create-action-sheet'
 import { UnifiedListItem } from '@/components/dashboard/unified-list-item'
+import { EmptyDashboard } from '@/components/dashboard/empty-dashboard'
+import { DashboardStats } from '@/components/dashboard/dashboard-stats'
 
 // Типы
 interface Check {
@@ -91,7 +93,9 @@ export default function DashboardPageNew() {
 
 			if (statsRes.ok) {
 				const statsData = await statsRes.json()
-				setStats(statsData)
+				console.log('[DASHBOARD] Received stats data:', statsData)
+				// API возвращает { stats: { total_checks, ... } }
+				setStats(statsData.stats || statsData)
 			}
 		} catch (error) {
 			console.error('Error loading dashboard:', error)
@@ -216,59 +220,7 @@ export default function DashboardPageNew() {
 
 	// Пустое состояние - онбординг
 	if (!isLoading && unifiedItems.length === 0) {
-		return (
-			<div className="p-4 space-y-6">
-				{/* Онбординг */}
-				<div className="bg-slate-50 rounded-[42px] p-7 space-y-5">
-					<h1 className="font-nunito font-black text-[28px] text-slate-800">
-						Начните с простых шагов
-					</h1>
-
-					<div className="space-y-4">
-						<div>
-							<p className="font-inter font-semibold text-base text-slate-800 mb-1">
-								1. Создайте проверку или тест
-							</p>
-							<p className="font-inter font-medium text-sm text-slate-600">
-								Выберите тип работы с учениками
-							</p>
-						</div>
-
-						<div>
-							<p className="font-inter font-semibold text-base text-slate-800 mb-1">
-								2. Загрузите материалы
-							</p>
-							<p className="font-inter font-medium text-sm text-slate-600">
-								Добавьте задания или фото работ
-							</p>
-						</div>
-
-						<div>
-							<p className="font-inter font-semibold text-base text-slate-800 mb-1">
-								3. Получите результаты
-							</p>
-							<p className="font-inter font-medium text-sm text-slate-600">
-								AI проверит и оценит за вас
-							</p>
-						</div>
-					</div>
-				</div>
-
-				{/* FAB Button */}
-				<button
-					onClick={() => setIsSheetOpen(true)}
-					className="w-full bg-[#096ff5] hover:bg-blue-600 transition-all active:scale-[0.98] text-white font-inter font-medium text-lg rounded-full h-[72px] flex items-center justify-center gap-2 shadow-lg"
-				>
-					<Plus className="w-6 h-6" />
-					Создать
-				</button>
-
-				<CreateActionSheet
-					isOpen={isSheetOpen}
-					onClose={() => setIsSheetOpen(false)}
-				/>
-			</div>
-		)
+		return <EmptyDashboard onCreateTest={() => setIsSheetOpen(true)} />
 	}
 
 	// Загрузка
@@ -306,31 +258,11 @@ export default function DashboardPageNew() {
 		<div className="p-4 space-y-6">
 			{/* Статистика */}
 			{stats && (
-				<div className="bg-slate-50 rounded-[42px] p-7">
-					<h2 className="font-nunito font-black text-[28px] text-slate-800 mb-3">
-						Ваша статистика
-					</h2>
-					<div className="flex items-center gap-6">
-						<div>
-							<p className="text-slate-600 text-sm font-medium mb-1">
-								Проверено учеников
-							</p>
-							<p className="font-nunito font-black text-4xl text-[#096ff5]">
-								{stats.total_submissions}
-							</p>
-						</div>
-						{stats.total_tests > 0 && (
-							<div>
-								<p className="text-slate-600 text-sm font-medium mb-1">
-									Создано тестов
-								</p>
-								<p className="font-nunito font-black text-4xl text-green-600">
-									{stats.total_tests}
-								</p>
-							</div>
-						)}
-					</div>
-				</div>
+				<DashboardStats
+					totalSubmissions={stats.total_submissions}
+					totalChecks={stats.total_checks}
+					totalTests={stats.total_tests}
+				/>
 			)}
 
 			{/* FAB Button */}

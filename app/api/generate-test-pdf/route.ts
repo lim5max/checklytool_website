@@ -129,27 +129,29 @@ function generateTestHTML({
         }
 
         .student-info {
-          display: flex;
-          justify-content: space-between;
-          margin-bottom: 12mm;
-          font-size: 11pt;
+          position: absolute;
+          top: 15mm;
+          right: 15mm;
+          text-align: right;
+          font-size: 9pt;
         }
 
         .student-field {
           border-bottom: 1px solid #000;
-          min-width: 120mm;
+          min-width: 45mm;
           padding-bottom: 1mm;
+          display: inline-block;
         }
 
         .question {
-          margin-bottom: 8mm;
+          margin-bottom: 5mm;
           break-inside: avoid;
         }
 
         .question-header {
           display: flex;
           align-items: baseline;
-          margin-bottom: 4mm;
+          margin-bottom: 2mm;
         }
 
         .question-number {
@@ -166,30 +168,36 @@ function generateTestHTML({
 
         .options {
           margin-left: 8mm;
-          margin-bottom: 6mm;
+          margin-bottom: 3mm;
         }
 
         .option {
-          margin-bottom: 2mm;
+          margin-bottom: 1mm;
           font-size: 11pt;
         }
 
         .answer-section {
           margin-left: 8mm;
-          margin-top: 4mm;
+          margin-top: 2mm;
         }
 
         .answer-label {
           font-weight: bold;
-          margin-right: 4mm;
+          margin-right: 2mm;
         }
 
         .answer-box {
-          border: 2px solid #000;
-          width: calc(100% - 20mm);
-          height: 8mm;
-          display: inline-block;
+          display: inline-flex;
+          gap: 0mm;
           vertical-align: middle;
+        }
+
+        .answer-cell {
+          border: 1px solid #000;
+          width: 6mm;
+          height: 6mm;
+          display: inline-block;
+          box-sizing: border-box;
         }
 
         .question-image {
@@ -212,11 +220,11 @@ function generateTestHTML({
       <div class="test-info">Вариант: ${variant} ${testIdentifier}</div>
 
       <div class="student-info">
-        <div>
+        <div style="margin-bottom: 2mm;">
           ФИО: <span class="student-field"></span>
         </div>
         <div>
-          Класс: <span class="student-field" style="min-width: 30mm;"></span>
+          Класс: <span class="student-field" style="min-width: 20mm;"></span>
         </div>
       </div>
 
@@ -244,7 +252,9 @@ function generateTestHTML({
 
           <div class="answer-section">
             <span class="answer-label">Ответ</span>
-            <span class="answer-box"></span>
+            <span class="answer-box">
+              ${Array.from({ length: 10 }).map(() => '<span class="answer-cell"></span>').join('')}
+            </span>
           </div>
         </div>
       `).join('')}

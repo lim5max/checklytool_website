@@ -265,8 +265,10 @@ ${essayCriteria?.map(c => `${c.grade} баллов — ${c.description}`).join('
 		throw new Error('OPENROUTER_API_KEY is required')
 	}
 
-	// Используем Gemini 2.5 Flash для всех типов проверки
-	const model = 'google/gemini-2.5-flash'
+	// Для тестов используем GPT-5 Image Mini, для сочинений - Gemini 2.5 Flash
+	const model = checkType === 'test'
+		? 'openai/gpt-5-image-mini'
+		: 'google/gemini-2.5-flash'
 
 	const requestBody: OpenRouterRequest = {
 		model,

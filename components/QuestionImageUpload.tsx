@@ -6,7 +6,6 @@ import { Card } from '@/components/ui/card'
 import { Upload, X, Camera, Loader2, AlertCircle, Image as ImageIcon } from 'lucide-react'
 import { toast } from 'sonner'
 import Image from 'next/image'
-import { createClient } from '@/lib/supabase/client'
 
 interface QuestionImageUploadProps {
 	imageUrl?: string
@@ -18,31 +17,24 @@ interface QuestionImageUploadProps {
 const MAX_SIZE = 5 * 1024 * 1024 // 5MB
 
 async function uploadToSupabase(file: File, questionId: string): Promise<string> {
-	const supabase = createClient()
+	// Создаем FormData для отправки на сервер
+	const formData = new FormData()
+	formData.append('file', file)
+	formData.append('questionId', questionId)
 
-	// Генерируем уникальное имя файла
-	const fileExt = file.name.split('.').pop()
-	const fileName = `question_${questionId}_${Date.now()}.${fileExt}`
-	const filePath = `test-questions/${fileName}`
+	// Отправляем запрос на API route
+	const response = await fetch('/api/upload-question-image', {
+		method: 'POST',
+		body: formData
+	})
 
-	// Загружаем файл в Supabase Storage
-	const { error } = await supabase.storage
-		.from('submissions')
-		.upload(filePath, file, {
-			cacheControl: '3600',
-			upsert: false
-		})
-
-	if (error) {
-		throw new Error(`Ошибка загрузки: ${error.message}`)
+	if (!response.ok) {
+		const error = await response.json()
+		throw new Error(error.error || 'Ошибка загрузки изображения')
 	}
 
-	// Получаем публичный URL
-	const { data: { publicUrl } } = supabase.storage
-		.from('submissions')
-		.getPublicUrl(filePath)
-
-	return publicUrl
+	const { url } = await response.json()
+	return url
 }
 
 export function QuestionImageUpload({
@@ -95,18 +87,11 @@ export function QuestionImageUpload({
 		event.target.value = ''
 	}
 
-	const handleRemove = useCallback(async () => {
+	const handleRemove = useCallback(() => {
 		if (!imageUrl) return
 
-		// Удаляем из Supabase Storage (опционально)
-		try {
-			const supabase = createClient()
-			const filePath = imageUrl.split('/').slice(-2).join('/')
-			await supabase.storage.from('submissions').remove([filePath])
-		} catch (error) {
-			console.error('Error removing file:', error)
-		}
-
+		// Просто удаляем URL из состояния
+		// Физическое удаление файла из Storage можно добавить позже через API route
 		onImageChange(undefined)
 		setUploadError(undefined)
 		toast.success('Изображение удалено')
