@@ -216,6 +216,13 @@ export default function Header({
                           О проекте
                         </Link>
                         <Link
+                          href="/blog"
+                          className="block text-xl font-nunito font-bold text-gray-700 hover:text-gray-900 transition-colors"
+                          onClick={closeMenu}
+                        >
+                          Блог
+                        </Link>
+                        <Link
                           href="/auth/login"
                           className="block text-xl font-nunito font-bold text-blue-600 hover:text-blue-700 transition-colors"
                           onClick={closeMenu}
@@ -283,6 +290,12 @@ export default function Header({
                 className="text-slate-700 hover:text-slate-900 transition-colors font-medium"
               >
                 О проекте
+              </Link>
+              <Link
+                href="/blog"
+                className="text-slate-700 hover:text-slate-900 transition-colors font-medium"
+              >
+                Блог
               </Link>
             </nav>
           )}

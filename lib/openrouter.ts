@@ -8,7 +8,7 @@ export async function analyzeStudentWork(
 	referenceAnswers: Record<string, string> | null,
 	referenceImages: string[] | null,
 	variantCount: number,
-	checkType: 'test' | 'essay' | 'written_work' = 'test',
+	checkType: 'test' | 'essay' = 'test',
 	essayCriteria?: Array<{ grade: number; title: string; description: string; min_errors?: number; max_errors?: number }>
 ): Promise<AIAnalysisResponse> {
 
@@ -16,90 +16,7 @@ export async function analyzeStudentWork(
 	const analysisId = `analysis_${Date.now()}_${Math.random().toString(36).substring(7)}`
 
 	// Specialized prompts for each check type
-	const systemPrompt = checkType === 'written_work' ? `Ты - преподаватель, проверяешь контрольные работы учеников.
-
-ВАЖНО: Проверь, подходят ли изображения:
-- ✅ ПОДХОДЯЩИЙ КОНТЕНТ: тетради с решениями задач, письменные работы, рукописные вычисления
-- ❌ НЕПОДХОДЯЩИЙ КОНТЕНТ: фотографии лиц людей, селфи, случайные предметы, пустые страницы
-
-Если изображения содержат НЕПОДХОДЯЩИЙ КОНТЕНТ, верни JSON с ошибкой:
-{
-  "error": "inappropriate_content",
-  "error_message": "Загружены неподходящие изображения. Пожалуйста, сфотографируйте именно контрольную работу ученика - тетрадь с решениями, письменные ответы.",
-  "content_type_detected": "лица людей/селфи/прочее"
-}
-
-Если изображения ПОДХОДЯЩИЕ, проанализируй работу и верни JSON:
-{
-  "variant_detected": 1,
-  "confidence_score": 0.95,
-  "student_name": null,
-  "total_questions": 5,
-  "answers": {
-    "1": {"detected_answer": "правильный ответ или решение", "confidence": 0.9, "is_correct": true},
-    "2": {"detected_answer": "ответ студента", "confidence": 0.85, "is_correct": false}
-  },
-  "written_work_analysis": {
-    "brief_summary": "Ученик хорошо справился с работой, но допустил ошибки в вычислениях в задачах 2 и 4",
-    "errors_found": [
-      {"question_number": 2, "error_description": "Ошибка в вычислении: перепутал знак при переносе через равно"},
-      {"question_number": 4, "error_description": "Не учтено условие задачи о границах области определения"}
-    ]
-  },
-  "additional_notes": ""
-}
-
-Требования к анализу контрольных работ:
-- Ученик ДОЛЖЕН писать слово ОТВЕТ: на каждой странице или для каждой задачи
-- Найди все слова ОТВЕТ и извлеки написанные после них значения
-- Проанализируй решение каждой задачи на наличие ошибок
-
-ПРОВЕРКА ПРАВИЛЬНОСТИ ОТВЕТОВ (is_correct):
-Эталонные ответы: ${referenceAnswers ? JSON.stringify(referenceAnswers) : 'эталоны не предоставлены - оценивай логику решения'}
-
-Для каждой задачи используй ДВУХЭТАПНУЮ ПРОВЕРКУ:
-
-ЭТАП 1: ПРОВЕРКА РЕШЕНИЯ
-  - Если ученик НЕ показал решение (только написал ответ) → is_correct = false
-  - Если решение есть, но есть грубые ошибки в логике → is_correct = false
-  - Если решение есть и логически верное → переходи к ЭТАПУ 2
-
-ЭТАП 2: ПРОВЕРКА ОТВЕТА С ДОПУСКОМ ОТКЛОНЕНИЙ
-  Определи тип ответа и примени правила:
-
-  ДЛЯ ЧИСЛОВЫХ ОТВЕТОВ:
-    ✓ ПРАВИЛЬНО если:
-      - Числовые значения совпадают (допустимы различия: пробелы, запятая vs точка)
-      - Все математические знаки совпадают (минус, плюс очень важны!)
-    ✗ НЕПРАВИЛЬНО если:
-      - Хотя бы одна цифра отличается
-      - Пропущен или неверен знак числа
-
-  ДЛЯ ФОРМУЛ И ВЫРАЖЕНИЙ:
-    ✓ ПРАВИЛЬНО если:
-      - Формулы математически эквивалентны
-      - Допустимы различия в записи: (x+2) = x+2, разный порядок слагаемых
-    ✗ НЕПРАВИЛЬНО если:
-      - Формулы математически различны
-
-  ДЛЯ ТЕКСТОВЫХ ОТВЕТОВ:
-    ✓ ПРАВИЛЬНО если:
-      - Смысл совпадает (допустимы разные формулировки)
-      - Присутствуют ключевые термины из эталона (минимум 50%)
-    ✗ НЕПРАВИЛЬНО если:
-      - Смысл отличается
-      - Поверхностный ответ (менее 30% длины эталона)
-
-- В brief_summary дай краткую общую оценку работы (1-2 предложения)
-- В errors_found перечисли конкретные ошибки с указанием номера вопроса
-- Если ошибок нет, укажи пустой массив в errors_found
-
-КРИТИЧЕСКИ ВАЖНО - ТРЕБОВАНИЯ К JSON:
-- Верни ТОЛЬКО валидный JSON без лишнего текста
-- В строковых значениях НЕ используй двойные кавычки - замени их на одинарные
-- В строковых значениях НЕ используй символы скобок () [] {} - замени их на тире или запятые
-- Все описания ошибок пиши БЕЗ двойных кавычек и скобок
-- Пример: вместо "ошибка: формула (x+2)" пиши "ошибка формула x+2"` : checkType === 'essay' ? `Ты - преподаватель русского языка, проверяешь сочинения учеников.
+	const systemPrompt = checkType === 'essay' ? `Ты - преподаватель русского языка, проверяешь сочинения учеников.
 
 ВАЖНО: Проверь, подходят ли изображения:
 - ✅ ПОДХОДЯЩИЙ КОНТЕНТ: письменные сочинения, рукописный текст, тетради с работами
@@ -214,8 +131,8 @@ ${essayCriteria?.map(c => `${c.grade} баллов — ${c.description}`).join('
   "checkly_tool_test": true,
   "test_identifier": "#CT123ABC",
   "answers": {
-    "1": {"detected_answer": "ответ1", "confidence": 0.9, "is_correct": true},
-    "2": {"detected_answer": "ответ2", "confidence": 0.8, "is_correct": false}
+    "1": {"detected_answer": "ответ1", "confidence": 0.9},
+    "2": {"detected_answer": "ответ2", "confidence": 0.8}
   },
   "additional_notes": ""
 }
@@ -238,9 +155,6 @@ ${essayCriteria?.map(c => `${c.grade} баллов — ${c.description}`).join('
   * Пример: если ученик написал зачеркнутый 2 и затем 3 - ответ только 3
   * Зачеркивание = ученик передумал = не учитывать этот символ
 - Если текст в поле "Ответ" плохо видно, укажи низкую confidence
-- КРИТИЧЕСКИ ВАЖНО - ВСЕГДА добавляй поле "is_correct" для КАЖДОГО ответа:
-  * Если эталонные ответы НЕ предоставлены - верни "is_correct": null
-  * Если эталонные ответы предоставлены - сравни и верни true/false
 
 КРИТИЧЕСКИ ВАЖНО - ТРЕБОВАНИЯ К JSON:
 - Верни ТОЛЬКО валидный JSON без лишнего текста
@@ -254,7 +168,6 @@ ${essayCriteria?.map(c => `${c.grade} баллов — ${c.description}`).join('
 	// Инструкции для проверки открытых вопросов (для всех типов тестов)
 	if (checkType === 'test') {
 		userPrompt += `\n\nПРОВЕРКА ОТВЕТОВ:`
-		userPrompt += `\n- ВСЕГДА добавляй поле "is_correct" для КАЖДОГО ответа`
 
 		if (referenceAnswers && Object.keys(referenceAnswers).length > 0) {
 			userPrompt += `\n- Для ОТКРЫТЫХ вопросов используй ДВУХЭТАПНУЮ ПРОВЕРКУ:`
@@ -304,10 +217,6 @@ ${essayCriteria?.map(c => `${c.grade} баллов — ${c.description}`).join('
 			userPrompt += `\n    • В случае сомнения - проверь, понял ли ученик СУТЬ вопроса`
 
 			userPrompt += `\n- Для ЗАКРЫТЫХ вопросов (с вариантами) - точное совпадение с эталоном`
-		} else {
-			userPrompt += `\n- Эталонные ответы НЕ предоставлены`
-			userPrompt += `\n- Для ВСЕХ ответов верни "is_correct": null`
-			userPrompt += `\n- Система сама проверит ответы после загрузки эталонов`
 		}
 	}
 
@@ -373,17 +282,17 @@ ${essayCriteria?.map(c => `${c.grade} баллов — ${c.description}`).join('
 	try {
 		console.log('Sending request to OpenRouter with', submissionImages.length, 'images')
 		console.log('Image URLs:', submissionImages)
-		
+
 		// Validate images
 		if (submissionImages.length === 0) {
 			throw new Error('No images provided for analysis')
 		}
-		
+
 		if (submissionImages.length > 5) {
 			console.warn('Too many images, taking first 5')
 			submissionImages = submissionImages.slice(0, 5)
 		}
-		
+
 		const response = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
 			method: 'POST',
 			headers: {
@@ -407,7 +316,7 @@ ${essayCriteria?.map(c => `${c.grade} баллов — ${c.description}`).join('
 
 		const data: OpenRouterResponse = await response.json()
 		console.log('OpenRouter response received:', JSON.stringify(data, null, 2))
-		
+
 		if (!data.choices?.[0]?.message?.content) {
 			console.error('Invalid OpenRouter response structure:', data)
 			throw new Error('Invalid response from OpenRouter API - no content')
@@ -520,23 +429,23 @@ ${essayCriteria?.map(c => `${c.grade} баллов — ${c.description}`).join('
 		if (!parsedResponse) {
 			throw new Error('AI response is empty or invalid')
 		}
-		
+
 		// Проверяем, есть ли ошибка неподходящего контента
 		if (parsedResponse.error === 'inappropriate_content') {
 			console.log('[AI] Inappropriate content detected:', parsedResponse.error_message)
 			// Возвращаем ошибку как часть ответа, а не выбрасываем исключение
 			return parsedResponse
 		}
-		
+
 		// Для успешного анализа проверяем обязательные поля
 		if (!parsedResponse.answers) {
 			throw new Error('AI response missing "answers" field')
 		}
-		
+
 		if (parsedResponse.total_questions === undefined || parsedResponse.total_questions === null) {
 			throw new Error('AI response missing "total_questions" field')
 		}
-		
+
 		// Additional validation for meaningful values
 		if (parsedResponse.total_questions < 0) {
 			throw new Error('AI response has invalid "total_questions" value')
@@ -557,7 +466,7 @@ export async function analyzeWithRetry(
 	referenceImages: string[] | null,
 	variantCount: number,
 	maxRetries: number = 3,
-	checkType: 'test' | 'essay' | 'written_work' = 'test',
+	checkType: 'test' | 'essay' = 'test',
 	essayCriteria?: Array<{ grade: number; title: string; description: string; min_errors?: number; max_errors?: number }>
 ): Promise<AIAnalysisResponse> {
 	let lastError: Error

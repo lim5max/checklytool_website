@@ -30,7 +30,7 @@ export interface Check {
   subject?: string
   class_level?: string
   total_questions?: number
-  check_type: 'test' | 'essay' | 'written_work'
+  check_type: 'test' | 'essay'
   created_at: string
   updated_at: string
 }
@@ -96,7 +96,6 @@ export interface EvaluationResult {
   detailed_answers?: Record<string, {
     given: string
     correct: string
-    is_correct: boolean
   }>
   ai_response?: OpenRouterResponse // Full OpenRouter response
   confidence_score?: number
@@ -123,13 +122,6 @@ export interface EvaluationResult {
     }
     content_quality: string
     final_grade: number
-  }
-  written_work_feedback?: {
-    brief_summary: string // Краткая выжимка ошибок
-    errors_found: Array<{
-      question_number: number
-      error_description: string
-    }>
   }
   created_at: string
 }
@@ -234,7 +226,6 @@ export interface AIAnalysisResponse {
   answers?: Record<string, {
     detected_answer: string
     confidence: number
-    is_correct?: boolean // Результат проверки ИИ для открытых вопросов (с учетом небольших отклонений)
   }>
   total_questions?: number
   student_name?: string
@@ -270,14 +261,6 @@ export interface AIAnalysisResponse {
     final_grade: number
   }
 
-  // Дополнительные данные для контрольных работ
-  written_work_analysis?: {
-    brief_summary: string
-    errors_found: Array<{
-      question_number: number
-      error_description: string
-    }>
-  }
 
   // Ошибки
   error?: 'inappropriate_content' | 'unsupported_test_format'
@@ -373,7 +356,7 @@ export interface TestQuestion {
   explanation?: string
   hideOptionsInPDF?: boolean // Скрывать варианты ответа в PDF (только вопрос)
   points?: number // Баллы за вопрос (по умолчанию 1)
-  correctAnswer?: string // Правильный ответ для открытого вопроса - ИИ будет сравнивать с учетом небольших отклонений
+  imageUrl?: string // URL изображения для вопроса
 }
 
 export interface TestOption {

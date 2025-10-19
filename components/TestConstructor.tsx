@@ -42,6 +42,7 @@ import {
 	Minus,
 } from 'lucide-react'
 import type { TestQuestion, TestOption, GeneratedTest, PDFGenerationRequest } from '@/types/check'
+import { QuestionImageUpload } from '@/components/QuestionImageUpload'
 
 interface TestConstructorProps {
 	initialTest?: GeneratedTest
@@ -226,9 +227,7 @@ export default function TestConstructor({
 
 			// Валидация для открытых вопросов с ручной проверкой
 			if (questionTouched && q.type === 'open') {
-				if (!q.correctAnswer || !q.correctAnswer.trim()) {
-					errors[`q${idx}_answer`] = 'Укажите правильный ответ'
-				}
+				errors[`q${idx}_answer`] = 'Укажите правильный ответ'
 			}
 		})
 
@@ -248,7 +247,7 @@ export default function TestConstructor({
 			explanation: '',
 			hideOptionsInPDF: false,
 			points: 1,
-			correctAnswer: '',
+			
 			// useAIGrading удалено - теперь всегда используется ИИ с допуском отклонений
 		}
 
@@ -400,10 +399,8 @@ export default function TestConstructor({
 
 			// Валидация для открытых вопросов с ручной проверкой
 			if (question.type === 'open') {
-				if (!question.correctAnswer || !question.correctAnswer.trim()) {
-					toast.error(`Вопрос ${index + 1}: Укажите правильный ответ для проверки`)
-					return false
-				}
+				toast.error(`Вопрос ${index + 1}: Укажите правильный ответ для проверки`)
+				return false
 			}
 		}
 
@@ -449,9 +446,7 @@ export default function TestConstructor({
 
 			// Для открытых вопросов с ручной проверкой
 			if (question.type === 'open') {
-				if (!question.correctAnswer || !question.correctAnswer.trim()) {
-					errors.push(`Вопрос ${questionNum}: Укажите правильный ответ`)
-				}
+				errors.push(`Вопрос ${questionNum}: Укажите правильный ответ`)
 			}
 		})
 
@@ -1092,6 +1087,13 @@ function QuestionCard({
 								/>
 							</div>
 
+							{/* Изображение к вопросу */}
+							<QuestionImageUpload
+								imageUrl={question.imageUrl}
+								onImageChange={(url) => onUpdate({ imageUrl: url })}
+								questionId={question.id}
+							/>
+
 							{/* Настройки вопроса */}
 							<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 								<div>
@@ -1137,42 +1139,6 @@ function QuestionCard({
 								</div>
 							)}
 
-							{/* Режим проверки для открытых вопросов */}
-							{question.type === 'open' && (
-								<div className="space-y-4">
-									<div>
-										<label className="block text-sm font-semibold text-slate-700 mb-2">
-											Правильный ответ
-										</label>
-										<Textarea
-											value={question.correctAnswer || ''}
-											onChange={(e) => onUpdate({ correctAnswer: e.target.value })}
-											onBlur={onMarkTouched}
-											placeholder="Введите правильный ответ для сравнения..."
-											className={`min-h-[80px] resize-none ${validationErrors[`q${questionIndex}_answer`] ? 'border-red-400 bg-red-50' : ''}`}
-											rows={2}
-										/>
-										{validationErrors[`q${questionIndex}_answer`] && (
-											<p className="text-sm text-red-600 mt-1">
-												{validationErrors[`q${questionIndex}_answer`]}
-											</p>
-										)}
-									</div>
-
-									{/* Информация о проверке ИИ */}
-									<div className="flex items-start gap-3 bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-4">
-										<AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-										<div>
-											<p className="font-semibold text-sm text-blue-900 mb-1">
-												Проверка с помощью ИИ
-											</p>
-											<p className="text-xs text-blue-800 leading-relaxed">
-												ИИ сравнит ответ ученика с вашим эталоном, допуская небольшие отклонения в формулировке, орфографии и полноте ответа.
-											</p>
-										</div>
-									</div>
-								</div>
-							)}
 
 							{/* Варианты ответов */}
 							{question.type !== 'open' && (

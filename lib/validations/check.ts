@@ -23,7 +23,7 @@ export const createCheckSchema = z.object({
 		.min(1, 'Должен быть минимум 1 вопрос')
 		.max(100, 'Максимум 100 вопросов')
 		.optional(),
-	check_type: z.enum(['test', 'essay', 'written_work']).optional(),
+	check_type: z.enum(['test', 'essay']).optional(),
 	grading_criteria: z.array(z.object({
 		grade: z.union([z.literal(2), z.literal(3), z.literal(4), z.literal(5)]),
 		min_percentage: z.number()
@@ -50,10 +50,10 @@ export const createCheckSchema = z.object({
 	if (data.check_type === 'essay') {
 		return hasEssayGradingCriteria && !hasGradingCriteria
 	} else {
-		// For tests, written_work, or when check_type is not specified, require grading_criteria
+		// For tests or when check_type is not specified, require grading_criteria
 		return hasGradingCriteria && !hasEssayGradingCriteria
 	}
-}, 'Для сочинений используйте essay_grading_criteria, для тестов и контрольных - grading_criteria')
+}, 'Для сочинений используйте essay_grading_criteria, для тестов - grading_criteria')
 
 export type CreateCheckFormData = z.infer<typeof createCheckSchema>
 

@@ -103,10 +103,6 @@ export default function CheckCreationPage() {
       if (workType.id === 'essay') {
         newData.checkingMethod = 'ai'
         newData.answers = []
-      } else if (workType.id === 'written_work') {
-        // For written_work, always use AI method and ensure we have default answers
-        newData.checkingMethod = 'ai'
-        newData.answers = prev.answers.length === 0 ? DEFAULT_ANSWERS : prev.answers
       } else {
         // For tests, ensure we have default answers for manual checking
         newData.answers = prev.answers.length === 0 ? DEFAULT_ANSWERS : prev.answers

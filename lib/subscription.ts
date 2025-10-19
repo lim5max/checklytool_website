@@ -9,7 +9,7 @@ interface DeductCreditsParams {
 	userId: string
 	checkId: string
 	submissionId: string
-	checkType: 'test' | 'essay' | 'written_work'
+	checkType: 'test' | 'essay'
 	pagesCount: number
 }
 
@@ -117,13 +117,11 @@ export async function getUserBalance(userId: string): Promise<number> {
 }
 
 export function calculateCreditsNeeded(
-	checkType: 'test' | 'essay' | 'written_work',
+	checkType: 'test' | 'essay',
 	pagesCount: number
 ): number {
 	if (checkType === 'test') {
 		return pagesCount * 0.5
-	} else if (checkType === 'written_work') {
-		return pagesCount * 2.0 // Контрольные работы 2x
 	} else {
 		return pagesCount * 1.0 // Сочинения 1x
 	}

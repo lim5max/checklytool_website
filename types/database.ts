@@ -245,7 +245,7 @@ export interface Database {
           percentage_score: number
           final_grade: number
           variant_used: number | null
-          detailed_answers: Record<string, { given: string; correct: string; is_correct: boolean }> | null
+          detailed_answers: Record<string, { given: string; correct: string }> | null
           ai_response: Record<string, unknown> | null
           confidence_score: number | null
           created_at: string
@@ -259,7 +259,7 @@ export interface Database {
           percentage_score: number
           final_grade: number
           variant_used?: number | null
-          detailed_answers?: Record<string, { given: string; correct: string; is_correct: boolean }> | null
+          detailed_answers?: Record<string, { given: string; correct: string }> | null
           ai_response?: Record<string, unknown> | null
           confidence_score?: number | null
           created_at?: string
@@ -273,7 +273,7 @@ export interface Database {
           percentage_score?: number
           final_grade?: number
           variant_used?: number | null
-          detailed_answers?: Record<string, { given: string; correct: string; is_correct: boolean }> | null
+          detailed_answers?: Record<string, { given: string; correct: string }> | null
           ai_response?: Record<string, unknown> | null
           confidence_score?: number | null
         }

@@ -105,10 +105,9 @@ export default function CheckCreationStep2({
   ])
   const [showValidation, setShowValidation] = useState(false)
   
-  // Check if current work type is essay, test, or written work
+  // Check if current work type is essay or test
   const isEssay = workType?.id === 'essay'
   const isTest = workType?.id === 'test'
-  const isWrittenWork = workType?.id === 'written_work'
   
   // Sync internal state with props
   useEffect(() => {
@@ -265,22 +264,6 @@ export default function CheckCreationStep2({
 
   // Validation function to check if answers are filled
   const validateAnswers = (): { isValid: boolean; error?: string } => {
-    // For written_work WITHOUT selected test, answers are required
-    // If test is selected, answers come from the test itself
-    if (isWrittenWork && !selectedTest) {
-      for (const variant of variants) {
-        for (const answer of variant.answers) {
-          if (!answer.value || answer.value.trim() === "") {
-            return {
-              isValid: false,
-              error: `Пожалуйста, заполните все правильные ответы в ${variant.name.toLowerCase()}`
-            }
-          }
-        }
-      }
-      return { isValid: true }
-    }
-
     // For AI method, no validation needed for answers
     if (checkingMethod === "ai") {
       return { isValid: true }
@@ -325,10 +308,9 @@ export default function CheckCreationStep2({
     }
 
     // Update parent state with current variants data
-    // For written_work WITHOUT selected test, save answers
-    // For other types, only save if manual method
+    // Only save if manual method
     // If test is selected, don't save answers (they come from the test)
-    if (onAnswersChange && ((isWrittenWork && !selectedTest) || checkingMethod === "manual")) {
+    if (onAnswersChange && checkingMethod === "manual") {
       // Flatten all answers from all variants for the parent component
       const allAnswers = variants.flatMap(variant => variant.answers)
       onAnswersChange(allAnswers)
@@ -741,8 +723,8 @@ export default function CheckCreationStep2({
           </div>
         </div>
 
-        {/* Checking Method Section - Hide when test is selected, essay is selected, or written_work is selected */}
-        {!selectedTest && !isEssay && !isWrittenWork && (
+        {/* Checking Method Section - Hide when test is selected or essay is selected */}
+        {!selectedTest && !isEssay && (
           <div className="content-stretch flex flex-col gap-2 items-start justify-start relative shrink-0 w-full">
           <div className="content-stretch flex gap-2.5 items-center justify-start relative shrink-0 w-full">
             <div className="font-nunito font-extrabold leading-[0] relative shrink-0 text-[20px] text-nowrap text-slate-700">
@@ -827,34 +809,9 @@ export default function CheckCreationStep2({
           </div>
         )}
 
-        {/* Written Work Information Section - Show only for written_work WITHOUT selected test */}
-        {isWrittenWork && !selectedTest && (
-          <div className="bg-amber-50 border border-amber-200 rounded-[32px] p-6 w-full">
-            <div className="flex items-start gap-4">
-              <div className="w-8 h-8 bg-amber-500 rounded-full flex items-center justify-center text-white font-bold text-sm">
-                ✎
-              </div>
-              <div className="flex-1 space-y-3">
-                <h3 className="font-nunito font-bold text-lg text-amber-900">
-                  Эталонные ответы для проверки
-                </h3>
-                <div className="text-amber-800 space-y-2">
-                  <p>
-                    Укажите <strong>правильные ответы</strong> к заданиям вашей контрольной работы - они будут эталоном для проверки работ учеников.
-                  </p>
-                  <div className="text-sm space-y-1">
-                    <p>✓ ИИ сравнит ответы учеников с вашими эталонными</p>
-                    <p>✓ ИИ проанализирует ход решения и найдет ошибки</p>
-                    <p>✓ Оценка будет выставлена автоматически</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
 
-        {/* Variant Section - Show for written_work WITHOUT selected test OR when manual method is selected (and not a test) */}
-        {((isWrittenWork && !selectedTest) || (checkingMethod === "manual" && !isTest)) && (
+        {/* Variant Section - Show when manual method is selected (and not a test) */}
+        {(checkingMethod === "manual" && !isTest) && (
           <>
             {/* All Variants */}
             {variants.map((variant) => (

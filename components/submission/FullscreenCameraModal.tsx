@@ -155,8 +155,8 @@ export function FullscreenCameraModal({
       // Draw current frame to canvas
       context.drawImage(video, 0, 0, canvas.width, canvas.height)
 
-      // Convert to data URL
-      const dataUrl = canvas.toDataURL('image/jpeg', 0.9)
+      // Convert to data URL with optimal quality (0.85 = хороший баланс качества и размера)
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.85)
       onCapture(dataUrl)
 
       // Mark that we have photos in this session

@@ -106,7 +106,7 @@ export default function CheckCreationStep1({
   const isFormValid = () => {
     if (!selectedWorkTypeId) return false
 
-    if (selectedWorkTypeId === 'test' || selectedWorkTypeId === 'written_work') {
+    if (selectedWorkTypeId === 'test') {
       // Если выбран готовый тест, проверяем что тест действительно выбран
       if (checkMethod === 'existing') {
         return selectedTest !== null
@@ -123,7 +123,7 @@ export default function CheckCreationStep1({
   }
 
   const handleContinue = () => {
-    if ((selectedWorkTypeId === 'test' || selectedWorkTypeId === 'written_work') && checkMethod === 'existing' && !selectedTest) {
+    if (selectedWorkTypeId === 'test' && checkMethod === 'existing' && !selectedTest) {
       // Если еще не выбран тест, показываем модалку
       setShowTestModal(true)
       loadSavedTests()
@@ -163,7 +163,7 @@ export default function CheckCreationStep1({
               </div>
             </div>
 
-            {/* Work Type Grid - 2 в первом ряду, 1 во втором */}
+            {/* Work Type Grid - 2 карточки рядом */}
             <div className="gap-2 grid grid-cols-2 auto-rows-[160px] relative shrink-0 w-full">
               {workTypes.map((workType) => (
                 <button
@@ -174,8 +174,7 @@ export default function CheckCreationStep1({
                     selectedWorkTypeId === workType.id
                       ? "bg-[#096ff5]"
                       : "bg-slate-100",
-                    hasFieldError(validationErrors, 'workType') && "ring-2 ring-red-500",
-                    workType.id === 'essay' && "col-span-2"
+                    hasFieldError(validationErrors, 'workType') && "ring-2 ring-red-500"
                   )}
                 >
                   <div className={cn(
@@ -197,7 +196,7 @@ export default function CheckCreationStep1({
           </div>
 
           {/* Информационный блок для выбранного теста */}
-          {(selectedWorkTypeId === 'test' || selectedWorkTypeId === 'written_work') && selectedTest && (
+          {selectedWorkTypeId === 'test' && selectedTest && (
             <div className="bg-green-50 border border-green-200 rounded-[32px] p-6 w-full">
               <div className="flex items-start gap-4">
                 <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center text-white font-bold text-sm">
@@ -217,7 +216,7 @@ export default function CheckCreationStep1({
                     </div>
                   </div>
                   <div className="text-sm text-green-700">
-                    ✨ Этот тест будет использован для создания {selectedWorkTypeId === 'written_work' ? 'контрольной работы' : 'проверки'}
+                    ✨ Этот тест будет использован для создания проверки
                   </div>
                   <button
                     onClick={() => {
@@ -234,81 +233,47 @@ export default function CheckCreationStep1({
           )}
 
           {/* Информационный блок для тестов - новый дизайн */}
-          {(selectedWorkTypeId === 'test' || selectedWorkTypeId === 'written_work') && !selectedTest && (
+          {selectedWorkTypeId === 'test' && !selectedTest && (
             <div className="bg-white border border-slate-200 rounded-3xl p-6 w-full shadow-sm">
               <div className="space-y-6">
                 {/* Заголовок */}
                 <div>
                   <h3 className="font-nunito font-extrabold text-[20px] text-slate-700 leading-tight">
-                    {selectedWorkTypeId === 'test' ? 'Мы проверяем только тесты из Конструктора' : 'Выберите или создайте тест для контрольной работы'}
+                    Мы проверяем только тесты из Конструктора
                   </h3>
                 </div>
 
                 {/* Описание */}
                 <p className="text-slate-600 text-[15px] leading-relaxed">
-                  {selectedWorkTypeId === 'test'
-                    ? 'Для точной проверки ИИ используйте тесты из Конструктора со стандартизированными PDF бланками'
-                    : 'ИИ анализирует письменные решения с подробными замечаниями. Главное - чтобы ученик указал номер задания и слово «Ответ»'
-                  }
+                  Для точной проверки ИИ используйте тесты из Конструктора со стандартизированными PDF бланками
                 </p>
 
                 {/* Преимущества */}
                 <div className="space-y-2.5">
-                  {selectedWorkTypeId === 'test' ? (
-                    <>
-                      <div className="flex items-start gap-2.5">
-                        <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                          <svg className="w-3 h-3 text-green-600" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                          </svg>
-                        </div>
-                        <span className="text-slate-700 text-[14px] leading-relaxed">Стандартные поля для ответов (A, B, C, D)</span>
-                      </div>
-                      <div className="flex items-start gap-2.5">
-                        <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                          <svg className="w-3 h-3 text-green-600" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                          </svg>
-                        </div>
-                        <span className="text-slate-700 text-[14px] leading-relaxed">Четкая нумерация вопросов</span>
-                      </div>
-                      <div className="flex items-start gap-2.5">
-                        <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                          <svg className="w-3 h-3 text-green-600" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                          </svg>
-                        </div>
-                        <span className="text-slate-700 text-[14px] leading-relaxed">Оптимальный формат для распознавания ИИ</span>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <div className="flex items-start gap-2.5">
-                        <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                          <svg className="w-3 h-3 text-green-600" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                          </svg>
-                        </div>
-                        <span className="text-slate-700 text-[14px] leading-relaxed">Ученик должен указать номер задания (№1, №2...)</span>
-                      </div>
-                      <div className="flex items-start gap-2.5">
-                        <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                          <svg className="w-3 h-3 text-green-600" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                          </svg>
-                        </div>
-                        <span className="text-slate-700 text-[14px] leading-relaxed">Обязательно слово &quot;Ответ&quot; перед результатом</span>
-                      </div>
-                      <div className="flex items-start gap-2.5">
-                        <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                          <svg className="w-3 h-3 text-green-600" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                          </svg>
-                        </div>
-                        <span className="text-slate-700 text-[14px] leading-relaxed">ИИ проверит правильность и ход решения</span>
-                      </div>
-                    </>
-                  )}
+                  <div className="flex items-start gap-2.5">
+                    <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <svg className="w-3 h-3 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <span className="text-slate-700 text-[14px] leading-relaxed">Стандартные поля для ответов (A, B, C, D)</span>
+                  </div>
+                  <div className="flex items-start gap-2.5">
+                    <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <svg className="w-3 h-3 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <span className="text-slate-700 text-[14px] leading-relaxed">Четкая нумерация вопросов</span>
+                  </div>
+                  <div className="flex items-start gap-2.5">
+                    <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <svg className="w-3 h-3 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <span className="text-slate-700 text-[14px] leading-relaxed">Оптимальный формат для распознавания ИИ</span>
+                  </div>
                 </div>
 
                 {/* Кнопки */}
@@ -380,7 +345,7 @@ export default function CheckCreationStep1({
         >
           <div className="flex flex-col font-inter font-medium justify-center leading-[0] text-[16px] text-nowrap text-white">
             <p className="leading-[1.6] whitespace-pre">
-              {(selectedWorkTypeId === 'test' || selectedWorkTypeId === 'written_work') && checkMethod === 'existing' && !selectedTest
+              {selectedWorkTypeId === 'test' && checkMethod === 'existing' && !selectedTest
                 ? 'Выбрать готовый тест'
                 : 'Продолжить настройку'
               }

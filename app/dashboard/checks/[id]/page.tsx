@@ -49,7 +49,7 @@ export default function CheckPage({ params }: CheckPageProps) {
 	const [user, setUser] = useState<{ name?: string | null; email?: string | null; image?: string | null } | null>(null)
 	const [isUserLoading, setIsUserLoading] = useState(true)
 	const [checkId, setCheckId] = useState<string>('')
-	const [checkType, setCheckType] = useState<'test' | 'essay' | 'written_work'>('test')
+	const [checkType, setCheckType] = useState<'test' | 'essay'>('test')
 
 	// Инициализируем title из URL параметра для мгновенного отображения
 	const titleFromUrl = searchParams.get('title')

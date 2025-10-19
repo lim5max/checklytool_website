@@ -59,6 +59,7 @@ function generateTestHTML({
     type?: string
     points?: number
     hideOptionsInPDF?: boolean
+    imageUrl?: string
   }>
   variant: number
 }) {
@@ -191,6 +192,15 @@ function generateTestHTML({
           vertical-align: middle;
         }
 
+        .question-image {
+          margin: 4mm 0;
+          max-width: 100%;
+          max-height: 80mm;
+          display: block;
+          border: 1px solid #ddd;
+          page-break-inside: avoid;
+        }
+
         @media print {
           .no-print { display: none; }
         }
@@ -217,6 +227,12 @@ function generateTestHTML({
             <div class="question-text">${question.question}</div>
             ${question.points && question.points > 1 ? `<div style="margin-left: auto; font-size: 11pt; color: #666;">(${question.points} балл${question.points === 1 ? '' : question.points < 5 ? 'а' : 'ов'})</div>` : ''}
           </div>
+
+          ${question.imageUrl ? `
+          <div style="margin-left: 8mm;">
+            <img src="${question.imageUrl}" class="question-image" alt="Изображение к вопросу ${index + 1}" />
+          </div>
+          ` : ''}
 
           ${!question.hideOptionsInPDF && question.type !== 'open' ? `
           <div class="options">

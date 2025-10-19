@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, CheckCircle, XCircle, BarChart3 } from 'lucide-react'
+import { ArrowLeft, CheckCircle, XCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import { GradeCircle } from '@/components/submission/grade-circle'
 import { ImageGallery } from '@/components/submission/image-gallery'
@@ -20,7 +20,7 @@ interface SubmissionData {
 		subject?: string
 		class_level?: string
 		total_questions?: number
-		check_type?: 'test' | 'essay' | 'written_work'
+		check_type?: 'test' | 'essay'
 	}
 	evaluation_results?: {
 		final_grade: number
@@ -30,7 +30,6 @@ interface SubmissionData {
 		incorrect_answers: number
 		detailed_answers?: Array<{
 			question_number: number
-			is_correct: boolean
 			student_answer?: string
 			correct_answer?: string
 			feedback?: string
@@ -38,16 +37,8 @@ interface SubmissionData {
 			given?: string
 			correct?: string | null
 			confidence?: number
-			is_correct?: boolean
 			feedback?: string
 		}>
-		written_work_feedback?: {
-			brief_summary: string
-			errors_found: Array<{
-				question_number: number
-				error_description: string
-			}>
-		}
 		created_at: string
 	}
 }
@@ -140,7 +131,6 @@ export default function SubmissionDetailPage({ params }: PageProps) {
 
 	const evaluation = submission.evaluation_results
 	const isEssay = submission.checks.check_type === 'essay'
-	const isWrittenWork = submission.checks.check_type === 'written_work'
 	const isTest = submission.checks.check_type === 'test'
 
 	return (
@@ -192,7 +182,7 @@ export default function SubmissionDetailPage({ params }: PageProps) {
 									</p>
 								</div>
 
-								{/* Счетчики для тестов и контрольных */}
+								{/* Счетчики для тестов */}
 								{!isEssay && (
 									<div className="flex gap-3">
 										<div className="flex items-center gap-2 bg-green-50 px-4 py-2 rounded-full border border-green-100">
@@ -282,34 +272,6 @@ export default function SubmissionDetailPage({ params }: PageProps) {
 					</div>
 				)}
 
-				{/* Анализ контрольной работы - для written_work */}
-				{isWrittenWork && evaluation?.written_work_feedback && (
-					<div>
-						<h2 className="font-nunito font-bold text-2xl text-slate-900 mb-6">
-							Анализ работы
-						</h2>
-						<div className="space-y-4">
-							{/* Краткое резюме */}
-							<div className="bg-blue-50 rounded-2xl border border-blue-200 p-6">
-								<div className="flex items-start gap-3">
-									<div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0">
-										<BarChart3 className="w-5 h-5 text-white" />
-									</div>
-									<div className="flex-1">
-										<h3 className="font-semibold text-lg text-blue-900 mb-2">
-											Общая оценка
-										</h3>
-										<p className="text-blue-800 leading-relaxed">
-											{evaluation.written_work_feedback.brief_summary}
-										</p>
-									</div>
-								</div>
-							</div>
-
-						</div>
-					</div>
-				)}
-
 				{/* Детализация по вопросам для тестов */}
 				{isTest && evaluation?.detailed_answers && (() => {
 					// Преобразуем данные в единый формат
@@ -319,14 +281,19 @@ export default function SubmissionDetailPage({ params }: PageProps) {
 							.sort(([a], [b]) => Number(a) - Number(b))
 							.map(([questionNum, answer]) => ({
 								question_number: Number(questionNum),
-								is_correct: answer.is_correct ?? false,
 								student_answer: answer.given,
 								correct_answer: answer.correct || undefined,
 								feedback: answer.feedback
 							}))
 
-					const correctAnswers = answersArray.filter(a => a.is_correct)
-					const incorrectAnswers = answersArray.filter(a => !a.is_correct)
+					// Определяем правильность ответа по сравнению given и correct
+					const answersWithCorrectness = answersArray.map(answer => ({
+						...answer,
+						isCorrect: answer.student_answer?.toLowerCase().trim() === answer.correct_answer?.toLowerCase().trim()
+					}))
+
+					const correctAnswers = answersWithCorrectness.filter(a => a.isCorrect)
+					const incorrectAnswers = answersWithCorrectness.filter(a => !a.isCorrect)
 
 					return (
 						<div className="space-y-8">
@@ -419,22 +386,22 @@ export default function SubmissionDetailPage({ params }: PageProps) {
 								Детализация по вопросам
 							</h2>
 							<div className="space-y-3">
-								{answersArray.map((answer, index) => {
+								{answersWithCorrectness.map((answer, index) => {
 									const questionNum = answer.question_number || (index + 1)
 									return (
 										<div
 											key={index}
 											className={`bg-white rounded-2xl border-2 p-6 transition-all ${
-												answer.is_correct
+												answer.isCorrect
 													? 'border-green-200 bg-green-50'
 													: 'border-red-200 bg-red-50'
 											}`}
 										>
 											<div className="flex items-start gap-4">
 												<div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
-													answer.is_correct ? 'bg-green-500' : 'bg-red-500'
+													answer.isCorrect ? 'bg-green-500' : 'bg-red-500'
 												}`}>
-													{answer.is_correct ? (
+													{answer.isCorrect ? (
 														<CheckCircle className="w-6 h-6 text-white" />
 													) : (
 														<XCircle className="w-6 h-6 text-white" />
@@ -446,11 +413,11 @@ export default function SubmissionDetailPage({ params }: PageProps) {
 															Вопрос {questionNum}
 														</h3>
 														<span className={`px-3 py-1 rounded-full text-sm font-medium ${
-															answer.is_correct
+															answer.isCorrect
 																? 'bg-green-100 text-green-700'
 																: 'bg-red-100 text-red-700'
 														}`}>
-															{answer.is_correct ? '✓ Верно' : '✗ Неверно'}
+															{answer.isCorrect ? '✓ Верно' : '✗ Неверно'}
 														</span>
 													</div>
 													{answer.student_answer && (
@@ -463,7 +430,7 @@ export default function SubmissionDetailPage({ params }: PageProps) {
 															</p>
 														</div>
 													)}
-													{answer.correct_answer && !answer.is_correct && (
+													{answer.correct_answer && !answer.isCorrect && (
 														<div>
 															<p className="text-sm font-medium text-slate-600 mb-1">
 																Правильный ответ:
@@ -483,201 +450,6 @@ export default function SubmissionDetailPage({ params }: PageProps) {
 					</div>
 				)
 			})()}
-
-				{/* Детализация по заданиям для written_work */}
-				{isWrittenWork && evaluation?.detailed_answers && (
-					<div className="space-y-8">
-						<div>
-							<h2 className="font-nunito font-bold text-2xl text-slate-900 mb-6">
-								Результаты по заданиям
-							</h2>
-
-							{/* Группировка правильных и неправильных ответов */}
-						{(() => {
-							const answers = Array.isArray(evaluation.detailed_answers)
-								? evaluation.detailed_answers.map((answer, index) => ({
-									questionNum: answer.question_number || (index + 1),
-									isCorrect: answer.is_correct
-								}))
-								: Object.entries(evaluation.detailed_answers)
-									.sort(([a], [b]) => Number(a) - Number(b))
-									.map(([questionNum, answer]) => ({
-										questionNum: Number(questionNum),
-										isCorrect: answer.is_correct
-									}))
-
-							const correctAnswers = answers.filter(a => a.isCorrect)
-							const incorrectAnswers = answers.filter(a => !a.isCorrect)
-
-							return (
-								<div className="grid md:grid-cols-2 gap-6">
-									{/* Правильные ответы */}
-									<div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl border-2 border-green-200 p-6">
-										<div className="flex items-center gap-3 mb-4">
-											<div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center">
-												<CheckCircle className="w-6 h-6 text-white" />
-											</div>
-											<div>
-												<h3 className="font-bold text-lg text-green-900">
-													Верно
-												</h3>
-												<p className="text-sm text-green-700">
-													{correctAnswers.length} {correctAnswers.length === 1 ? 'задание' : 'заданий'}
-												</p>
-											</div>
-										</div>
-
-										{correctAnswers.length > 0 ? (
-											<div className="flex flex-wrap gap-2">
-												{correctAnswers.map(({ questionNum }) => (
-													<div
-														key={questionNum}
-														className="px-3 py-1.5 bg-white rounded-lg border border-green-200 text-green-800 font-semibold text-sm hover:bg-green-50 transition-colors"
-													>
-														№{questionNum}
-													</div>
-												))}
-											</div>
-										) : (
-											<p className="text-green-700 text-sm">
-												Нет правильных ответов
-											</p>
-										)}
-									</div>
-
-									{/* Неправильные ответы */}
-									<div className="bg-gradient-to-br from-red-50 to-rose-50 rounded-2xl border-2 border-red-200 p-6">
-										<div className="flex items-center gap-3 mb-4">
-											<div className="w-10 h-10 bg-red-500 rounded-full flex items-center justify-center">
-												<XCircle className="w-6 h-6 text-white" />
-											</div>
-											<div>
-												<h3 className="font-bold text-lg text-red-900">
-													Неверно
-												</h3>
-												<p className="text-sm text-red-700">
-													{incorrectAnswers.length} {incorrectAnswers.length === 1 ? 'задание' : 'заданий'}
-												</p>
-											</div>
-										</div>
-
-										{incorrectAnswers.length > 0 ? (
-											<div className="flex flex-wrap gap-2">
-												{incorrectAnswers.map(({ questionNum }) => (
-													<div
-														key={questionNum}
-														className="px-3 py-1.5 bg-white rounded-lg border border-red-200 text-red-800 font-semibold text-sm hover:bg-red-50 transition-colors"
-													>
-														№{questionNum}
-													</div>
-												))}
-											</div>
-										) : (
-											<p className="text-red-700 text-sm">
-												Нет неправильных ответов
-											</p>
-										)}
-									</div>
-								</div>
-							)
-						})()}
-						</div>
-
-						{/* Детальная информация по каждому заданию */}
-						{(() => {
-							// Преобразуем данные в единый формат
-							const answersArray = Array.isArray(evaluation.detailed_answers)
-								? evaluation.detailed_answers
-								: Object.entries(evaluation.detailed_answers)
-									.sort(([a], [b]) => Number(a) - Number(b))
-									.map(([questionNum, answer]) => ({
-										question_number: Number(questionNum),
-										is_correct: answer.is_correct ?? false,
-										student_answer: answer.given,
-										feedback: answer.feedback
-									}))
-
-							// Получаем ошибки из written_work_feedback, если есть
-							const errorsMap = new Map<number, string>()
-							if (evaluation.written_work_feedback?.errors_found) {
-								evaluation.written_work_feedback.errors_found.forEach(error => {
-									errorsMap.set(error.question_number, error.error_description)
-								})
-							}
-
-							return (
-								<div>
-									<h2 className="font-nunito font-bold text-2xl text-slate-900 mb-6">
-										Детализация по заданиям
-									</h2>
-									<div className="space-y-3">
-										{answersArray.map((answer, index) => {
-											const questionNum = answer.question_number || (index + 1)
-											const errorDescription = errorsMap.get(questionNum)
-
-											return (
-												<div
-													key={index}
-													className={`bg-white rounded-2xl border-2 p-6 transition-all ${
-														answer.is_correct
-															? 'border-green-200 bg-green-50'
-															: 'border-red-200 bg-red-50'
-													}`}
-												>
-													<div className="flex items-start gap-4">
-														<div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
-															answer.is_correct ? 'bg-green-500' : 'bg-red-500'
-														}`}>
-															{answer.is_correct ? (
-																<CheckCircle className="w-6 h-6 text-white" />
-															) : (
-																<XCircle className="w-6 h-6 text-white" />
-															)}
-														</div>
-														<div className="flex-1 space-y-2">
-															<div className="flex items-center justify-between">
-																<h3 className="font-semibold text-lg text-slate-900">
-																	Задание {questionNum}
-																</h3>
-																<span className={`px-3 py-1 rounded-full text-sm font-medium ${
-																	answer.is_correct
-																		? 'bg-green-100 text-green-700'
-																		: 'bg-red-100 text-red-700'
-																}`}>
-																	{answer.is_correct ? '✓ Верно' : '✗ Неверно'}
-																</span>
-															</div>
-															{answer.student_answer && (
-																<div>
-																	<p className="text-sm font-medium text-slate-600 mb-1">
-																		Ответ ученика:
-																	</p>
-																	<p className="text-slate-900 font-medium">
-																		{answer.student_answer}
-																	</p>
-																</div>
-															)}
-															{errorDescription && (
-																<div className="mt-3 bg-red-100 border border-red-200 rounded-lg p-3">
-																	<p className="text-sm font-medium text-red-900 mb-1">
-																		Комментарий:
-																	</p>
-																	<p className="text-red-800 text-sm leading-relaxed">
-																		{errorDescription}
-																	</p>
-																</div>
-															)}
-														</div>
-													</div>
-												</div>
-											)
-										})}
-									</div>
-								</div>
-							)
-						})()}
-					</div>
-				)}
 
 				{/* Галерея фотографий */}
 				{submission.submission_images && submission.submission_images.length > 0 && (

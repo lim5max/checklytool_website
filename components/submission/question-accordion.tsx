@@ -5,7 +5,6 @@ import { ChevronDown, CheckCircle2, XCircle } from 'lucide-react'
 
 interface QuestionItem {
 	question_number: number
-	is_correct: boolean
 	student_answer?: string
 	correct_answer?: string
 	feedback?: string
@@ -26,8 +25,10 @@ export function QuestionAccordion({ questions }: QuestionAccordionProps) {
 		<div className="space-y-3">
 			{questions.map((question, index) => {
 				const isOpen = openIndex === index
-				const borderColor = question.is_correct ? 'border-green-200' : 'border-red-200'
-				const bgColor = question.is_correct ? 'bg-green-50' : 'bg-red-50'
+				// Определяем правильность ответа локально на основе сравнения
+				const isCorrect = question.student_answer?.toLowerCase().trim() === question.correct_answer?.toLowerCase().trim()
+				const borderColor = isCorrect ? 'border-green-200' : 'border-red-200'
+				const bgColor = isCorrect ? 'bg-green-50' : 'bg-red-50'
 
 				return (
 					<div
@@ -40,7 +41,7 @@ export function QuestionAccordion({ questions }: QuestionAccordionProps) {
 							className="w-full p-5 flex items-center justify-between hover:bg-slate-50 transition-colors"
 						>
 							<div className="flex items-center gap-4">
-								{question.is_correct ? (
+								{isCorrect ? (
 									<CheckCircle2 className="w-6 h-6 text-green-600 flex-shrink-0" />
 								) : (
 									<XCircle className="w-6 h-6 text-red-600 flex-shrink-0" />
@@ -50,7 +51,7 @@ export function QuestionAccordion({ questions }: QuestionAccordionProps) {
 										Вопрос {question.question_number}
 									</span>
 									<p className="text-sm text-slate-500 mt-1">
-										{question.is_correct ? 'Правильно' : 'Неправильно'}
+										{isCorrect ? 'Правильно' : 'Неправильно'}
 									</p>
 								</div>
 							</div>
@@ -79,7 +80,7 @@ export function QuestionAccordion({ questions }: QuestionAccordionProps) {
 								)}
 
 								{/* Правильный ответ */}
-								{question.correct_answer && !question.is_correct && (
+								{question.correct_answer && !isCorrect && (
 									<div className="bg-slate-50 rounded-xl p-4">
 										<p className="text-sm font-medium text-slate-700 mb-2">
 											Правильный ответ:

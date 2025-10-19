@@ -196,7 +196,7 @@ export function CameraScanner({
 
           setCapturedPhotos(prev => [...prev, photo])
           resolve()
-        }, 'image/jpeg', 0.9)
+        }, 'image/jpeg', 0.85)
       })
     } catch (err) {
       console.error('Error capturing photo:', err)

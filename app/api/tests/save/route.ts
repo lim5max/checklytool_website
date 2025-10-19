@@ -22,7 +22,6 @@ const SaveTestSchema = z.object({
 		explanation: z.string().optional(),
 		hideOptionsInPDF: z.boolean().optional(),
 		points: z.number().optional(),
-		correctAnswer: z.string().optional(),
 	}).refine((q) => {
 		// Для открытых вопросов варианты необязательны
 		if (q.type === 'open') return true
