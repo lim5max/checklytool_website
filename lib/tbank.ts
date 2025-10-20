@@ -14,6 +14,7 @@ export interface TBankInitPaymentRequest {
 
 export interface TBankReceipt {
 	Email: string
+	Phone?: string
 	Taxation: 'osn' | 'usn_income' | 'usn_income_outcome' | 'envd' | 'esn' | 'patent'
 	Items: TBankReceiptItem[]
 }
@@ -287,6 +288,7 @@ export function createReceipt(
 ): TBankReceipt {
 	return {
 		Email: email,
+		Phone: '+79168803493', // Контактный телефон компании для чеков
 		Taxation: 'usn_income', // УСН доход
 		Items: [
 			{
@@ -297,7 +299,6 @@ export function createReceipt(
 				Tax: 'none', // Без НДС для УСН
 				PaymentMethod: 'full_prepayment', // Полная предоплата
 				PaymentObject: 'service', // Услуга (подписка)
-				MeasurementUnit: 'шт', // Единица измерения
 			},
 		],
 	}
