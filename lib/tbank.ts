@@ -120,6 +120,7 @@ export async function initPayment(
 	const config = getTBankConfig()
 
 	// Подготовка параметров для токена (без DATA - оно не участвует в подписи)
+	// ВАЖНО: Receipt (вложенный объект) НЕ участвует в генерации токена согласно документации
 	const paramsForToken: Record<string, unknown> = {
 		TerminalKey: config.terminalKey,
 		Amount: request.Amount,
@@ -127,12 +128,7 @@ export async function initPayment(
 		Description: request.Description,
 	}
 
-	// Receipt участвует в генерации токена только если передан
-	if (request.Receipt) {
-		paramsForToken.Receipt = request.Receipt
-	}
-
-	// SuccessURL, FailURL и NotificationURL НЕ участвуют в генерации токена
+	// SuccessURL, FailURL, NotificationURL и Receipt НЕ участвуют в генерации токена
 	// но должны быть включены в запрос
 
 	// Генерация токена
