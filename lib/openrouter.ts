@@ -270,11 +270,12 @@ ${essayCriteria?.map(c => `${c.grade} баллов — ${c.description}`).join('
 		? 'openai/gpt-5-image-mini'
 		: 'google/gemini-2.5-flash'
 
+	// GPT-5 Image Mini не поддерживает параметр temperature
 	const requestBody: OpenRouterRequest = {
 		model,
 		messages,
 		max_tokens: 4000,
-		temperature: 0.15,
+		...(checkType === 'essay' ? { temperature: 0.15 } : {}),
 		metadata: {
 			analysis_id: analysisId,
 			timestamp: Date.now()
