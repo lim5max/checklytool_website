@@ -55,6 +55,7 @@ export interface CheckCreationData {
   answers: Answer[]
   variants?: VariantData[] // Add variants support
   customPrompt?: string // Custom prompt for AI evaluation (essays)
+  test_id?: string // ID of generated test from test builder
 }
 
 export interface VariantData {
@@ -135,7 +136,8 @@ export function mapUIDataToAPI(uiData: CheckCreationData, variantCount?: number)
     subject: uiData.workType?.title,
     class_level: undefined,
     total_questions: uiData.answers?.length || undefined,
-    check_type: checkType
+    check_type: checkType,
+    test_id: uiData.test_id
   }
 
   if (isEssay && uiData.essayDescriptiveCriteria) {

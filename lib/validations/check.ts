@@ -24,6 +24,7 @@ export const createCheckSchema = z.object({
 		.max(100, 'Максимум 100 вопросов')
 		.optional(),
 	check_type: z.enum(['test', 'essay']).optional(),
+	test_id: z.string().optional(),
 	grading_criteria: z.array(z.object({
 		grade: z.union([z.literal(2), z.literal(3), z.literal(4), z.literal(5)]),
 		min_percentage: z.number()

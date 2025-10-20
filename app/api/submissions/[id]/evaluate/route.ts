@@ -13,20 +13,44 @@ interface RouteParams {
 }
 
 /**
+ * Нормализует ответ: убирает лишние пробелы, обрамляющие кавычки и экранирование
+ * @param answer - исходный ответ
+ * @returns нормализованный ответ
+ */
+function normalizeAnswer(answer: string): string {
+	let normalized = answer.trim()
+
+	// Убираем обрамляющие кавычки (одинарные или двойные)
+	// Проверяем оба конца строки на наличие кавычек
+	while ((normalized.startsWith("'") && normalized.endsWith("'")) ||
+	       (normalized.startsWith('"') && normalized.endsWith('"'))) {
+		normalized = normalized.slice(1, -1).trim()
+	}
+
+	// Убираем экранированные кавычки внутри строки
+	normalized = normalized.replace(/\\["']/g, '')
+
+	return normalized
+}
+
+/**
  * Умная функция сравнения ответов - поддерживает разные форматы выбора вариантов
  * @param studentAnswer - ответ студента
  * @param correctAnswer - правильный ответ
  * @param strictMatch - требовать точное совпадение (учитывать регистр и пунктуацию)
  */
 function compareAnswers(studentAnswer: string, correctAnswer: string, strictMatch: boolean = false): boolean {
+	// Нормализуем ответы (убираем кавычки и лишние пробелы)
+	const normalizedStudent = normalizeAnswer(studentAnswer)
+	const normalizedCorrect = normalizeAnswer(correctAnswer)
 	// Для строгого режима - точное совпадение с учетом регистра и пунктуации
 	if (strictMatch) {
-		return studentAnswer.trim() === correctAnswer.trim()
+		return normalizedStudent === normalizedCorrect
 	}
 
 	// Нестрогий режим (по умолчанию)
-	const student = studentAnswer.toLowerCase().trim()
-	const correct = correctAnswer.toLowerCase().trim()
+	const student = normalizedStudent.toLowerCase().trim()
+	const correct = normalizedCorrect.toLowerCase().trim()
 
 	// 1. Прямое сравнение
 	if (student === correct) {
@@ -71,8 +95,9 @@ function compareAnswers(studentAnswer: string, correctAnswer: string, strictMatc
  * Определяет тип ответа и применяет соответствующую логику сравнения
  */
 function smartCompareOpenAnswer(studentAnswer: string, correctAnswer: string): boolean {
-	const student = studentAnswer.trim()
-	const correct = correctAnswer.trim()
+	// Нормализуем ответы перед сравнением
+	const student = normalizeAnswer(studentAnswer)
+	const correct = normalizeAnswer(correctAnswer)
 
 	// ЭТАП 1: Определение типа ответа
 	const isNumeric = (text: string) => /^-?[\d.,\s]+$/.test(text.replace(/[<>=≤≥]/g, ''))
@@ -216,6 +241,7 @@ const postHandler = async (
 				id: string
 				variant_count: number
 				check_type?: string
+				test_id?: string
 				check_variants: Array<{
 					id: string
 					variant_number: number
@@ -428,43 +454,6 @@ const postHandler = async (
 				)
 			}
 
-			// Проверяем, является ли это неподдерживаемым форматом теста
-			if (aiResult.error === 'unsupported_test_format') {
-				console.log('[EVALUATE] Unsupported test format detected by AI')
-
-				// Обновляем статус submission как failed
-				const updateData = {
-					status: 'failed',
-					processing_completed_at: new Date().toISOString(),
-					error_message: aiResult.error_message || 'Неподдерживаемый формат теста',
-					error_details: JSON.parse(JSON.stringify({
-						error_type: 'unsupported_test_format',
-						content_type_detected: aiResult.content_type_detected,
-						ai_response: aiResult
-					}))
-				}
-
-				console.log('[EVALUATE] Updating submission with failed status')
-
-				await supabase
-					.from('student_submissions')
-					.update(updateData)
-					.eq('id', submissionId)
-
-				return NextResponse.json(
-					{
-						error: 'unsupported_test_format',
-						message: aiResult.error_message || 'Мы можем проверять только тесты, созданные в конструкторе ChecklyTool',
-						details: {
-							content_type: aiResult.content_type_detected,
-							help: 'Используйте наш конструктор тестов для создания проверяемых работ. Перейдите в раздел "Создать тест" в дашборде.'
-						},
-						submission_id: submissionId
-					},
-					{ status: 400 } // 400 Bad Request для неподдерживаемого формата
-				)
-			}
-
 			// Проверяем наличие обязательных полей для успешного анализа
 			if (!aiResult.answers || !aiResult.total_questions) {
 				throw new Error('AI analysis incomplete - missing answers or total_questions')
@@ -474,26 +463,23 @@ const postHandler = async (
 			const detectedVariant = aiResult.variant_detected || 1
 			console.log('Detected variant:', detectedVariant, 'Available variants:', checkData.check_variants.length)
 
-			// Get correct answers - different logic for ChecklyTool tests vs regular checks
+			// Get correct answers - different logic based on check.test_id
 			let correctAnswersMap: Record<string, string> = {}
 
-			// Check if this is a ChecklyTool test
-			if (aiResult.checkly_tool_test && aiResult.test_identifier) {
-				console.log('[EVALUATE] ChecklyTool test detected, loading answers from generated_tests')
+			// ПРИОРИТЕТ 1: Если check связан с generated_test - загружаем оттуда
+			if (checkData.test_id) {
+				console.log('[EVALUATE] Check has test_id, loading answers from generated_tests:', checkData.test_id)
 
-				// Extract test ID from identifier (remove #CT prefix)
-				const testId = aiResult.test_identifier.replace('#CT', '')
-
-				// Load test from generated_tests table
+				// Load test from generated_tests table by exact ID
 				const { data: generatedTest, error: testError } = await supabase
 					.from('generated_tests')
 					.select('questions')
-					.ilike('id', `%${testId}%`)
+					.eq('id', checkData.test_id)
 					.single()
 
 				if (testError) {
 					console.error('Error loading generated test:', testError)
-					throw new Error(`Не удалось найти тест ChecklyTool с идентификатором ${aiResult.test_identifier}`)
+					throw new Error(`Не удалось найти тест с ID ${checkData.test_id}`)
 				}
 
 				if (generatedTest && generatedTest.questions) {
@@ -521,12 +507,13 @@ const postHandler = async (
 						}
 					})
 
-					console.log('Loaded correct answers from ChecklyTool test:', correctAnswersMap)
+					console.log('Loaded correct answers from generated test:', correctAnswersMap)
 				} else {
-					throw new Error('Тест ChecklyTool не найден или не содержит вопросов')
+					throw new Error('Тест не найден или не содержит вопросов')
 				}
 			} else {
-				console.log('[EVALUATE] Regular check, loading answers from reference_answers field')
+				// ПРИОРИТЕТ 2: Если нет test_id - загружаем из reference_answers (старая логика)
+				console.log('[EVALUATE] No test_id, loading answers from reference_answers field')
 
 				if (detectedVariant <= checkData.variant_count) {
 				// Find the variant in database
@@ -595,15 +582,14 @@ const postHandler = async (
 				points?: number
 			}> = {}
 
-			// Load question metadata from generated_tests if this is a ChecklyTool test
+			// Load question metadata from generated_tests if check has test_id
 			const questionPointsMap: Record<string, number> = {}
 			const questionMetadataMap: Record<string, { strictMatch?: boolean; type?: string }> = {}
-			if (aiResult.checkly_tool_test && aiResult.test_identifier) {
-				const testId = aiResult.test_identifier.replace('#CT', '')
+			if (checkData.test_id) {
 				const { data: generatedTest } = await supabase
 					.from('generated_tests')
 					.select('questions')
-					.ilike('id', `%${testId}%`)
+					.eq('id', checkData.test_id)
 					.single()
 
 				if (generatedTest && generatedTest.questions) {

@@ -1,5 +1,4 @@
 import NextAuth, { DefaultSession } from "next-auth"
-import Yandex from "next-auth/providers/yandex"
 import Credentials from "next-auth/providers/credentials"
 import type { NextAuthConfig } from "next-auth"
 import bcrypt from 'bcryptjs'
@@ -22,19 +21,6 @@ declare module "next-auth" {
 
 export const authOptions: NextAuthConfig = {
   providers: [
-    Yandex({
-      clientId: process.env.AUTH_YANDEX_ID!,
-      clientSecret: process.env.AUTH_YANDEX_SECRET!,
-      profile(profile) {
-        return {
-          id: profile.id,
-          name: profile.display_name || profile.real_name,
-          email: profile.default_email,
-          image: profile.default_avatar_id ? `https://avatars.yandex.net/get-yapic/${profile.default_avatar_id}/islands-200` : undefined,
-          provider: "yandex"
-        }
-      }
-    }),
     Credentials({
       name: "credentials",
       credentials: {

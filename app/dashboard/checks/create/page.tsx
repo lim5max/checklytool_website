@@ -168,7 +168,8 @@ export default function CheckCreationPage() {
         workTitle: test.title,
         checkingMethod: 'ai', // Для готовых тестов используем ИИ
         answers: correctAnswers,
-        variants: variants
+        variants: variants,
+        test_id: test.id // Привязываем проверку к тесту
       }))
 
       // Показываем успешное сообщение

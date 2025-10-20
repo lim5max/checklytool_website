@@ -128,7 +128,8 @@ export async function POST(request: NextRequest) {
 				subject: validatedData.subject,
 				class_level: validatedData.class_level,
 				total_questions: validatedData.total_questions,
-				check_type: validatedData.check_type || 'test'
+				check_type: validatedData.check_type || 'test',
+				test_id: validatedData.test_id
 			})
 			.select()
 			.single()
