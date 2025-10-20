@@ -79,6 +79,9 @@ export async function POST(request: NextRequest) {
 			amountInKopecks
 		) : undefined
 
+		// Получаем базовый URL сайта
+		const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://checklytool.com'
+
 		// Инициализируем платеж в Т-Банк
 		let paymentData
 		try {
@@ -91,6 +94,9 @@ export async function POST(request: NextRequest) {
 					userId,
 					planId,
 				},
+				SuccessURL: `${siteUrl}/dashboard/profile?payment=success`,
+				FailURL: `${siteUrl}/dashboard/profile?payment=failed`,
+				NotificationURL: `${siteUrl}/api/payment/webhook`,
 			})
 		} catch (error) {
 			console.error('[Payment Init] T-Bank API error:', error)

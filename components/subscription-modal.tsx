@@ -108,7 +108,7 @@ export default function SubscriptionModal({
 						</div>
 						<div>
 							<h2 className="text-lg font-bold text-gray-900">
-								Работы готовы к проверке
+								Пополните баланс проверок
 							</h2>
 							{requiredCredits !== undefined && (
 								<p className="text-sm text-gray-600">
@@ -151,7 +151,7 @@ export default function SubscriptionModal({
 								</div>
 							)}
 
-							{/* Plans */}
+							{/* Paid Plans Only */}
 							{paidPlans.map((plan, index) => (
 								<div
 									key={plan.id}
@@ -167,7 +167,7 @@ export default function SubscriptionModal({
 												</h3>
 												{index === 0 && (
 													<span className="px-2 py-0.5 bg-blue-600 text-white text-xs font-semibold rounded-full">
-														Популярный
+														Рекомендуем
 													</span>
 												)}
 											</div>
@@ -192,15 +192,15 @@ export default function SubscriptionModal({
 										</div>
 										<div className="flex items-start gap-2.5 text-sm text-gray-700">
 											<Check className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
-											<span>Тесты (1 лист = 0,5 проверки)</span>
-										</div>
-										<div className="flex items-start gap-2.5 text-sm text-gray-700">
-											<Check className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
-											<span>Сочинения (1 лист = 1 проверка)</span>
+											<span>Тесты и сочинения (1 проверка = 1 работа)</span>
 										</div>
 										<div className="flex items-start gap-2.5 text-sm text-gray-700">
 											<Check className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
 											<span>Неограниченное создание тестов</span>
+										</div>
+										<div className="flex items-start gap-2.5 text-sm text-gray-700">
+											<Check className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
+											<span>Приоритетная поддержка</span>
 										</div>
 									</div>
 
@@ -227,7 +227,7 @@ export default function SubscriptionModal({
 								<p className="text-sm text-gray-700 leading-relaxed">
 									💡 <strong>Обратите внимание:</strong> Создание тестов в
 									конструкторе бесплатно и доступно всем пользователям.
-									Проверки тратятся только при оценке работ учеников.
+									Проверки тратятся только при оценке работ учеников (1 работа = 1 проверка).
 								</p>
 							</div>
 						</div>

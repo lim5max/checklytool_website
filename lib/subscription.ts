@@ -117,12 +117,11 @@ export async function getUserBalance(userId: string): Promise<number> {
 }
 
 export function calculateCreditsNeeded(
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	checkType: 'test' | 'essay',
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	pagesCount: number
 ): number {
-	if (checkType === 'test') {
-		return pagesCount * 0.5
-	} else {
-		return pagesCount * 1.0 // Сочинения 1x
-	}
+	// И тесты, и сочинения считаются одинаково: 1 работа = 1 проверка
+	return 1
 }

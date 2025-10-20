@@ -86,14 +86,15 @@ export async function POST(request: NextRequest) {
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			const { data: plan } = await (supabase as any)
 				.from('subscription_plans')
-				.select('check_credits, duration_days')
+				.select('check_credits')
 				.eq('id', order.plan_id)
 				.single()
 
 			if (plan) {
-				// Вычисляем дату окончания подписки
+				// Вычисляем дату окончания подписки (30 дней)
+				const durationDays = 30
 				const expiresAt = new Date()
-				expiresAt.setDate(expiresAt.getDate() + plan.duration_days)
+				expiresAt.setDate(expiresAt.getDate() + durationDays)
 
 				// Обновляем профиль пользователя
 				// eslint-disable-next-line @typescript-eslint/no-explicit-any

@@ -7,6 +7,9 @@ export interface TBankInitPaymentRequest {
 	Description: string // Описание платежа
 	DATA?: Record<string, string> // Дополнительные данные
 	Receipt?: TBankReceipt // Чек для ФЗ-54
+	SuccessURL?: string // URL для редиректа после успешной оплаты
+	FailURL?: string // URL для редиректа после неудачной оплаты
+	NotificationURL?: string // URL для webhook уведомлений
 }
 
 export interface TBankReceipt {
@@ -128,13 +131,19 @@ export async function initPayment(
 		paramsForToken.Receipt = request.Receipt
 	}
 
+	// SuccessURL, FailURL и NotificationURL НЕ участвуют в генерации токена
+	// но должны быть включены в запрос
+
 	// Генерация токена
 	const token = generateToken(paramsForToken)
 
-	// Полные параметры для отправки (включая DATA)
+	// Полные параметры для отправки (включая DATA и URLs)
 	const params: Record<string, unknown> = {
 		...paramsForToken,
 		...(request.DATA && { DATA: request.DATA }),
+		...(request.SuccessURL && { SuccessURL: request.SuccessURL }),
+		...(request.FailURL && { FailURL: request.FailURL }),
+		...(request.NotificationURL && { NotificationURL: request.NotificationURL }),
 	}
 
 	const requestBody = {

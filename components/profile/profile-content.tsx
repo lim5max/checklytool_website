@@ -129,8 +129,8 @@ export default function ProfileContent({ userProfile }: ProfileContentProps) {
 									<Check className="w-5 h-5 text-green-600" />
 								</div>
 								<div>
-									<p className="font-semibold text-slate-900">Тест (1 лист)</p>
-									<p className="text-sm text-slate-500 mt-1">0,5 проверки за страницу</p>
+									<p className="font-semibold text-slate-900">Тест</p>
+									<p className="text-sm text-slate-500 mt-1">1 работа = 1 проверка</p>
 								</div>
 							</div>
 							<div className="flex items-start gap-4">
@@ -138,8 +138,8 @@ export default function ProfileContent({ userProfile }: ProfileContentProps) {
 									<Check className="w-5 h-5 text-purple-600" />
 								</div>
 								<div>
-									<p className="font-semibold text-slate-900">Сочинение (1 лист)</p>
-									<p className="text-sm text-slate-500 mt-1">1 проверка за страницу</p>
+									<p className="font-semibold text-slate-900">Сочинение</p>
+									<p className="text-sm text-slate-500 mt-1">1 работа = 1 проверка</p>
 								</div>
 							</div>
 						</div>
@@ -152,8 +152,8 @@ export default function ProfileContent({ userProfile }: ProfileContentProps) {
 								<p className="text-sm text-slate-500 mb-1">Текущая подписка</p>
 								<p className="text-xl font-bold text-slate-900">
 									{userProfile.subscription_plan_id
-										? 'Plus / Pro'
-										: 'Бесплатный тариф'}
+										? 'Pro'
+										: 'Бесплатный'}
 								</p>
 								{userProfile.subscription_expires_at && (
 									<p className="text-sm text-slate-600 mt-2">
@@ -228,6 +228,7 @@ export default function ProfileContent({ userProfile }: ProfileContentProps) {
 
 // Subscription Plans Component
 function SubscriptionPlans({
+	currentPlanId,
 	onSelectPlan,
 	processingPlanId,
 }: {
@@ -262,26 +263,99 @@ function SubscriptionPlans({
 		)
 	}
 
+	const freePlan = plans.find((plan) => plan.name === 'FREE')
 	const paidPlans = plans.filter((plan) => plan.name !== 'FREE' && plan.is_active)
 
 	return (
 		<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-			{paidPlans.map((plan, index) => {
-				const isPopular = index === 1 // Второй план (Pro) - популярный
+			{/* Free Plan Card */}
+			{freePlan && (
+				<div
+					className={`bg-white rounded-3xl border-2 p-8 md:p-10 transition-all duration-300 ${
+						!currentPlanId
+							? 'border-blue-500 shadow-lg ring-4 ring-blue-100'
+							: 'border-slate-200 hover:border-slate-300'
+					}`}
+				>
+					{!currentPlanId && (
+						<div className="inline-block bg-blue-500 text-white text-sm font-bold px-4 py-2 rounded-full mb-6">
+							✓ Текущий план
+						</div>
+					)}
+
+					<div className="mb-8">
+						<h3 className="font-nunito font-black text-3xl text-slate-900 mb-4">
+							{freePlan.display_name}
+						</h3>
+						<div className="flex items-baseline gap-2">
+							<span className="text-5xl font-black text-slate-900">
+								Бесплатно
+							</span>
+						</div>
+					</div>
+
+					<ul className="space-y-4 mb-8">
+						<li className="flex items-start gap-3">
+							<div className="bg-green-50 p-1.5 rounded-full flex-shrink-0 mt-0.5">
+								<Check className="w-4 h-4 text-green-600" />
+							</div>
+							<span className="text-slate-700 font-medium">
+								Неограниченное создание тестов
+							</span>
+						</li>
+						<li className="flex items-start gap-3">
+							<div className="bg-green-50 p-1.5 rounded-full flex-shrink-0 mt-0.5">
+								<Check className="w-4 h-4 text-green-600" />
+							</div>
+							<span className="text-slate-700 font-medium">
+								Работа с шаблонами тестов
+							</span>
+						</li>
+						<li className="flex items-start gap-3">
+							<div className="bg-slate-100 p-1.5 rounded-full flex-shrink-0 mt-0.5">
+								<span className="text-slate-400 text-sm">✕</span>
+							</div>
+							<span className="text-slate-400 font-medium">
+								Проверка работ недоступна
+							</span>
+						</li>
+					</ul>
+
+					<Button
+						className="w-full py-6 text-lg font-bold rounded-2xl bg-slate-100 text-slate-400 cursor-not-allowed"
+						disabled
+					>
+						{!currentPlanId ? 'Текущий план' : 'Бесплатный план'}
+					</Button>
+				</div>
+			)}
+
+			{/* Paid Plans */}
+			{paidPlans.map((plan) => {
+				const isCurrentPlan = currentPlanId === plan.id
+				const isProPlan = plan.name === 'PRO'
 
 				return (
 					<div
 						key={plan.id}
 						className={`bg-white rounded-3xl border-2 p-8 md:p-10 transition-all duration-300 hover:shadow-xl ${
-							isPopular
-								? 'border-slate-900 shadow-lg'
-								: 'border-slate-200 hover:border-slate-300'
+							isCurrentPlan
+								? 'border-blue-500 shadow-lg ring-4 ring-blue-100'
+								: isProPlan
+									? 'border-slate-900 shadow-lg'
+									: 'border-slate-200 hover:border-slate-300'
 						}`}
 					>
-						{isPopular && (
-							<div className="inline-block bg-slate-900 text-white text-sm font-bold px-4 py-2 rounded-full mb-6">
-								⭐ Популярный
+						{isCurrentPlan ? (
+							<div className="inline-block bg-blue-500 text-white text-sm font-bold px-4 py-2 rounded-full mb-6">
+								✓ Текущий план
 							</div>
+						) : (
+							isProPlan && (
+								<div className="inline-block bg-slate-900 text-white text-sm font-bold px-4 py-2 rounded-full mb-6">
+									⭐ Рекомендуем
+								</div>
+							)
 						)}
 
 						<div className="mb-8">
@@ -332,28 +406,28 @@ function SubscriptionPlans({
 									Детальная статистика
 								</span>
 							</li>
-							{isPopular && (
-								<li className="flex items-start gap-3">
-									<div className="bg-purple-50 p-1.5 rounded-full flex-shrink-0 mt-0.5">
-										<Check className="w-4 h-4 text-purple-600" />
-									</div>
-									<span className="text-slate-700 font-medium">
-										Приоритетная поддержка
-									</span>
-								</li>
-							)}
+							<li className="flex items-start gap-3">
+								<div className="bg-purple-50 p-1.5 rounded-full flex-shrink-0 mt-0.5">
+									<Check className="w-4 h-4 text-purple-600" />
+								</div>
+								<span className="text-slate-700 font-medium">
+									Приоритетная поддержка
+								</span>
+							</li>
 						</ul>
 
 						<Button
 							className={`w-full py-6 text-lg font-bold rounded-2xl transition-all duration-300 ${
-								isPopular
-									? 'bg-slate-900 hover:bg-slate-800 text-white'
-									: 'bg-slate-100 hover:bg-slate-200 text-slate-900'
+								isCurrentPlan
+									? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+									: 'bg-slate-900 hover:bg-slate-800 text-white'
 							}`}
-							onClick={() => onSelectPlan(plan.id)}
-							disabled={processingPlanId !== null}
+							onClick={() => !isCurrentPlan && onSelectPlan(plan.id)}
+							disabled={isCurrentPlan || processingPlanId !== null}
 						>
-							{processingPlanId === plan.id ? (
+							{isCurrentPlan ? (
+								'Текущий план'
+							) : processingPlanId === plan.id ? (
 								<div className="flex items-center justify-center gap-2">
 									<div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
 									<span>Обработка...</span>
