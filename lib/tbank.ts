@@ -121,6 +121,7 @@ export async function initPayment(
 
 	// Подготовка параметров для токена (без DATA - оно не участвует в подписи)
 	// ВАЖНО: Receipt (вложенный объект) НЕ участвует в генерации токена согласно документации
+	// Но SuccessURL, FailURL, NotificationURL - это простые строки, они МОГУТ участвовать
 	const paramsForToken: Record<string, unknown> = {
 		TerminalKey: config.terminalKey,
 		Amount: request.Amount,
@@ -128,8 +129,16 @@ export async function initPayment(
 		Description: request.Description,
 	}
 
-	// SuccessURL, FailURL, NotificationURL и Receipt НЕ участвуют в генерации токена
-	// но должны быть включены в запрос
+	// Добавляем URL-параметры в токен, если они переданы
+	if (request.SuccessURL) {
+		paramsForToken.SuccessURL = request.SuccessURL
+	}
+	if (request.FailURL) {
+		paramsForToken.FailURL = request.FailURL
+	}
+	if (request.NotificationURL) {
+		paramsForToken.NotificationURL = request.NotificationURL
+	}
 
 	// Генерация токена
 	const token = generateToken(paramsForToken)
