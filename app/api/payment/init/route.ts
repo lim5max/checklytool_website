@@ -85,27 +85,41 @@ export async function POST(request: NextRequest) {
 		// Проверяем, является ли URL локальным
 		const isLocalhost = siteUrl.includes('localhost') || siteUrl.includes('127.0.0.1')
 
+		// Логируем параметры перед отправкой
+		const paymentRequest = {
+			Amount: amountInKopecks,
+			OrderId: orderId,
+			Description: `Подписка ${plan.display_name} - ChecklyTool`,
+			...(receipt && { Receipt: receipt }),
+			DATA: {
+				userId,
+				planId,
+			},
+			// URL-ы передаем только если это не localhost (T-Bank не может достучаться до localhost)
+			...(!isLocalhost && {
+				SuccessURL: `${siteUrl}/dashboard?payment=success`,
+				FailURL: `${siteUrl}/dashboard?payment=failed`,
+				NotificationURL: `${siteUrl}/api/payment/webhook`,
+			}),
+		}
+
+		console.log('[Payment Init] Sending request to T-Bank:', {
+			mode: process.env.TBANK_MODE,
+			hasReceipt: !!receipt,
+			hasURLs: !isLocalhost,
+			amount: amountInKopecks,
+		})
+
 		// Инициализируем платеж в Т-Банк
 		let paymentData
 		try {
-			paymentData = await initPayment({
-				Amount: amountInKopecks,
-				OrderId: orderId,
-				Description: `Подписка ${plan.display_name} - ChecklyTool`,
-				...(receipt && { Receipt: receipt }),
-				DATA: {
-					userId,
-					planId,
-				},
-				// URL-ы передаем только если это не localhost (T-Bank не может достучаться до localhost)
-				...(!isLocalhost && {
-					SuccessURL: `${siteUrl}/dashboard?payment=success`,
-					FailURL: `${siteUrl}/dashboard?payment=failed`,
-					NotificationURL: `${siteUrl}/api/payment/webhook`,
-				}),
-			})
+			paymentData = await initPayment(paymentRequest)
 		} catch (error) {
 			console.error('[Payment Init] T-Bank API error:', error)
+			console.error('[Payment Init] Error details:', {
+				message: error instanceof Error ? error.message : 'Unknown',
+				stack: error instanceof Error ? error.stack : undefined,
+			})
 			return NextResponse.json(
 				{
 					error: 'Ошибка при инициализации платежа',
