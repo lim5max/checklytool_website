@@ -6,6 +6,8 @@ import { ArrowLeft, CheckCircle, XCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import { GradeCircle } from '@/components/submission/grade-circle'
 import { ImageGallery } from '@/components/submission/image-gallery'
+import { EssayErrorStats } from '@/components/submission/essay-error-stats'
+import { EssayErrorExamples } from '@/components/submission/essay-error-examples'
 
 interface SubmissionData {
 	id: string
@@ -39,6 +41,30 @@ interface SubmissionData {
 			confidence?: number
 			feedback?: string
 		}>
+		essay_analysis?: {
+			structure?: {
+				has_introduction?: boolean
+				has_body?: boolean
+				has_conclusion?: boolean
+				score?: number
+			}
+			logic?: {
+				coherent?: boolean
+				clear_arguments?: boolean
+				score?: number
+			}
+			errors?: {
+				spelling_errors?: number
+				punctuation_errors?: number
+				grammar_errors?: number
+				speech_errors?: number
+				syntax_errors?: number
+				total_errors?: number
+				examples?: string[]
+			}
+			content_quality?: string
+		}
+		additional_notes?: string
 		created_at: string
 	}
 }
@@ -268,6 +294,49 @@ export default function SubmissionDetailPage({ params }: PageProps) {
 									</div>
 								</div>
 							)}
+						</div>
+					</div>
+				)}
+
+				{/* Статистика ошибок для сочинений */}
+				{isEssay && evaluation?.essay_analysis?.errors && (
+					<div className="space-y-6">
+						<h2 className="font-nunito font-bold text-2xl text-slate-900">
+							Анализ ошибок
+						</h2>
+
+						{/* Общая статистика ошибок */}
+						<EssayErrorStats errors={evaluation.essay_analysis.errors} />
+
+						{/* Примеры ошибок */}
+						{evaluation.essay_analysis.errors.examples && evaluation.essay_analysis.errors.examples.length > 0 && (
+							<div>
+								<h3 className="font-semibold text-xl text-slate-900 mb-4">
+									Примеры ошибок
+								</h3>
+								<EssayErrorExamples examples={evaluation.essay_analysis.errors.examples} />
+							</div>
+						)}
+					</div>
+				)}
+
+				{/* Дополнительные заметки */}
+				{evaluation?.additional_notes && (
+					<div className="bg-gradient-to-br from-indigo-50 to-blue-50 rounded-3xl border-2 border-indigo-200 p-8">
+						<div className="flex items-start gap-4">
+							<div className="w-12 h-12 bg-indigo-500 rounded-xl flex items-center justify-center flex-shrink-0">
+								<svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+								</svg>
+							</div>
+							<div className="flex-1">
+								<h2 className="font-nunito font-bold text-2xl text-indigo-900 mb-3">
+									Рекомендации
+								</h2>
+								<p className="text-indigo-800 leading-relaxed whitespace-pre-wrap text-lg">
+									{evaluation.additional_notes}
+								</p>
+							</div>
 						</div>
 					</div>
 				)}

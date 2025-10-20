@@ -66,6 +66,8 @@ export async function GET(
 				incorrect_answers,
 				detailed_answers,
 				confidence_score,
+				essay_analysis,
+				additional_notes,
 				created_at
 			`)
 			.eq('submission_id', submissionId)

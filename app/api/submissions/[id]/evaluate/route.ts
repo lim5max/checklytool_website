@@ -720,12 +720,14 @@ const postHandler = async (
 				ai_response: JSON.parse(JSON.stringify(aiResult)),
 				confidence_score: aiResult.confidence_score,
 				...(checkData.check_type === 'essay' && aiResult.essay_analysis ? {
-					essay_metadata: JSON.parse(JSON.stringify({
+					essay_analysis: JSON.parse(JSON.stringify({
 						structure: aiResult.essay_analysis.structure,
 						logic: aiResult.essay_analysis.logic,
 						errors: aiResult.essay_analysis.errors,
-						content_quality: aiResult.essay_analysis.content_quality
-					}))
+						content_quality: aiResult.essay_analysis.content_quality,
+						final_grade: aiResult.essay_analysis.final_grade
+					})),
+					additional_notes: aiResult.additional_notes || null
 				} : {})
 			}
 
