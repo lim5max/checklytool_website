@@ -134,9 +134,10 @@ export async function initPayment(
 	// Генерация токена
 	const token = generateToken(paramsForToken)
 
-	// Полные параметры для отправки (включая DATA и URLs)
+	// Полные параметры для отправки (включая Receipt, DATA и URLs)
 	const params: Record<string, unknown> = {
 		...paramsForToken,
+		...(request.Receipt && { Receipt: request.Receipt }),
 		...(request.DATA && { DATA: request.DATA }),
 		...(request.SuccessURL && { SuccessURL: request.SuccessURL }),
 		...(request.FailURL && { FailURL: request.FailURL }),
