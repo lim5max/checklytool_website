@@ -43,12 +43,28 @@ export const authOptions: NextAuthConfig = {
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
+          console.error('[AUTH] Missing credentials')
           return null
         }
 
         try {
-          const supabase = await createClient()
+          // Проверяем переменные окружения
+          const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+          const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
+          console.log('[AUTH] Environment check:', {
+            hasSupabaseUrl: !!supabaseUrl,
+            hasSupabaseKey: !!supabaseKey,
+            supabaseUrl: supabaseUrl ? `${supabaseUrl.substring(0, 20)}...` : 'MISSING',
+            keyType: process.env.SUPABASE_SERVICE_ROLE_KEY ? 'service_role' : 'anon'
+          })
+
+          if (!supabaseUrl || !supabaseKey) {
+            console.error('[AUTH] Missing Supabase environment variables')
+            throw new Error('Supabase not configured')
+          }
+
+          const supabase = await createClient()
           console.log('[AUTH] Attempting login for:', credentials.email)
 
           // Получаем пользователя из базы данных
@@ -60,7 +76,12 @@ export const authOptions: NextAuthConfig = {
             .single()
 
           if (error) {
-            console.error('[AUTH] Database error:', error)
+            console.error('[AUTH] Database error:', {
+              message: error.message,
+              details: error.details,
+              hint: error.hint,
+              code: error.code
+            })
             return null
           }
 
@@ -109,8 +130,11 @@ export const authOptions: NextAuthConfig = {
         } catch (error) {
           console.error('[AUTH] Authorization error:', error)
           if (error instanceof Error) {
-            console.error('[AUTH] Error message:', error.message)
-            console.error('[AUTH] Error stack:', error.stack)
+            console.error('[AUTH] Error details:', {
+              message: error.message,
+              stack: error.stack,
+              name: error.name
+            })
           }
           return null
         }
