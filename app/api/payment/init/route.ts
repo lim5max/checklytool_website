@@ -82,9 +82,8 @@ export async function POST(request: NextRequest) {
 		// Получаем базовый URL сайта
 		const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://checklytool.com'
 
-		// В тестовом режиме не передаем URL-ы (localhost недоступен для T-Bank)
-		// В продакшене передаем URL-ы для редиректов и webhook
-		const isProduction = process.env.TBANK_MODE === 'production'
+		// Проверяем, является ли URL локальным
+		const isLocalhost = siteUrl.includes('localhost') || siteUrl.includes('127.0.0.1')
 
 		// Инициализируем платеж в Т-Банк
 		let paymentData
@@ -98,8 +97,8 @@ export async function POST(request: NextRequest) {
 					userId,
 					planId,
 				},
-				// URL-ы передаем только в продакшене
-				...(isProduction && {
+				// URL-ы передаем только если это не localhost (T-Bank не может достучаться до localhost)
+				...(!isLocalhost && {
 					SuccessURL: `${siteUrl}/dashboard?payment=success`,
 					FailURL: `${siteUrl}/dashboard?payment=failed`,
 					NotificationURL: `${siteUrl}/api/payment/webhook`,
