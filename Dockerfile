@@ -1,3 +1,5 @@
+# syntax=docker/dockerfile:1
+
 FROM node:20-alpine AS deps
 # Используем российские зеркала для Alpine Linux
 RUN echo "https://mirror.yandex.ru/mirrors/alpine/v3.20/main" > /etc/apk/repositories && \
@@ -6,21 +8,20 @@ RUN echo "https://mirror.yandex.ru/mirrors/alpine/v3.20/main" > /etc/apk/reposit
 WORKDIR /app
 
 COPY package.json package-lock.json ./
-# Используем российское зеркало npm
-RUN npm config set registry https://registry.npmmirror.com && \
-    npm config set fetch-retry-mintimeout 20000 && \
-    npm config set fetch-retry-maxtimeout 120000 && \
+# Используем российское зеркало npm для быстрой загрузки в РФ
+RUN --mount=type=cache,target=/tmp/.npm \
+    npm config set registry https://registry.npmjs.org/ && \
     npm config set cache /tmp/.npm && \
-    npm ci --only=production --omit=dev --ignore-scripts
+    npm ci --only=production
 
 FROM node:20-alpine AS builder
 WORKDIR /app
 COPY package.json package-lock.json ./
-# Устанавливаем ВСЕ зависимости для сборки через российское зеркало
-RUN npm config set registry https://registry.npmmirror.com && \
-    npm config set fetch-retry-mintimeout 20000 && \
-    npm config set fetch-retry-maxtimeout 120000 && \
-    npm ci --legacy-peer-deps
+# Устанавливаем ВСЕ зависимости для сборки (включая dev-зависимости)
+RUN --mount=type=cache,target=/tmp/.npm \
+    npm config set registry https://registry.npmjs.org/ && \
+    npm config set cache /tmp/.npm && \
+    npm ci
 
 COPY . .
 
