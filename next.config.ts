@@ -22,7 +22,9 @@ const nextConfig: NextConfig = {
     optimizePackageImports: ['framer-motion', 'lucide-react'],
   },
   compiler: {
-    removeConsole: process.env.NODE_ENV === 'production',
+    removeConsole: process.env.NODE_ENV === 'production' ? {
+      exclude: ['error', 'warn', 'log'],
+    } : false,
   },
 };
 
