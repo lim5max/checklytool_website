@@ -109,6 +109,26 @@ export default function DashboardPageNew() {
 		loadData()
 	}, [loadData])
 
+	// Обработка результата оплаты
+	useEffect(() => {
+		const params = new URLSearchParams(window.location.search)
+		const paymentStatus = params.get('payment')
+
+		if (paymentStatus === 'success') {
+			toast.success('Оплата успешна!', {
+				description: 'Ваша подписка активирована. Обновите страницу, чтобы увидеть изменения.',
+			})
+			// Очищаем параметр из URL
+			window.history.replaceState({}, '', '/dashboard')
+		} else if (paymentStatus === 'failed') {
+			toast.error('Ошибка оплаты', {
+				description: 'Платеж не прошел. Попробуйте еще раз.',
+			})
+			// Очищаем параметр из URL
+			window.history.replaceState({}, '', '/dashboard')
+		}
+	}, [])
+
 	// Преобразование данных в унифицированный формат
 	const unifiedItems = useMemo<UnifiedItem[]>(() => {
 		const items: UnifiedItem[] = []

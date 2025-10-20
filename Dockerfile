@@ -6,17 +6,21 @@ RUN echo "https://mirror.yandex.ru/mirrors/alpine/v3.20/main" > /etc/apk/reposit
 WORKDIR /app
 
 COPY package.json package-lock.json ./
-# Используем российские npm зеркала
-RUN npm config set registry https://registry.npmjs.org/ && \
+# Используем российское зеркало npm
+RUN npm config set registry https://registry.npmmirror.com && \
+    npm config set fetch-retry-mintimeout 20000 && \
+    npm config set fetch-retry-maxtimeout 120000 && \
     npm config set cache /tmp/.npm && \
-    npm ci --only=production --prefer-offline
+    npm ci --only=production --omit=dev --ignore-scripts
 
 FROM node:20-alpine AS builder
 WORKDIR /app
 COPY package.json package-lock.json ./
-# Устанавливаем ВСЕ зависимости для сборки (включая dev)
-RUN npm config set registry https://registry.npmjs.org/ && \
-    npm ci
+# Устанавливаем ВСЕ зависимости для сборки через российское зеркало
+RUN npm config set registry https://registry.npmmirror.com && \
+    npm config set fetch-retry-mintimeout 20000 && \
+    npm config set fetch-retry-maxtimeout 120000 && \
+    npm ci --legacy-peer-deps
 
 COPY . .
 
