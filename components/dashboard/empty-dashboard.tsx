@@ -2,17 +2,13 @@
 
 import React from 'react'
 import { useRouter } from 'next/navigation'
-import { Camera, FileEdit, Sparkles, CheckCircle2, Star } from 'lucide-react'
-
-interface EmptyDashboardProps {
-	onCreateTest?: () => void
-}
+import { Camera, FileEdit, CheckCircle2, Star } from 'lucide-react'
 
 /**
  * Компонент пустого состояния dashboard
- * Показывает три основных пути для начала работы
+ * Показывает два основных пути для начала работы
  */
-export function EmptyDashboard({ onCreateTest }: EmptyDashboardProps) {
+export function EmptyDashboard() {
 	const router = useRouter()
 
 	const handleCheckEssay = () => {
@@ -20,15 +16,7 @@ export function EmptyDashboard({ onCreateTest }: EmptyDashboardProps) {
 	}
 
 	const handleCreateTest = () => {
-		if (onCreateTest) {
-			onCreateTest()
-		} else {
-			router.push('/dashboard/test-builder')
-		}
-	}
-
-	const handleCreateAITest = () => {
-		router.push('/dashboard/checks/new')
+		router.push('/dashboard/test-builder')
 	}
 
 	return (
@@ -36,10 +24,10 @@ export function EmptyDashboard({ onCreateTest }: EmptyDashboardProps) {
 			{/* Заголовок и описание */}
 			<div className="space-y-3">
 				<h1 className="font-nunito font-black text-[32px] leading-tight text-slate-800">
-					AI проверяет работы по фото
+					Мы проверим работы за вас
 				</h1>
 				<p className="font-inter text-base text-slate-600 leading-relaxed">
-					Даже если ученик сфотографировал тетрадь — AI оценит по смыслу, структуре и грамматике
+					Просто сфоткайте работы, а AI проверит и выставит оценки
 				</p>
 			</div>
 
@@ -49,13 +37,13 @@ export function EmptyDashboard({ onCreateTest }: EmptyDashboardProps) {
 					Что вы хотите сделать сегодня?
 				</h2>
 				<p className="font-inter text-sm text-slate-600">
-					Выберите один из трёх путей для начала работы
+					Выберите один из двух основных путей для начала работы
 				</p>
 			</div>
 
-			{/* Три основных действия */}
+			{/* Два основных действия */}
 			<div className="space-y-4">
-				{/* 1. Проверить сочинение по фото - ГЛАВНАЯ ФУНКЦИЯ */}
+				{/* 1. Проверить сочинение или тест - ГЛАВНАЯ ФУНКЦИЯ */}
 				<button
 					onClick={handleCheckEssay}
 					className="w-full bg-gradient-to-br from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 active:scale-[0.98] transition-all rounded-[32px] p-6 text-left shadow-lg"
@@ -67,31 +55,29 @@ export function EmptyDashboard({ onCreateTest }: EmptyDashboardProps) {
 						<div className="flex-1 space-y-2">
 							<div className="flex items-center gap-2">
 								<h3 className="font-nunito font-black text-xl text-white">
-									Проверить сочинение по фото
+									Проверить сочинение или тест
 								</h3>
-								<span className="bg-white/30 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-bold text-white">
-									ГЛАВНОЕ
-								</span>
+								
 							</div>
 							<p className="font-inter text-sm text-white/90 leading-relaxed">
 								Загрузите фото работы — AI оценит по смыслу, структуре и грамматике
 							</p>
 							<div className="flex flex-wrap gap-2 mt-3">
 								<span className="bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-medium text-white">
-									📸 Фото
+									🤖 ИИ проверка
 								</span>
 								<span className="bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-medium text-white">
-									📄 Скан
+									💬 Разные языки
 								</span>
 								<span className="bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-medium text-white">
-									📋 PDF
+									⏳ Экономия 10+ часов 
 								</span>
 							</div>
 						</div>
 					</div>
 				</button>
 
-				{/* 2. Создать тест для печати - ОСНОВНОЙ ИНСТРУМЕНТ */}
+				{/* 2. Создать тест с AI-проверкой - ОСНОВНОЙ ИНСТРУМЕНТ */}
 				<button
 					onClick={handleCreateTest}
 					className="w-full bg-gradient-to-br from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 active:scale-[0.98] transition-all rounded-[32px] p-6 text-left shadow-lg"
@@ -102,10 +88,10 @@ export function EmptyDashboard({ onCreateTest }: EmptyDashboardProps) {
 						</div>
 						<div className="flex-1 space-y-2">
 							<h3 className="font-nunito font-black text-xl text-white">
-								Создать тест для печати
+								Создать шаблон теста для AI проверки
 							</h3>
 							<p className="font-inter text-sm text-white/90 leading-relaxed">
-								Быстро оформите контрольную работу и распечатайте как профессионал
+								Массовая проверка работ с разными типами вопросов
 							</p>
 							<div className="flex flex-wrap gap-2 mt-3">
 								<span className="bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-medium text-white">
@@ -115,35 +101,7 @@ export function EmptyDashboard({ onCreateTest }: EmptyDashboardProps) {
 									✓ Варианты
 								</span>
 								<span className="bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-medium text-white">
-									📊 Таблицы
-								</span>
-							</div>
-						</div>
-					</div>
-				</button>
-
-				{/* 3. Создать тест с AI-проверкой - ДОПОЛНИТЕЛЬНО */}
-				<button
-					onClick={handleCreateAITest}
-					className="w-full bg-gradient-to-br from-slate-100 to-slate-200 hover:from-slate-200 hover:to-slate-300 active:scale-[0.98] transition-all rounded-[32px] p-6 text-left border-2 border-slate-300"
-				>
-					<div className="flex items-start gap-4">
-						<div className="bg-white rounded-2xl p-3 flex-shrink-0 shadow-sm">
-							<Sparkles className="w-8 h-8 text-slate-700" />
-						</div>
-						<div className="flex-1 space-y-2">
-							<h3 className="font-nunito font-black text-xl text-slate-800">
-								Создать тест с AI-проверкой
-							</h3>
-							<p className="font-inter text-sm text-slate-600 leading-relaxed">
-								AI проверит ответы учеников автоматически — идеально для домашних заданий
-							</p>
-							<div className="flex flex-wrap gap-2 mt-3">
-								<span className="bg-white px-3 py-1 rounded-full text-xs font-medium text-slate-700 shadow-sm">
-									🤖 Множественный выбор
-								</span>
-								<span className="bg-white px-3 py-1 rounded-full text-xs font-medium text-slate-700 shadow-sm">
-									💬 Открытые вопросы
+									📊 Статистика
 								</span>
 							</div>
 						</div>

@@ -240,7 +240,7 @@ export default function DashboardPageNew() {
 
 	// Пустое состояние - онбординг
 	if (!isLoading && unifiedItems.length === 0) {
-		return <EmptyDashboard onCreateTest={() => setIsSheetOpen(true)} />
+		return <EmptyDashboard />
 	}
 
 	// Загрузка

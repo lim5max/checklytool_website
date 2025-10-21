@@ -9,7 +9,7 @@ import Image from 'next/image'
 import Header from '@/components/Header'
 import { CameraWorkInterface } from '@/components/camera/CameraWorkInterface'
 import { Button } from '@/components/ui/button'
-import { getDraft, clearDraft, setDraftStudents, getTempFailedNames, clearTempFailedNames, addTempFailedName } from '@/lib/drafts-idb'
+import { getDraft, clearDraft, setDraftStudents, getTempFailedNames, clearTempFailedNames, addTempFailedName, removeStudent } from '@/lib/drafts-idb'
 import { submitStudents, evaluateAll } from '@/lib/upload-submissions'
 import SubscriptionModal from '@/components/subscription-modal'
 import { useCheckBalance } from '@/hooks/use-check-balance'
@@ -399,13 +399,33 @@ export default function CheckPage({ params }: CheckPageProps) {
 		}
 	}
 
-	const handleReshoot = () => {
+	const handleReshoot = async () => {
 		const allFailedNames = [
 			...failedSubs.map(s => (s.student_name || '').trim()),
 			...getTempFailedNames(checkId)
 		]
 		const uniqueNames = Array.from(new Set(allFailedNames)).filter(n => n.length > 0)
 
+		// Удаляем все failed submissions из БД
+		const failedSubmissionsToDelete = failedSubs.filter(
+			sub => !sub.error_details?.isTemporary && !sub.id.startsWith('temp-')
+		)
+
+		// Удаляем каждую failed submission
+		await Promise.all(
+			failedSubmissionsToDelete.map(async (sub) => {
+				try {
+					await fetch(`/api/submissions/${sub.id}`, { method: 'DELETE' })
+				} catch (error) {
+					console.error('Error deleting failed submission:', error)
+				}
+			})
+		)
+
+		// Обновляем локальное состояние submissions
+		setSubmissions(prev => prev.filter(s => s.status !== 'failed'))
+
+		// Создаем новые черновики для переснятия
 		clearDraft(checkId)
 		if (uniqueNames.length > 0) {
 			setDraftStudents(checkId, uniqueNames)
@@ -444,11 +464,16 @@ export default function CheckPage({ params }: CheckPageProps) {
 		try {
 			const draft = getDraft(checkId)
 			if (draft?.students) {
-				const updatedStudents = draft.students.filter(s => s.name !== studentName)
-				clearDraft(checkId)
-				if (updatedStudents.length > 0) {
-					setDraftStudents(checkId, updatedStudents.map(s => s.name))
+				// Находим студента по имени
+				const student = draft.students.find(s => s.name === studentName)
+				if (!student) {
+					console.error('Student not found:', studentName)
+					toast.error('Студент не найден')
+					return
 				}
+
+				// Используем removeStudent для корректного удаления
+				removeStudent(checkId, student.id)
 				loadDrafts()
 				toast.success(`Работа "${studentName}" удалена`)
 			}

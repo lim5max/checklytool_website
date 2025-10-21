@@ -4,6 +4,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { X, Camera, ChevronUp, Plus, Trash2, UserPlus, ImagePlus } from 'lucide-react'
+import { toast } from 'sonner'
 import {
   getDraft,
   ensureStudent as ensureDraftStudent,
@@ -352,9 +353,16 @@ export function CameraWorkInterface({
   // Student management
   const addStudent = useCallback(() => {
     console.log('[CAMERA] addStudent called')
+
     // Получаем актуальное состояние из draft
     const currentDraft = getDraft(checkId)
     console.log('[CAMERA] Current draft students:', currentDraft?.students.length)
+
+    // Проверка на максимум 10 учеников (проверяем только если draft существует)
+    if (currentDraft?.students && currentDraft.students.length >= 10) {
+      toast.error('Разово можно проверить только 10 человек')
+      return
+    }
 
     // addStudent из drafts.ts сам генерирует уникальное имя если передать пустую строку
     // Функция generateUniqueStudentName будет вызвана автоматически
