@@ -43,7 +43,7 @@ export default function SubscriptionModal({
 			const data = await response.json()
 			setPlans(data.plans || [])
 		} catch (error) {
-			console.error('Error fetching plans:', error)
+			console.error('[SUBSCRIPTION MODAL COMPONENT] Error fetching plans:', error)
 		} finally {
 			setLoading(false)
 		}
@@ -86,7 +86,9 @@ export default function SubscriptionModal({
 		}
 	}
 
-	if (!isOpen) return null
+	if (!isOpen) {
+		return null
+	}
 
 	const paidPlans = plans.filter((plan) => plan.name !== 'FREE' && plan.is_active)
 

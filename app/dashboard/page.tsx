@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Input } from '@/components/ui/input'
 import { Search, Plus, FileX } from 'lucide-react'
 import { toast } from 'sonner'
@@ -10,6 +10,9 @@ import { CreateActionSheet } from '@/components/dashboard/create-action-sheet'
 import { UnifiedListItem } from '@/components/dashboard/unified-list-item'
 import { EmptyDashboard } from '@/components/dashboard/empty-dashboard'
 import { DashboardStats } from '@/components/dashboard/dashboard-stats'
+import SubscriptionModal from '@/components/subscription-modal'
+
+const FREE_PLAN_ID = '3c8498ed-8093-44f8-97e3-b7ae4973c743'
 
 // Типы
 interface Check {
@@ -48,6 +51,11 @@ interface DashboardStats {
 	total_tests: number
 }
 
+interface UserProfile {
+	subscription_plan_id: string
+	check_balance: number
+}
+
 const segments = [
 	{ value: 'all', label: 'Всё', icon: '📋' },
 	{ value: 'checks', label: 'Проверки', icon: '🎯' },
@@ -56,15 +64,18 @@ const segments = [
 
 export default function DashboardPageNew() {
 	const router = useRouter()
+	const searchParams = useSearchParams()
 
 	// State
 	const [allChecks, setAllChecks] = useState<Check[]>([])
 	const [allTests, setAllTests] = useState<Test[]>([])
 	const [stats, setStats] = useState<DashboardStats | null>(null)
+	const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
 	const [isLoading, setIsLoading] = useState(true)
 	const [searchQuery, setSearchQuery] = useState('')
 	const [activeSegment, setActiveSegment] = useState('all')
 	const [isSheetOpen, setIsSheetOpen] = useState(false)
+	const [isSubscriptionModalOpen, setIsSubscriptionModalOpen] = useState(false)
 
 	// Pagination state
 	const [displayCount, setDisplayCount] = useState(5)
@@ -75,10 +86,11 @@ export default function DashboardPageNew() {
 		try {
 			setIsLoading(true)
 
-			const [checksRes, testsRes, statsRes] = await Promise.all([
+			const [checksRes, testsRes, statsRes, profileRes] = await Promise.all([
 				fetch('/api/checks?limit=100'),
 				fetch('/api/tests/saved'),
 				fetch('/api/dashboard/stats'),
+				fetch('/api/users/profile'),
 			])
 
 			if (checksRes.ok) {
@@ -93,9 +105,15 @@ export default function DashboardPageNew() {
 
 			if (statsRes.ok) {
 				const statsData = await statsRes.json()
-				console.log('[DASHBOARD] Received stats data:', statsData)
 				// API возвращает { stats: { total_checks, ... } }
 				setStats(statsData.stats || statsData)
+			}
+
+			if (profileRes.ok) {
+				const profileData = await profileRes.json()
+				setUserProfile(profileData.profile)
+			} else {
+				console.error('[DASHBOARD] Failed to load profile:', profileRes.status)
 			}
 		} catch (error) {
 			console.error('Error loading dashboard:', error)
@@ -128,6 +146,52 @@ export default function DashboardPageNew() {
 			window.history.replaceState({}, '', '/dashboard')
 		}
 	}, [])
+
+	// Показываем модальное окно для новых пользователей (firstLogin)
+	useEffect(() => {
+		const isFirstLogin = searchParams.get('firstLogin') === 'true'
+
+		if (isFirstLogin) {
+			// Удаляем параметр из URL
+			window.history.replaceState({}, '', '/dashboard')
+
+			// Показываем модальное окно
+			setIsSubscriptionModalOpen(true)
+
+			// Сохраняем время показа
+			localStorage.setItem('lastSubscriptionModalShow', new Date().toISOString())
+		}
+	}, [searchParams])
+
+	// Показываем модальное окно для FREE плана (раз в 24 часа)
+	useEffect(() => {
+		if (!userProfile) {
+			return
+		}
+
+		// Не показываем, если модальное окно уже открыто
+		if (isSubscriptionModalOpen) {
+			return
+		}
+
+		// Проверяем FREE план
+		if (userProfile.subscription_plan_id === FREE_PLAN_ID) {
+			const lastShow = localStorage.getItem('lastSubscriptionModalShow')
+
+			if (!lastShow) {
+				setIsSubscriptionModalOpen(true)
+				localStorage.setItem('lastSubscriptionModalShow', new Date().toISOString())
+				return
+			}
+
+			const hoursSinceLastShow = (Date.now() - new Date(lastShow).getTime()) / (1000 * 60 * 60)
+
+			if (hoursSinceLastShow >= 24) {
+				setIsSubscriptionModalOpen(true)
+				localStorage.setItem('lastSubscriptionModalShow', new Date().toISOString())
+			}
+		}
+	}, [userProfile, isSubscriptionModalOpen])
 
 	// Преобразование данных в унифицированный формат
 	const unifiedItems = useMemo<UnifiedItem[]>(() => {
@@ -238,130 +302,138 @@ export default function DashboardPageNew() {
 		setDisplayCount(5)
 	}, [activeSegment])
 
-	// Пустое состояние - онбординг
-	if (!isLoading && unifiedItems.length === 0) {
-		return <EmptyDashboard />
-	}
-
-	// Загрузка
-	if (isLoading) {
-		return (
-			<div className="p-4 space-y-6">
-				{/* Скелетон статистики */}
-				<div className="bg-slate-50 rounded-[42px] p-7 animate-pulse">
-					<div className="h-8 bg-slate-200 rounded w-48 mb-3"></div>
-					<div className="h-16 bg-slate-200 rounded w-20"></div>
-				</div>
-
-				{/* Скелетон кнопки */}
-				<div className="h-[72px] bg-slate-200 rounded-full animate-pulse"></div>
-
-				{/* Скелетон segment */}
-				<div className="h-12 bg-slate-200 rounded-full animate-pulse"></div>
-
-				{/* Скелетон списка */}
-				{[...Array(3)].map((_, i) => (
-					<div
-						key={i}
-						className="bg-slate-50 rounded-[42px] p-6 animate-pulse"
-					>
-						<div className="h-5 bg-slate-200 rounded w-3/4 mb-2"></div>
-						<div className="h-4 bg-slate-200 rounded w-1/2"></div>
-					</div>
-				))}
-			</div>
-		)
-	}
-
-	// Основной UI
+	// Рендерим модальное окно независимо от состояния
 	return (
-		<div className="p-4 space-y-6">
-			{/* Статистика */}
-			{stats && (
-				<DashboardStats
-					totalSubmissions={stats.total_submissions}
-					totalChecks={stats.total_checks}
-					totalTests={stats.total_tests}
-				/>
-			)}
-
-			{/* FAB Button */}
-			<button
-				onClick={() => setIsSheetOpen(true)}
-				className="w-full bg-[#096ff5] hover:bg-blue-600 transition-all active:scale-[0.98] text-white font-inter font-medium text-lg rounded-full h-[72px] flex items-center justify-center gap-2 shadow-lg"
-			>
-				<Plus className="w-6 h-6" />
-				Создать
-			</button>
-
-			{/* Segment Control */}
-			<SegmentControl
-				segments={segments}
-				activeSegment={activeSegment}
-				onChange={setActiveSegment}
+		<>
+			{/* Subscription Modal - всегда рендерится */}
+			<SubscriptionModal
+				isOpen={isSubscriptionModalOpen}
+				onClose={() => setIsSubscriptionModalOpen(false)}
+				availableCredits={userProfile?.check_balance}
 			/>
 
-			{/* Поиск */}
-			<div className="relative">
-				<Search className="absolute left-[21px] top-1/2 transform -translate-y-1/2 w-[18px] h-[18px] text-slate-500" />
-				<Input
-					placeholder="Поиск..."
-					value={searchQuery}
-					onChange={handleSearchChange}
-					className="pl-[49px] h-14 rounded-[27px] border-slate-100 bg-slate-50 font-inter font-medium"
-				/>
-			</div>
-
-			{/* Список */}
-			<div className="space-y-3">
-				{filteredItems.length === 0 ? (
-					<div className="text-center py-12">
-						<FileX className="mx-auto h-12 w-12 text-slate-400 mb-4" />
-						<h3 className="font-nunito font-bold text-lg text-slate-800 mb-2">
-							Ничего не найдено
-						</h3>
-						<p className="text-slate-600 text-sm">
-							{searchQuery
-								? `По запросу "${searchQuery}" ничего не найдено`
-								: 'Список пуст'}
-						</p>
-					</div>
-				) : (
-					<>
-						{/* Рендерим только видимые элементы */}
-						{visibleItems.map((item) => (
-							<UnifiedListItem
-								key={`${item.type}-${item.id}`}
-								{...item}
-								onClick={handleItemClick}
-							/>
-						))}
-
-						{/* Кнопка "Показать ещё" */}
-						{hasMore && (
-							<button
-								onClick={loadMore}
-								className="w-full bg-slate-100 hover:bg-slate-200 transition-colors text-slate-700 font-inter font-medium text-base rounded-full h-14 flex items-center justify-center gap-2"
-							>
-								Показать ещё ({filteredItems.length - displayCount})
-							</button>
-						)}
-
-						{/* Показываем сколько всего */}
-						{!hasMore && filteredItems.length > 5 && (
-							<p className="text-center text-slate-500 text-sm py-4">
-								Показано все {filteredItems.length}
-							</p>
-						)}
-					</>
-				)}
-			</div>
-
-			{/* Action Sheet */}
+			{/* Action Sheet - всегда рендерится */}
 			<CreateActionSheet
 				isOpen={isSheetOpen}
 				onClose={() => setIsSheetOpen(false)}
 			/>
-		</div>
+
+			{/* Пустое состояние - онбординг */}
+			{!isLoading && unifiedItems.length === 0 && <EmptyDashboard />}
+
+			{/* Загрузка */}
+			{isLoading && (
+				<div className="p-4 space-y-6">
+					{/* Скелетон статистики */}
+					<div className="bg-slate-50 rounded-[42px] p-7 animate-pulse">
+						<div className="h-8 bg-slate-200 rounded w-48 mb-3"></div>
+						<div className="h-16 bg-slate-200 rounded w-20"></div>
+					</div>
+
+					{/* Скелетон кнопки */}
+					<div className="h-[72px] bg-slate-200 rounded-full animate-pulse"></div>
+
+					{/* Скелетон segment */}
+					<div className="h-12 bg-slate-200 rounded-full animate-pulse"></div>
+
+					{/* Скелетон списка */}
+					{[...Array(3)].map((_, i) => (
+						<div
+							key={i}
+							className="bg-slate-50 rounded-[42px] p-6 animate-pulse"
+						>
+							<div className="h-5 bg-slate-200 rounded w-3/4 mb-2"></div>
+							<div className="h-4 bg-slate-200 rounded w-1/2"></div>
+						</div>
+					))}
+				</div>
+			)}
+
+			{/* Основной UI */}
+			{!isLoading && unifiedItems.length > 0 && (
+				<div className="p-4 space-y-6">
+					{/* Статистика */}
+					{stats && (
+						<DashboardStats
+							totalSubmissions={stats.total_submissions}
+							totalChecks={stats.total_checks}
+							totalTests={stats.total_tests}
+						/>
+					)}
+
+					{/* FAB Button */}
+					<button
+						onClick={() => setIsSheetOpen(true)}
+						className="w-full bg-[#096ff5] hover:bg-blue-600 transition-all active:scale-[0.98] text-white font-inter font-medium text-lg rounded-full h-[72px] flex items-center justify-center gap-2 shadow-lg"
+					>
+						<Plus className="w-6 h-6" />
+						Создать
+					</button>
+
+					{/* Segment Control */}
+					<SegmentControl
+						segments={segments}
+						activeSegment={activeSegment}
+						onChange={setActiveSegment}
+					/>
+
+					{/* Поиск */}
+					<div className="relative">
+						<Search className="absolute left-[21px] top-1/2 transform -translate-y-1/2 w-[18px] h-[18px] text-slate-500" />
+						<Input
+							placeholder="Поиск..."
+							value={searchQuery}
+							onChange={handleSearchChange}
+							className="pl-[49px] h-14 rounded-[27px] border-slate-100 bg-slate-50 font-inter font-medium"
+						/>
+					</div>
+
+					{/* Список */}
+					<div className="space-y-3">
+						{filteredItems.length === 0 ? (
+							<div className="text-center py-12">
+								<FileX className="mx-auto h-12 w-12 text-slate-400 mb-4" />
+								<h3 className="font-nunito font-bold text-lg text-slate-800 mb-2">
+									Ничего не найдено
+								</h3>
+								<p className="text-slate-600 text-sm">
+									{searchQuery
+										? `По запросу "${searchQuery}" ничего не найдено`
+										: 'Список пуст'}
+								</p>
+							</div>
+						) : (
+							<>
+								{/* Рендерим только видимые элементы */}
+								{visibleItems.map((item) => (
+									<UnifiedListItem
+										key={`${item.type}-${item.id}`}
+										{...item}
+										onClick={handleItemClick}
+									/>
+								))}
+
+								{/* Кнопка "Показать ещё" */}
+								{hasMore && (
+									<button
+										onClick={loadMore}
+										className="w-full bg-slate-100 hover:bg-slate-200 transition-colors text-slate-700 font-inter font-medium text-base rounded-full h-14 flex items-center justify-center gap-2"
+									>
+										Показать ещё ({filteredItems.length - displayCount})
+									</button>
+								)}
+
+								{/* Показываем сколько всего */}
+								{!hasMore && filteredItems.length > 5 && (
+									<p className="text-center text-slate-500 text-sm py-4">
+										Показано все {filteredItems.length}
+									</p>
+								)}
+							</>
+						)}
+					</div>
+				</div>
+			)}
+		</>
 	)
 }

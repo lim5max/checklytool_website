@@ -21,7 +21,6 @@ export default function RegisterForm() {
     email: '',
     password: '',
     fullName: '',
-    promoCode: '',
   })
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -58,7 +57,6 @@ export default function RegisterForm() {
           email: formData.email,
           password: formData.password,
           fullName: formData.fullName,
-          promoCode: formData.promoCode || undefined,
         }),
       })
 
@@ -77,8 +75,8 @@ export default function RegisterForm() {
         if (signInResult?.error) {
           setError('Регистрация прошла успешно, но не удалось войти. Попробуйте войти вручную.')
         } else {
-          // Успешная авторизация - редирект на дашборд
-          router.push('/dashboard')
+          // Успешная авторизация - редирект на дашборд с параметром firstLogin
+          router.push('/dashboard?firstLogin=true')
         }
       } else {
         setError(data.message || 'Ошибка при регистрации')
@@ -167,19 +165,6 @@ export default function RegisterForm() {
               {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
             </button>
           </div>
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="promoCode">Промокод (необязательно)</Label>
-          <Input
-            id="promoCode"
-            name="promoCode"
-            type="text"
-            placeholder="Введите промокод"
-            value={formData.promoCode}
-            onChange={handleChange}
-            disabled={isLoading}
-          />
         </div>
 
         <Button type="submit" size="lg" className="w-full h-12" disabled={isLoading}>
