@@ -145,7 +145,7 @@ export default function Home() {
 			</div>
 
 			{/* Hero Section */}
-			<section className="relative px-6 pt-12 pb-32 overflow-hidden">
+			<section className="relative px-6 pt-12 pb-32 2xl:pt-44 2xl:pb-0 overflow-hidden">
 				<div className="max-w-[1200px] mx-auto">
 					{/* Badge */}
 					<div className="flex items-center md:justify-center gap-2 mb-8">
@@ -171,7 +171,7 @@ export default function Home() {
 							</span>
 						</span>
 						<span className="block text-5xl md:text-7xl font-black text-slate-900 md:leading-16" style={{ letterSpacing: '-0.07em', fontWeight: 900 }}>
-							на проверках учиниках
+							на проверках учениках
 						</span>
 					</h1>
 
@@ -190,7 +190,7 @@ export default function Home() {
 			</section>
 
 			{/* How It Works Section - Sticky Scroll */}
-			<section className="relative h-[300vh] md:h-[300vh]">
+			<section className="relative h-[300vh] md:h-[300vh] ">
 				<div className="sticky top-0 h-screen flex items-center justify-center overflow-visible">
 					{/* Content Container */}
 					<div className="relative w-full max-w-[1440px] mx-auto px-6">
@@ -378,7 +378,7 @@ export default function Home() {
 			</section>
 
 			{/* Features Cards */}
-			<section className="px-6 py-32">
+			<section className="px-6 py-16 md:py-32 2xl:pt-0">
 				<div className="max-w-[1200px] mx-auto">
 					<div className="grid md:grid-cols-3 gap-6">
 						{features.map((feature, index) => (
@@ -585,7 +585,7 @@ export default function Home() {
 					<div className="flex flex-col md:flex-row items-center justify-between gap-6">
 						<div className="flex flex-col items-center md:items-start gap-3">
 							<p className="text-sm text-slate-600">©2025 ChecklyTool. Все права защищены.</p>
-							<div className="flex flex-col md:flex-row gap-3">
+							<div className="flex flex-col md:flex-row gap-3 md:items-start items-center">
 								<a
 									href="/oferta"
 									className="text-sm text-slate-600 hover:text-slate-900 transition-colors"
