@@ -613,10 +613,10 @@ export default function Home() {
 
 							<div className="mb-8">
 								<h3 className="text-3xl font-black text-slate-900 mb-4 font-[family-name:var(--font-nunito)]">
-									Premium
+									Pro
 								</h3>
 								<div className="flex items-baseline gap-2">
-									<span className="text-5xl font-black text-slate-900">999</span>
+									<span className="text-5xl font-black text-slate-900">290</span>
 									<span className="text-xl text-slate-500">₽/мес</span>
 								</div>
 							</div>
@@ -629,7 +629,7 @@ export default function Home() {
 										</svg>
 									</div>
 									<span className="text-slate-700 font-medium">
-										<span className="font-bold text-slate-900">150</span> проверок в месяц
+										<span className="font-bold text-slate-900">300</span> проверок в месяц
 									</span>
 								</li>
 								<li className="flex items-start gap-3">
@@ -678,7 +678,7 @@ export default function Home() {
 								href="/auth/register"
 								className="block w-full py-4 text-center text-lg font-bold rounded-full bg-slate-900 text-white hover:bg-slate-800 transition-all hover:scale-105 shadow-lg"
 							>
-								Выбрать Premium
+								Выбрать Pro
 							</Link>
 						</div>
 					</div>
