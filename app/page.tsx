@@ -539,6 +539,152 @@ export default function Home() {
 				</div>
 			</section>
 
+			{/* Pricing Section */}
+			<section className="px-6 py-16 md:py-32">
+				<div className="max-w-[1200px] mx-auto">
+					<div className="text-center mb-12 md:mb-16">
+						<h2 className="text-4xl md:text-5xl lg:text-6xl font-black text-slate-900 mb-4 font-[family-name:var(--font-nunito)]">
+							Выберите тариф
+						</h2>
+						<p className="text-lg md:text-xl text-slate-600 max-w-2xl mx-auto">
+							Начните проверять работы студентов с помощью ИИ
+						</p>
+					</div>
+
+					<div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+						{/* Free Plan */}
+						<div className="bg-white rounded-[40px] border-2 border-slate-200 p-8 md:p-10 transition-all duration-300 hover:border-slate-300">
+							<div className="mb-8">
+								<h3 className="text-3xl font-black text-slate-900 mb-4 font-[family-name:var(--font-nunito)]">
+									Бесплатный
+								</h3>
+								<div className="flex items-baseline gap-2">
+									<span className="text-5xl font-black text-slate-900">0</span>
+									<span className="text-xl text-slate-500">₽/мес</span>
+								</div>
+							</div>
+
+							<ul className="space-y-4 mb-8">
+								<li className="flex items-start gap-3">
+									<div className="bg-green-50 p-1.5 rounded-full flex-shrink-0 mt-0.5">
+										<svg className="w-4 h-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+											<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+										</svg>
+									</div>
+									<span className="text-slate-700 font-medium">
+										Неограниченное создание тестов
+									</span>
+								</li>
+								<li className="flex items-start gap-3">
+									<div className="bg-green-50 p-1.5 rounded-full flex-shrink-0 mt-0.5">
+										<svg className="w-4 h-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+											<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+										</svg>
+									</div>
+									<span className="text-slate-700 font-medium">
+										Работа с шаблонами тестов
+									</span>
+								</li>
+								<li className="flex items-start gap-3">
+									<div className="bg-slate-100 p-1.5 rounded-full flex-shrink-0 mt-0.5">
+										<span className="text-slate-400 text-sm">✕</span>
+									</div>
+									<span className="text-slate-400 font-medium">
+										Проверка работ недоступна
+									</span>
+								</li>
+							</ul>
+
+							<Link
+								href="/auth/register"
+								className="block w-full py-4 text-center text-lg font-bold rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 transition-all"
+							>
+								Начать бесплатно
+							</Link>
+						</div>
+
+						{/* Pro Plan */}
+						<div className="bg-white rounded-[40px] border-2 border-slate-900 p-8 md:p-10 shadow-xl relative">
+							<div className="absolute -top-4 left-1/2 -translate-x-1/2">
+								<div className="bg-slate-900 text-white text-sm font-bold px-6 py-2 rounded-full">
+									⭐ Рекомендуем
+								</div>
+							</div>
+
+							<div className="mb-8">
+								<h3 className="text-3xl font-black text-slate-900 mb-4 font-[family-name:var(--font-nunito)]">
+									Premium
+								</h3>
+								<div className="flex items-baseline gap-2">
+									<span className="text-5xl font-black text-slate-900">999</span>
+									<span className="text-xl text-slate-500">₽/мес</span>
+								</div>
+							</div>
+
+							<ul className="space-y-4 mb-8">
+								<li className="flex items-start gap-3">
+									<div className="bg-green-50 p-1.5 rounded-full flex-shrink-0 mt-0.5">
+										<svg className="w-4 h-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+											<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+										</svg>
+									</div>
+									<span className="text-slate-700 font-medium">
+										<span className="font-bold text-slate-900">150</span> проверок в месяц
+									</span>
+								</li>
+								<li className="flex items-start gap-3">
+									<div className="bg-green-50 p-1.5 rounded-full flex-shrink-0 mt-0.5">
+										<svg className="w-4 h-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+											<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+										</svg>
+									</div>
+									<span className="text-slate-700 font-medium">
+										Тесты и сочинения
+									</span>
+								</li>
+								<li className="flex items-start gap-3">
+									<div className="bg-green-50 p-1.5 rounded-full flex-shrink-0 mt-0.5">
+										<svg className="w-4 h-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+											<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+										</svg>
+									</div>
+									<span className="text-slate-700 font-medium">
+										ИИ-оценка работ
+									</span>
+								</li>
+								<li className="flex items-start gap-3">
+									<div className="bg-green-50 p-1.5 rounded-full flex-shrink-0 mt-0.5">
+										<svg className="w-4 h-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+											<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+										</svg>
+									</div>
+									<span className="text-slate-700 font-medium">
+										Детальная статистика
+									</span>
+								</li>
+								<li className="flex items-start gap-3">
+									<div className="bg-purple-50 p-1.5 rounded-full flex-shrink-0 mt-0.5">
+										<svg className="w-4 h-4 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+											<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+										</svg>
+									</div>
+									<span className="text-slate-700 font-medium">
+										Приоритетная поддержка
+									</span>
+								</li>
+							</ul>
+
+							<Link
+								href="/auth/register"
+								className="block w-full py-4 text-center text-lg font-bold rounded-full bg-slate-900 text-white hover:bg-slate-800 transition-all hover:scale-105 shadow-lg"
+							>
+								Выбрать Premium
+							</Link>
+						</div>
+					</div>
+				</div>
+			</section>
+
 			{/* FAQ Section */}
 			<section className="md:px-6 py-16 md:py-32">
 				<div className="max-w-[1200px] md:mx-auto">
