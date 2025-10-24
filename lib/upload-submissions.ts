@@ -17,6 +17,122 @@ export interface SubmitAllResult {
 }
 
 /**
+ * Нормализует имя студента для сравнения: lowercase, trim, удаляет лишние пробелы
+ */
+function normalizeStudentName(name: string): string {
+	return name
+		.toLowerCase()
+		.trim()
+		.replace(/\s+/g, ' ') // множественные пробелы → один пробел
+}
+
+/**
+ * Вычисляет расстояние Левенштейна между двумя строками
+ * Используется для определения похожести имен
+ */
+function levenshteinDistance(a: string, b: string): number {
+	const matrix: number[][] = []
+
+	for (let i = 0; i <= b.length; i++) {
+		matrix[i] = [i]
+	}
+
+	for (let j = 0; j <= a.length; j++) {
+		matrix[0][j] = j
+	}
+
+	for (let i = 1; i <= b.length; i++) {
+		for (let j = 1; j <= a.length; j++) {
+			if (b.charAt(i - 1) === a.charAt(j - 1)) {
+				matrix[i][j] = matrix[i - 1][j - 1]
+			} else {
+				matrix[i][j] = Math.min(
+					matrix[i - 1][j - 1] + 1, // замена
+					matrix[i][j - 1] + 1,     // вставка
+					matrix[i - 1][j] + 1      // удаление
+				)
+			}
+		}
+	}
+
+	return matrix[b.length][a.length]
+}
+
+/**
+ * Проверяет, являются ли два имени похожими (возможно, дубликаты)
+ * Использует нормализацию и расстояние Левенштейна
+ */
+function areNamesSimilar(name1: string, name2: string): boolean {
+	const normalized1 = normalizeStudentName(name1)
+	const normalized2 = normalizeStudentName(name2)
+
+	// Если имена идентичны после нормализации - это дубликат
+	if (normalized1 === normalized2) {
+		return true
+	}
+
+	// Вычисляем расстояние Левенштейна
+	const distance = levenshteinDistance(normalized1, normalized2)
+	const maxLength = Math.max(normalized1.length, normalized2.length)
+
+	// Считаем похожими если различий меньше 20% от длины
+	// Например: "Хоршев Илья" и "Хорнев Илья" - 1 символ различия из 12 = 8.3%
+	const similarityThreshold = 0.2
+	return distance / maxLength <= similarityThreshold
+}
+
+/**
+ * Дедупликация студентов - объединяет студентов с похожими именами
+ * Возвращает массив уникальных студентов и логирует все случаи дубликатов
+ */
+function deduplicateStudents(students: DraftStudent[]): {
+	deduplicated: DraftStudent[]
+	duplicatesFound: Array<{ original: string; merged: string[] }>
+} {
+	const deduplicated: DraftStudent[] = []
+	const duplicatesFound: Array<{ original: string; merged: string[] }> = []
+
+	for (const student of students) {
+		// Ищем, есть ли уже похожий студент в deduplicated
+		const existingIndex = deduplicated.findIndex(s => areNamesSimilar(s.name, student.name))
+
+		if (existingIndex !== -1) {
+			// Нашли похожего студента - объединяем их фотографии
+			const existing = deduplicated[existingIndex]
+			console.log('[DEDUP] Обнаружен дубликат:', {
+				original: existing.name,
+				duplicate: student.name,
+				originalPhotos: existing.photos.length,
+				duplicatePhotos: student.photos.length
+			})
+
+			// Объединяем фотографии
+			const mergedPhotos = [...existing.photos, ...student.photos]
+			deduplicated[existingIndex] = {
+				...existing,
+				photos: mergedPhotos
+			}
+
+			// Записываем информацию о дубликате
+			const existingDuplicateRecord = duplicatesFound.find(d => d.original === existing.name)
+			if (existingDuplicateRecord) {
+				existingDuplicateRecord.merged.push(student.name)
+			} else {
+				duplicatesFound.push({
+					original: existing.name,
+					merged: [student.name]
+				})
+			}
+		} else {
+			// Новый уникальный студент
+			deduplicated.push(student)
+		}
+	}
+
+	return { deduplicated, duplicatesFound }
+}
+
+/**
  * Convert a data URL to a File (image/jpeg by default).
  */
 export async function dataUrlToFile(dataUrl: string, filename: string): Promise<File> {
@@ -42,7 +158,28 @@ export async function submitStudents(
   // Only process students with at least one photo
   const validStudents = students.filter((s) => s.photos.length > 0)
 
-  for (const student of validStudents) {
+  console.log('[SUBMIT] Исходное количество студентов:', validStudents.length)
+  console.log('[SUBMIT] Студенты:', validStudents.map(s => ({
+    name: s.name,
+    photos: s.photos.length
+  })))
+
+  // Дедупликация студентов перед отправкой
+  const { deduplicated, duplicatesFound } = deduplicateStudents(validStudents)
+
+  if (duplicatesFound.length > 0) {
+    console.warn('[SUBMIT] ⚠️ ОБНАРУЖЕНЫ И ОБЪЕДИНЕНЫ ДУБЛИКАТЫ:', duplicatesFound)
+    console.warn('[SUBMIT] До дедупликации:', validStudents.length, 'студентов')
+    console.warn('[SUBMIT] После дедупликации:', deduplicated.length, 'студентов')
+  }
+
+  console.log('[SUBMIT] Финальный список для отправки:', deduplicated.map(s => ({
+    name: s.name,
+    photos: s.photos.length
+  })))
+
+  // Используем дедуплицированный список для отправки
+  for (const student of deduplicated) {
     try {
       const formData = new FormData()
       formData.append('student_name', student.name)

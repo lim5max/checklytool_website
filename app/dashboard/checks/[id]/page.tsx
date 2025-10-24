@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { toast } from 'sonner'
 import { X, Settings, Trash2 } from 'lucide-react'
@@ -63,6 +63,9 @@ export default function CheckPage({ params }: CheckPageProps) {
 	const [isProcessing, setIsProcessing] = useState(false)
 	const [drafts, setDrafts] = useState<DraftStudent[]>([])
 	const [showSubscriptionModal, setShowSubscriptionModal] = useState(false)
+
+	// Защита от повторных вызовов handleSendAll с использованием ref
+	const isSubmittingRef = useRef(false)
 
 	// Check balance
 	const { getCreditsNeeded, refreshBalance } = useCheckBalance()
@@ -317,14 +320,37 @@ export default function CheckPage({ params }: CheckPageProps) {
 	}
 
 	const handleSendAll = async () => {
+		// Детальное логирование каждого вызова функции
+		const timestamp = new Date().toISOString()
+		const stackTrace = new Error().stack
+		console.log('[HANDLE_SEND_ALL] ========== ВЫЗОВ ФУНКЦИИ ==========')
+		console.log('[HANDLE_SEND_ALL] Timestamp:', timestamp)
+		console.log('[HANDLE_SEND_ALL] isSubmittingRef.current:', isSubmittingRef.current)
+		console.log('[HANDLE_SEND_ALL] isProcessing state:', isProcessing)
+		console.log('[HANDLE_SEND_ALL] drafts.length:', drafts.length)
+		console.log('[HANDLE_SEND_ALL] Stack trace:', stackTrace)
+
+		// ЗАЩИТА #1: Проверка на повторный вызов через ref
+		if (isSubmittingRef.current) {
+			console.warn('[HANDLE_SEND_ALL] ⚠️ БЛОКИРОВКА: Функция уже выполняется!')
+			console.warn('[HANDLE_SEND_ALL] Предотвращен повторный вызов в:', timestamp)
+			toast.error('Отправка уже выполняется, подождите...')
+			return
+		}
+
 		if (drafts.length === 0) {
 			toast.error('Нет работ для отправки')
 			return
 		}
 
-		// ВАЖНО: Обновляем баланс из БД перед проверкой
-		console.log('[BALANCE] ========== НАЧАЛО ПРОВЕРКИ БАЛАНСА ==========')
-		console.log('[BALANCE] Refreshing balance from database...')
+		// Устанавливаем флаг блокировки СРАЗУ
+		isSubmittingRef.current = true
+		console.log('[HANDLE_SEND_ALL] ✅ Флаг isSubmittingRef установлен в true')
+
+		try {
+			// ВАЖНО: Обновляем баланс из БД перед проверкой
+			console.log('[BALANCE] ========== НАЧАЛО ПРОВЕРКИ БАЛАНСА ==========')
+			console.log('[BALANCE] Refreshing balance from database...')
 		const freshBalance = await refreshBalance()
 		console.log('[BALANCE] Fresh balance received:', freshBalance)
 
@@ -349,6 +375,7 @@ export default function CheckPage({ params }: CheckPageProps) {
 			console.log('[BALANCE] Модалка должна показаться, работы НЕ отправляются')
 			toast.error(`Недостаточно проверок. Нужно: ${creditsNeeded}, доступно: ${freshBalance}`)
 			setShowSubscriptionModal(true)
+			isSubmittingRef.current = false
 			return // ВАЖНО: выходим из функции, работы НЕ отправляются!
 		}
 
@@ -396,6 +423,11 @@ export default function CheckPage({ params }: CheckPageProps) {
 			toast.error('Ошибка при отправке работ')
 			// Только при ошибке отправки сбрасываем сразу
 			setIsProcessing(false)
+		}
+		} finally {
+			// ВСЕГДА сбрасываем флаг блокировки в конце
+			isSubmittingRef.current = false
+			console.log('[HANDLE_SEND_ALL] ✅ Флаг isSubmittingRef сброшен в false')
 		}
 	}
 

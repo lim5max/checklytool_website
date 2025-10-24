@@ -17,6 +17,25 @@ interface RouteParams {
 	params: Promise<{ id: string }>
 }
 
+/**
+ * Нормализует имя студента для сравнения
+ */
+function normalizeStudentName(name: string): string {
+	return name
+		.toLowerCase()
+		.trim()
+		.replace(/\s+/g, ' ')
+}
+
+/**
+ * Проверяет, являются ли два имени похожими (простое сравнение после нормализации)
+ */
+function areNamesSimilar(name1: string, name2: string): boolean {
+	const normalized1 = normalizeStudentName(name1)
+	const normalized2 = normalizeStudentName(name2)
+	return normalized1 === normalized2
+}
+
 // POST /api/checks/[id]/submissions - Create new submission
 export async function POST(
 	request: NextRequest,
@@ -25,16 +44,16 @@ export async function POST(
 	console.log('[SUBMISSIONS] === POST REQUEST STARTED ===')
 	console.log('[SUBMISSIONS] Request method:', request.method)
 	console.log('[SUBMISSIONS] Request URL:', request.url)
-	
+
 	try {
 		console.log('[SUBMISSIONS] Starting submission creation...')
 		const { id: checkId } = await params
 		console.log('[SUBMISSIONS] Check ID:', checkId)
-		
+
 		console.log('[SUBMISSIONS] Calling getAuthenticatedSupabase...')
 		const { supabase, userId } = await getAuthenticatedSupabase()
 		console.log('[SUBMISSIONS] Authentication successful, userId:', userId)
-		
+
 		// Verify the check exists and belongs to the user
 		const { data: checkExists, error: checkError } = await supabase
 			.from('checks')
@@ -42,62 +61,62 @@ export async function POST(
 			.eq('id', checkId)
 			.eq('user_id', userId)
 			.single()
-		
+
 		if (checkError || !checkExists) {
 			return NextResponse.json(
 				{ error: 'Check not found' },
 				{ status: 404 }
 			)
 		}
-		
+
 		console.log('[SUBMISSIONS] Parsing form data...')
 		const formData = await request.formData()
 		const studentName = formData.get('student_name') as string
 		const studentClass = formData.get('student_class') as string
 		const files = formData.getAll('images') as File[]
-		
+
 		console.log('[SUBMISSIONS] Form data parsed:', {
 			studentName,
 			studentClass,
 			filesCount: files.length,
 			fileSizes: files.map(f => f.size)
 		})
-		
+
 		// Validate submission data
 		const validatedData = createSubmissionSchema.parse({
 			student_name: studentName || undefined,
 			student_class: studentClass || undefined,
 			images: files
 		})
-		
+
 		console.log('[SUBMISSIONS] Starting image uploads...')
 		// Upload images to Supabase Storage
 		const uploadedUrls: string[] = []
-		
+
 		for (const [index, file] of validatedData.images.entries()) {
 			const fileName = `${Date.now()}-${index}-${file.name}`
 			const filePath = `${checkId}/${fileName}`
-			
+
 			console.log(`[SUBMISSIONS] Uploading file ${index + 1}/${validatedData.images.length}:`, {
 				fileName,
 				filePath,
 				size: file.size,
 				type: file.type
 			})
-			
+
 			const { data: uploadData, error: uploadError } = await supabase.storage
 				.from('checks')
 				.upload(filePath, file, {
 					contentType: file.type,
 					upsert: false
 				})
-			
+
 			console.log(`[SUBMISSIONS] Upload result for file ${index + 1}:`, {
 				success: !uploadError,
 				error: uploadError,
 				path: uploadData?.path
 			})
-			
+
 			if (uploadError) {
 				console.error('[SUBMISSIONS] Error uploading file:', uploadError)
 				console.error('[SUBMISSIONS] Full upload error details:', JSON.stringify(uploadError, null, 2))
@@ -107,31 +126,82 @@ export async function POST(
 					await supabase.storage.from('checks').remove([cleanupPath])
 				}
 				return NextResponse.json(
-					{ 
-						error: 'Failed to upload images', 
+					{
+						error: 'Failed to upload images',
 						details: uploadError.message || 'Storage upload failed'
 					},
 					{ status: 500 }
 				)
 			}
-			
+
 			// Get signed URL (valid for 24 hours) for external API access
 			console.log(`[SUBMISSIONS] Creating signed URL for path:`, uploadData.path)
 			const { data: urlData, error: signError } = await supabase.storage
 				.from('checks')
 				.createSignedUrl(uploadData.path, 86400) // 24 hours
-			
+
 			if (signError) {
 				console.error('[SUBMISSIONS] Error creating signed URL:', signError)
 				console.error('[SUBMISSIONS] Signed URL error details:', JSON.stringify(signError, null, 2))
 				throw new Error(`Failed to create image access URL: ${signError.message}`)
 			}
-			
+
 			console.log(`[SUBMISSIONS] Signed URL created successfully:`, urlData.signedUrl)
-			
+
 			uploadedUrls.push(urlData.signedUrl)
 		}
-		
+
+		// Проверка на дубликаты: ищем недавние submissions с похожим именем
+		console.log('[SUBMISSIONS] Проверка на дубликаты...')
+		if (validatedData.student_name) {
+			// Ищем submissions за последние 5 минут для этой проверки
+			const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString()
+			const { data: recentSubmissions, error: fetchError } = await supabase
+				.from('student_submissions')
+				.select('id, student_name, created_at, status')
+				.eq('check_id', checkId)
+				.gte('created_at', fiveMinutesAgo)
+
+			if (!fetchError && recentSubmissions && recentSubmissions.length > 0) {
+				console.log('[SUBMISSIONS] Найдено недавних submissions:', recentSubmissions.length)
+
+				// Ищем submission с похожим именем
+				const duplicate = recentSubmissions.find((sub: any) =>
+					sub.student_name && areNamesSimilar(sub.student_name, validatedData.student_name!)
+				)
+
+				if (duplicate) {
+					console.warn('[SUBMISSIONS] ⚠️ ОБНАРУЖЕН ДУБЛИКАТ!')
+					console.warn('[SUBMISSIONS] Существующий submission:', {
+						id: duplicate.id,
+						name: duplicate.student_name,
+						created_at: duplicate.created_at,
+						status: duplicate.status
+					})
+					console.warn('[SUBMISSIONS] Попытка создать:', {
+						name: validatedData.student_name,
+						images: uploadedUrls.length
+					})
+
+					// Удаляем только что загруженные файлы, так как они дубликаты
+					console.log('[SUBMISSIONS] Удаляем загруженные изображения (дубликат обнаружен)')
+					for (const url of uploadedUrls) {
+						const path = url.split('/').slice(-2).join('/')
+						await supabase.storage.from('checks').remove([path])
+					}
+
+					// Возвращаем существующий submission вместо создания нового
+					return NextResponse.json({
+						submission: duplicate,
+						message: 'Работа для этого студента уже была загружена недавно',
+						isDuplicate: true
+					}, { status: 200 })
+				}
+			}
+		}
+
+		console.log('[SUBMISSIONS] Дубликатов не найдено, создаем новый submission')
+
 		// Create submission record
 		const { data: submission, error: submissionError } = await (supabase as any)
 			.from('student_submissions')
@@ -144,7 +214,7 @@ export async function POST(
 			})
 			.select()
 			.single()
-		
+
 		if (submissionError) {
 			console.error('Error creating submission:', submissionError)
 			// Clean up uploaded files
@@ -157,12 +227,12 @@ export async function POST(
 				{ status: 500 }
 			)
 		}
-		
+
 		return NextResponse.json({
 			submission: submission as { id: string; [key: string]: unknown },
 			message: 'Submission created successfully'
 		}, { status: 201 })
-		
+
 	} catch (error) {
 		console.error('[SUBMISSIONS] === CATCH BLOCK ERROR ===')
 		console.error('[SUBMISSIONS] Error type:', typeof error)
