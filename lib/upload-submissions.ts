@@ -99,12 +99,6 @@ function deduplicateStudents(students: DraftStudent[]): {
 		if (existingIndex !== -1) {
 			// Нашли похожего студента - объединяем их фотографии
 			const existing = deduplicated[existingIndex]
-			console.log('[DEDUP] Обнаружен дубликат:', {
-				original: existing.name,
-				duplicate: student.name,
-				originalPhotos: existing.photos.length,
-				duplicatePhotos: student.photos.length
-			})
 
 			// Объединяем фотографии
 			const mergedPhotos = [...existing.photos, ...student.photos]
@@ -158,25 +152,12 @@ export async function submitStudents(
   // Only process students with at least one photo
   const validStudents = students.filter((s) => s.photos.length > 0)
 
-  console.log('[SUBMIT] Исходное количество студентов:', validStudents.length)
-  console.log('[SUBMIT] Студенты:', validStudents.map(s => ({
-    name: s.name,
-    photos: s.photos.length
-  })))
-
   // Дедупликация студентов перед отправкой
   const { deduplicated, duplicatesFound } = deduplicateStudents(validStudents)
 
   if (duplicatesFound.length > 0) {
-    console.warn('[SUBMIT] ⚠️ ОБНАРУЖЕНЫ И ОБЪЕДИНЕНЫ ДУБЛИКАТЫ:', duplicatesFound)
-    console.warn('[SUBMIT] До дедупликации:', validStudents.length, 'студентов')
-    console.warn('[SUBMIT] После дедупликации:', deduplicated.length, 'студентов')
+    console.warn('[SUBMIT] Duplicates merged:', duplicatesFound.length, 'cases')
   }
-
-  console.log('[SUBMIT] Финальный список для отправки:', deduplicated.map(s => ({
-    name: s.name,
-    photos: s.photos.length
-  })))
 
   // Используем дедуплицированный список для отправки
   for (const student of deduplicated) {
@@ -239,11 +220,6 @@ export async function submitStudents(
         // if no id — treat as failed for reshoot
         try {
           const { addTempFailedName } = await import('./drafts-idb')
-          console.log('[UPLOAD] Adding temp failed name (no submission ID):', {
-            checkId,
-            studentName: student.name,
-            result
-          })
           addTempFailedName(checkId, student.name)
         } catch (e) {
           console.error('[UPLOAD] Failed to add temp failed name (no ID):', e)
@@ -253,15 +229,10 @@ export async function submitStudents(
       }
 
       items.push({ student, submissionId })
-    } catch (error) {
+    } catch {
       // Network or unexpected error — mark as failed and continue
       try {
         const { addTempFailedName } = await import('./drafts-idb')
-        console.log('[UPLOAD] Adding temp failed name (network error):', {
-          checkId,
-          studentName: student.name,
-          error: error instanceof Error ? error.message : String(error)
-        })
         addTempFailedName(checkId, student.name)
       } catch (e) {
         console.error('[UPLOAD] Failed to add temp failed name (network error):', e)
@@ -292,7 +263,6 @@ async function checkSubmissionStatus(submissionId: string): Promise<{ shouldEval
 
     // Don't evaluate if already completed or processing
     if (status === 'completed' || status === 'processing') {
-      console.log(`[EVALUATE_ALL] Skipping submission ${submissionId} with status: ${status}`)
       return { shouldEvaluate: false, status }
     }
 
@@ -354,13 +324,11 @@ export async function evaluateAll(submissions: Array<{ submissionId: string }>):
 
             // Если это inappropriate_content, это не техническая ошибка, а нормальный результат работы AI
             if (body?.error === 'inappropriate_content') {
-              console.log(`[EVALUATE_ALL] AI detected inappropriate content for ${s.submissionId} - this is expected behavior`)
               shouldTreatAsError = false
             }
 
             // Также игнорируем ошибку "уже проверено" - это нормальное поведение
             if (body?.error === 'Submission already evaluated') {
-              console.log(`[EVALUATE_ALL] Submission ${s.submissionId} already evaluated - skipping`)
               shouldTreatAsError = false
             }
           } catch {

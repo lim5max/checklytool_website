@@ -194,7 +194,6 @@ const postHandler = async (
 	request: NextRequest,
 	context: { params: Promise<Record<string, string>> }
 ) => {
-	console.log('[EVALUATE] Starting evaluation request...')
 	const resolvedParams = await context.params
 
 	// Validate submission ID
@@ -204,10 +203,8 @@ const postHandler = async (
 	}
 
 	const submissionId = validation.data.id
-	console.log('[EVALUATE] Submission ID:', submissionId)
 
 		const { supabase, userId } = await getAuthenticatedSupabase()
-		console.log('[EVALUATE] Authentication successful, userId:', userId)
 
 		// Get submission with check details
 		const { data: submission, error: submissionError } = await supabase
@@ -287,7 +284,6 @@ const postHandler = async (
 		})
 
 		if (!deductResult.success) {
-			console.log('[EVALUATE] Insufficient credits:', deductResult)
 			return NextResponse.json(
 				{
 					error: 'insufficient_credits',
@@ -298,8 +294,6 @@ const postHandler = async (
 				{ status: 402 }
 			)
 		}
-
-		console.log('[EVALUATE] Credits deducted:', deductResult.creditsDeducted, 'New balance:', deductResult.newBalance)
 
 		// Update status to processing
 		const updateResult = await supabase
@@ -331,7 +325,6 @@ const postHandler = async (
 					const urlParts = imageUrl.split('/storage/v1/object/public/checks/')
 					filePath = urlParts[1] || ''
 				} else {
-					console.warn('Unknown URL format, keeping original:', imageUrl)
 					refreshedImageUrls.push(imageUrl)
 					continue
 				}
@@ -398,11 +391,6 @@ const postHandler = async (
 				referenceImages = refreshedRefImages
 			}
 
-			console.log('Starting AI analysis for submission:', submissionId)
-			console.log('Reference answers available:', !!referenceAnswers)
-			console.log('Reference images available:', !!referenceImages)
-			console.log('Fresh signed URLs created for', refreshedImageUrls.length, 'submission images')
-			console.log('Image URLs being sent to AI:', refreshedImageUrls.map((url, i) => `Image ${i+1}: ${url.substring(0, 100)}...`).join('\n'))
 
 			// Call OpenRouter API with retry mechanism using refreshed URLs
 			const aiResult = await analyzeWithRetry(
@@ -415,11 +403,9 @@ const postHandler = async (
 				checkData.essay_grading_criteria || undefined
 			)
 
-			console.log('AI analysis completed:', aiResult)
-
 			// Проверяем, не обнаружил ли AI неподходящий контент
 			if (aiResult.error === 'inappropriate_content') {
-				console.log('[EVALUATE] Inappropriate content detected by AI')
+				console.warn('[EVALUATE] Inappropriate content detected:', aiResult.content_type_detected)
 
 				// Обновляем статус submission как failed
 				const updateData = {
@@ -432,8 +418,6 @@ const postHandler = async (
 						ai_response: aiResult
 					}))
 				}
-
-				console.log('[EVALUATE] Updating submission with failed status')
 
 				await supabase
 					.from('student_submissions')
@@ -461,14 +445,12 @@ const postHandler = async (
 
 			// Determine which variant to use for correct answers
 			const detectedVariant = aiResult.variant_detected || 1
-			console.log('Detected variant:', detectedVariant, 'Available variants:', checkData.check_variants.length)
 
 			// Get correct answers - different logic based on check.test_id
 			let correctAnswersMap: Record<string, string> = {}
 
 			// ПРИОРИТЕТ 1: Если check связан с generated_test - загружаем оттуда
 			if (checkData.test_id) {
-				console.log('[EVALUATE] Check has test_id, loading answers from generated_tests:', checkData.test_id)
 
 				// Load test from generated_tests table by exact ID
 				const { data: generatedTest, error: testError } = await supabase
@@ -506,24 +488,18 @@ const postHandler = async (
 							}
 						}
 					})
-
-					console.log('Loaded correct answers from generated test:', correctAnswersMap)
 				} else {
 					throw new Error('Тест не найден или не содержит вопросов')
 				}
 			} else {
 				// ПРИОРИТЕТ 2: Если нет test_id - загружаем из reference_answers (старая логика)
-				console.log('[EVALUATE] No test_id, loading answers from reference_answers field')
-
 				if (detectedVariant <= checkData.variant_count) {
 				// Find the variant in database
 				const targetVariant = checkData.check_variants.find(v => v.variant_number === detectedVariant)
 				if (targetVariant && targetVariant.reference_answers) {
 					// Use reference_answers directly from the variant
 					correctAnswersMap = targetVariant.reference_answers
-					console.log('Loaded correct answers for variant', detectedVariant, ':', correctAnswersMap)
 				} else {
-					console.warn('No answers found in reference_answers for variant', detectedVariant)
 
 					// Fallback: try variant_answers table (old system)
 					if (targetVariant) {
@@ -539,17 +515,14 @@ const postHandler = async (
 								answerMap[answer.question_number.toString()] = answer.correct_answer
 							})
 							correctAnswersMap = answerMap
-							console.log('Loaded from variant_answers table for variant', detectedVariant, ':', correctAnswersMap)
 						}
 					}
 				}
 			} else {
-				console.warn('Detected variant', detectedVariant, 'exceeds available variants', checkData.variant_count)
 				// If detected variant is higher than available, fallback to variant 1
 				const targetVariant = checkData.check_variants.find(v => v.variant_number === 1)
 				if (targetVariant && targetVariant.reference_answers) {
 					correctAnswersMap = targetVariant.reference_answers
-					console.log('Fallback to variant 1 reference_answers:', correctAnswersMap)
 				} else if (targetVariant) {
 					// Fallback to variant_answers table
 					const { data: variantAnswers } = await supabase
@@ -564,7 +537,6 @@ const postHandler = async (
 							answerMap[answer.question_number.toString()] = answer.correct_answer
 						})
 						correctAnswersMap = answerMap
-						console.log('Fallback to variant 1 variant_answers:', correctAnswersMap)
 					}
 				}
 			}
@@ -608,8 +580,6 @@ const postHandler = async (
 						}
 						totalPoints += points
 					})
-					console.log('Loaded question points:', questionPointsMap, 'Total:', totalPoints)
-					console.log('Loaded question metadata:', questionMetadataMap)
 				}
 			}
 
@@ -634,13 +604,9 @@ const postHandler = async (
 				if (metadata.type === 'open' && correctAnswer && studentAnswer) {
 					// Для открытых вопросов используем умную проверку
 					isCorrect = smartCompareOpenAnswer(studentAnswer, correctAnswer)
-					console.log(`Question ${questionKey} is open question - using smart compare: ${isCorrect ? 'correct' : 'incorrect'}`)
 				} else if (correctAnswer && studentAnswer) {
 					// Для закрытых вопросов - точное сравнение
 					isCorrect = compareAnswers(studentAnswer, correctAnswer, metadata.strictMatch || false)
-					console.log(`Question ${questionKey} comparison result: ${isCorrect ? 'correct' : 'incorrect'}`)
-				} else {
-					console.log(`Question ${questionKey} - no reference answer or empty student answer`)
 				}
 
 				if (isCorrect) {
@@ -654,14 +620,6 @@ const postHandler = async (
 					confidence: answerData.confidence,
 					points: usePointsSystem ? points : undefined
 				}
-			})
-
-			console.log('Score calculation:', {
-				correctAnswers,
-				totalQuestions: aiResult.total_questions,
-				earnedPoints,
-				totalPoints,
-				usePointsSystem
 			})
 
 			// Calculate grade based on check type
@@ -679,7 +637,6 @@ const postHandler = async (
 				if (usePointsSystem && totalPoints > 0) {
 					// Calculate percentage based on earned points
 					percentage = Math.round((earnedPoints / totalPoints) * 100)
-					console.log(`Points-based calculation: ${earnedPoints}/${totalPoints} = ${percentage}%`)
 
 					// Calculate grade from percentage using grading criteria
 					const sortedCriteria = [...checkData.grading_criteria].sort((a, b) => b.grade - a.grade)
@@ -690,11 +647,9 @@ const postHandler = async (
 							break
 						}
 					}
-					console.log(`Points-based grading: ${percentage}% = grade ${grade}`)
 				} else {
 					// Traditional calculation based on correct answers count
 					percentage = Math.round((correctAnswers / aiResult.total_questions) * 100)
-					console.log(`Traditional calculation: ${correctAnswers}/${aiResult.total_questions} = ${percentage}%`)
 
 					// Use calculateGrade for traditional calculation
 					const gradeResult = calculateGrade(
@@ -753,8 +708,6 @@ const postHandler = async (
 				})
 				.eq('id', submissionId)
 
-			console.log('Evaluation completed successfully for submission:', submissionId)
-
 			return NextResponse.json({
 				result: evaluationResult as { id: string; [key: string]: unknown },
 				submission_id: submissionId,
@@ -779,8 +732,6 @@ const postHandler = async (
 					timestamp: new Date().toISOString()
 				}))
 			}
-
-			console.log('[EVALUATE] Updating submission with failed status (error case)')
 
 			await supabase
 				.from('student_submissions')

@@ -283,8 +283,6 @@ export default function CheckPage({ params }: CheckPageProps) {
 		// Принудительная загрузка черновиков с несколькими попытками
 		// для надежной синхронизации на мобильных устройствах (особенно iOS)
 		const attemptLoadDrafts = (attemptNumber: number, maxAttempts: number) => {
-			console.log(`[DRAFTS] Attempt ${attemptNumber}/${maxAttempts} to load drafts`)
-
 			const draft = getDraft(checkId)
 			const students = draft?.students || []
 			const validDrafts: DraftStudent[] = students
@@ -294,16 +292,10 @@ export default function CheckPage({ params }: CheckPageProps) {
 					photos: s.photos.map(p => p.dataUrl)
 				}))
 
-			console.log(`[DRAFTS] Found ${validDrafts.length} drafts with photos`)
 			setDrafts(validDrafts)
 
 			// Если нашли черновики или исчерпали попытки - останавливаемся
 			if (validDrafts.length > 0 || attemptNumber >= maxAttempts) {
-				if (validDrafts.length > 0) {
-					console.log('[DRAFTS] Successfully loaded drafts')
-				} else {
-					console.log('[DRAFTS] No drafts found after all attempts')
-				}
 				return
 			}
 
@@ -320,20 +312,8 @@ export default function CheckPage({ params }: CheckPageProps) {
 	}
 
 	const handleSendAll = async () => {
-		// Детальное логирование каждого вызова функции
-		const timestamp = new Date().toISOString()
-		const stackTrace = new Error().stack
-		console.log('[HANDLE_SEND_ALL] ========== ВЫЗОВ ФУНКЦИИ ==========')
-		console.log('[HANDLE_SEND_ALL] Timestamp:', timestamp)
-		console.log('[HANDLE_SEND_ALL] isSubmittingRef.current:', isSubmittingRef.current)
-		console.log('[HANDLE_SEND_ALL] isProcessing state:', isProcessing)
-		console.log('[HANDLE_SEND_ALL] drafts.length:', drafts.length)
-		console.log('[HANDLE_SEND_ALL] Stack trace:', stackTrace)
-
 		// ЗАЩИТА #1: Проверка на повторный вызов через ref
 		if (isSubmittingRef.current) {
-			console.warn('[HANDLE_SEND_ALL] ⚠️ БЛОКИРОВКА: Функция уже выполняется!')
-			console.warn('[HANDLE_SEND_ALL] Предотвращен повторный вызов в:', timestamp)
 			toast.error('Отправка уже выполняется, подождите...')
 			return
 		}
@@ -345,48 +325,28 @@ export default function CheckPage({ params }: CheckPageProps) {
 
 		// Устанавливаем флаг блокировки СРАЗУ
 		isSubmittingRef.current = true
-		console.log('[HANDLE_SEND_ALL] ✅ Флаг isSubmittingRef установлен в true')
 
 		try {
 			// ВАЖНО: Обновляем баланс из БД перед проверкой
-			console.log('[BALANCE] ========== НАЧАЛО ПРОВЕРКИ БАЛАНСА ==========')
-			console.log('[BALANCE] Refreshing balance from database...')
 		const freshBalance = await refreshBalance()
-		console.log('[BALANCE] Fresh balance received:', freshBalance)
 
 		// Проверяем баланс ДО отправки работ
 		const draft = getDraft(checkId)
 		const totalPhotos = (draft?.students || []).reduce((sum, student) => sum + student.photos.length, 0)
 		const creditsNeeded = getCreditsNeeded(checkType, totalPhotos)
 
-		console.log('[BALANCE] Checking balance before submission:', {
-			checkId,
-			checkType,
-			freshBalance,
-			creditsNeeded,
-			totalPhotos,
-			hasEnough: freshBalance >= creditsNeeded,
-			willSubmit: freshBalance >= creditsNeeded
-		})
-
 		// Если баланса недостаточно - показываем модалку СРАЗУ и НЕ ОТПРАВЛЯЕМ работы
 		if (freshBalance < creditsNeeded) {
-			console.log('[BALANCE] ❌ INSUFFICIENT BALANCE - BLOCKING SUBMISSION')
-			console.log('[BALANCE] Модалка должна показаться, работы НЕ отправляются')
 			toast.error(`Недостаточно проверок. Нужно: ${creditsNeeded}, доступно: ${freshBalance}`)
 			setShowSubscriptionModal(true)
 			isSubmittingRef.current = false
 			return // ВАЖНО: выходим из функции, работы НЕ отправляются!
 		}
 
-		console.log('[BALANCE] ✅ SUFFICIENT BALANCE - PROCEEDING WITH SUBMISSION')
-
 		try {
 			setIsProcessing(true)
 
-			console.log('[SUBMIT] Отправка работ на сервер...')
 			const { items } = await submitStudents(checkId, draft?.students || [])
-			console.log('[SUBMIT] Работы успешно отправлены, submissions created:', items.length)
 
 			// Очищаем черновики ТОЛЬКО после успешной отправки
 			clearDraft(checkId)
@@ -427,7 +387,6 @@ export default function CheckPage({ params }: CheckPageProps) {
 		} finally {
 			// ВСЕГДА сбрасываем флаг блокировки в конце
 			isSubmittingRef.current = false
-			console.log('[HANDLE_SEND_ALL] ✅ Флаг isSubmittingRef сброшен в false')
 		}
 	}
 
