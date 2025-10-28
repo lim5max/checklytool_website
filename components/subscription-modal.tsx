@@ -179,10 +179,23 @@ export default function SubscriptionModal({
 													/мес
 												</span>
 											</p>
+											<p className="text-xs text-gray-500 mt-1">
+												Автоматически продлевается ежемесячно
+											</p>
 										</div>
 										<div className="bg-blue-100 p-2 rounded-lg flex-shrink-0">
 											<Zap className="w-5 h-5 text-blue-600" />
 										</div>
+									</div>
+
+									{/* Информация об автопродлении */}
+									<div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
+										<p className="text-xs text-green-800 flex items-center gap-2">
+											<Check className="w-3.5 h-3.5 flex-shrink-0" />
+											<span>
+												<strong>Автоматическое продление:</strong> За 1 день до списания вы получите email-напоминание. Вы сможете отключить автопродление в любой момент в настройках профиля.
+											</span>
+										</p>
 									</div>
 
 									<div className="space-y-2.5 mb-5">

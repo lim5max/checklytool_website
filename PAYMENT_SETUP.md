@@ -177,14 +177,110 @@ TBANK_MODE=test
 5. ⚠️ НЕ храните пароли Т-Банк в git (используйте .env.local)
 6. ⚠️ Включите HTTPS для webhook в продакшене
 
+## Рекуррентные платежи (Автоматическое продление подписок)
+
+### Что было добавлено
+
+✅ Автоматическое списание средств с сохраненной карты
+✅ Email уведомления (за 1 день, после успеха/неудачи)
+✅ Повторные попытки списания через 3 дня
+✅ Приостановка подписки после 2 неудач
+✅ UI для управления автопродлением
+
+### Настройка рекуррентных платежей
+
+#### 1. Установить зависимости
+
+```bash
+npm install nodemailer @types/nodemailer
+```
+
+#### 2. Настроить SMTP в .env.local
+
+```bash
+SMTP_HOST=smtp.mail.ru
+SMTP_PORT=465
+SMTP_SECURE=true
+SMTP_USER=noreply@checklytool.com
+SMTP_PASSWORD=ICy3ETu4coy_
+SMTP_FROM=ChecklyTool <noreply@checklytool.com>
+
+# API ключ для защиты endpoint /api/payment/charge
+SUBSCRIPTION_RENEWAL_API_KEY=$(openssl rand -base64 32)
+```
+
+#### 3. Применить миграцию в Supabase
+
+Выполните миграцию `027_recurrent_payments_system.sql` через Supabase Dashboard → SQL Editor
+
+#### 4. Настроить секреты в Supabase Vault
+
+В Supabase Dashboard → Project Settings → Vault добавьте:
+- `subscription_api_url` = `https://checklytool.com`
+- `subscription_api_key` = ваш SUBSCRIPTION_RENEWAL_API_KEY
+
+#### 5. Активировать метод Charge в Т-Банк
+
+**ВАЖНО:** Свяжитесь с поддержкой Т-Банк для активации метода Charge:
+- Email: openapi@tbank.ru
+- Укажите ваш Terminal Key
+- Запросите активацию рекуррентных платежей
+
+#### 6. Настроить автоматический запуск
+
+**Вариант А: pg_cron (встроенный)**
+Включите pg_cron в Supabase Dashboard → Database → Extensions
+
+**Вариант Б: Внешний cron**
+Настройте cron-job.org для вызова:
+```bash
+curl -X POST https://your-api.supabase.co/rest/v1/rpc/trigger_subscription_renewal \
+  -H "apikey: YOUR_SUPABASE_ANON_KEY" \
+  -H "Content-Type: application/json"
+```
+
+### Как это работает
+
+1. **За 1 день до истечения подписки:**
+   - Отправляется email-напоминание
+   - Запись в `subscription_notifications`
+
+2. **В день истечения:**
+   - Автоматически вызывается `/api/payment/charge`
+   - Списываются средства через Т-Банк Charge API
+   - При успехе: продление на 30 дней + начисление кредитов
+   - При неудаче: email уведомление + запись счетчика
+
+3. **Через 3 дня после неудачи:**
+   - Повторная попытка списания
+   - При успехе: всё как в п.2
+   - При неудаче: перевод на FREE план + email о приостановке
+
+### Управление автопродлением
+
+Пользователи могут отключить автопродление в настройках профиля.
+Компонент `<SubscriptionSettings />` уже добавлен в профиль с dark patterns.
+
+### Тестирование
+
+1. Создайте тестовую подписку с Recurrent='Y'
+2. После оплаты проверьте наличие `rebill_id` в `user_profiles`
+3. Вручную вызовите функцию для тестирования:
+   ```sql
+   SELECT auto_expire_subscriptions();
+   ```
+4. Проверьте логи в таблице `subscription_notifications`
+
 ## Поддержка
 
 Документация Т-Банк:
 - https://developer.tbank.ru/eacq/intro/developer/setup_js/
 - https://developer.tbank.ru/eacq/api/api_process
+- https://developer.tbank.ru/eacq/api/recurrent (рекуррентные платежи)
 
 При возникновении проблем проверьте:
 1. Логи в консоли браузера
 2. Логи сервера (console.log в API routes)
 3. Таблицу payment_orders в Supabase
 4. Настройки webhook в Т-Банк
+5. Таблицу subscription_notifications для email уведомлений

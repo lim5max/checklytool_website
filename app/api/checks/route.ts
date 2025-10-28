@@ -94,7 +94,38 @@ export async function POST(request: NextRequest) {
 		console.log('[API] Starting check creation...')
 		const { supabase, userId } = await getAuthenticatedSupabase()
 		console.log('[API] Authentication successful, userId:', userId)
-		
+
+		// Проверяем статус подписки (если миграция 026 применена)
+		const { data: userProfile } = await (supabase as any)
+			.from('user_profiles')
+			.select('subscription_status')
+			.eq('user_id', userId)
+			.maybeSingle()
+
+		// Если поле subscription_status существует в БД, проверяем его
+		if (userProfile && userProfile.subscription_status) {
+			// Если подписка приостановлена или отменена, запрещаем создание проверок
+			if (userProfile.subscription_status === 'suspended') {
+				return NextResponse.json(
+					{
+						error: 'Подписка приостановлена',
+						message: 'Ваша подписка приостановлена из-за неудачной попытки оплаты. Пожалуйста, обновите платежную информацию.',
+					},
+					{ status: 403 }
+				)
+			}
+
+			if (userProfile.subscription_status === 'cancelled') {
+				return NextResponse.json(
+					{
+						error: 'Подписка отменена',
+						message: 'Ваша подписка была отменена. Пожалуйста, оформите новую подписку для продолжения работы.',
+					},
+					{ status: 403 }
+				)
+			}
+		}
+
 		const body = await request.json()
 		console.log('[API] Request body:', JSON.stringify(body, null, 2))
 

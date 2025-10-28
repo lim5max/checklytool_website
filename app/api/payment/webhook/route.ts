@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			const { data: plan } = await (supabase as any)
 				.from('subscription_plans')
-				.select('check_credits')
+				.select('check_credits, display_name')
 				.eq('id', order.plan_id)
 				.single()
 
@@ -104,6 +104,14 @@ export async function POST(request: NextRequest) {
 						subscription_plan_id: order.plan_id,
 						subscription_expires_at: expiresAt.toISOString(),
 						check_balance: Number(plan.check_credits) || 0,
+						// Рекуррентные платежи
+						rebill_id: payload.RebillId || null,
+						customer_key: order.user_id,
+						subscription_status: 'active',
+						subscription_auto_renew: true, // Включаем автопродление для новых подписок
+						// Сбрасываем счетчики ошибок
+						payment_failed_at: null,
+						payment_retry_count: 0,
 					})
 					.eq('user_id', order.user_id)
 
@@ -112,7 +120,11 @@ export async function POST(request: NextRequest) {
 					// Не возвращаем ошибку, т.к. платеж уже прошел
 					// Можно добавить логирование для ручной обработки
 				} else {
-					console.log('[Payment Webhook] Subscription activated for user:', order.user_id)
+					console.log('[Payment Webhook] Subscription activated for user:', order.user_id, {
+						rebillId: payload.RebillId,
+						autoRenew: true,
+						expiresAt: expiresAt.toISOString(),
+					})
 
 					// Логируем использование кредитов (добавление баланса)
 					// eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -122,6 +134,45 @@ export async function POST(request: NextRequest) {
 						credits_used: -(Number(plan.check_credits) || 0), // Отрицательное значение = пополнение
 						description: `Пополнение: подписка ${order.plan_id}`,
 					})
+
+					// Отправляем email уведомление об успешной оплате
+					try {
+						// Динамический импорт для избежания ошибок при отсутствии nodemailer
+						const { sendPaymentSuccess, logNotification } = await import('@/lib/email')
+
+						// Получаем данные пользователя для email
+						// eslint-disable-next-line @typescript-eslint/no-explicit-any
+						const { data: userProfile } = await (supabase as any)
+							.from('user_profiles')
+							.select('email, name')
+							.eq('user_id', order.user_id)
+							.single()
+
+						if (userProfile?.email) {
+							await sendPaymentSuccess(
+								userProfile.email,
+								userProfile.name,
+								order.amount,
+								expiresAt,
+								plan.display_name
+							)
+
+							// Логируем отправленное уведомление
+							await logNotification(
+								order.user_id,
+								'payment_success',
+								expiresAt,
+								{
+									amount: order.amount,
+									planName: plan.display_name,
+									paymentId: payload.PaymentId,
+								}
+							)
+						}
+					} catch (emailError) {
+						console.error('[Payment Webhook] Failed to send email notification:', emailError)
+						// Не прерываем процесс, т.к. платеж уже прошел
+					}
 				}
 			}
 		}

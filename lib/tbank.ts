@@ -10,6 +10,8 @@ export interface TBankInitPaymentRequest {
 	SuccessURL?: string // URL для редиректа после успешной оплаты
 	FailURL?: string // URL для редиректа после неудачной оплаты
 	NotificationURL?: string // URL для webhook уведомлений
+	Recurrent?: 'Y' // Флаг рекуррентного платежа (для сохранения карты)
+	CustomerKey?: string // Уникальный ключ клиента для рекуррентных платежей
 }
 
 export interface TBankReceipt {
@@ -65,6 +67,7 @@ export interface TBankWebhookPayload {
 	CardId?: string
 	Pan?: string
 	ExpDate?: string
+	RebillId?: string // ID для рекуррентных платежей
 	Token: string
 }
 
@@ -282,6 +285,90 @@ export function verifyWebhookToken(payload: TBankWebhookPayload): boolean {
 
 	// Сравниваем токены
 	return receivedToken === expectedToken
+}
+
+/**
+ * Автоматическое списание средств с сохраненной карты (рекуррентный платеж)
+ * POST /Charge
+ *
+ * @param rebillId - ID рекуррентного платежа (получен при первом платеже)
+ * @param orderId - Уникальный ID заказа
+ * @param amount - Сумма в копейках
+ * @param description - Описание платежа
+ * @param receipt - Чек для ФЗ-54 (опционально)
+ */
+export async function chargeRecurrent(
+	rebillId: string,
+	orderId: string,
+	amount: number,
+	description: string,
+	receipt?: TBankReceipt
+): Promise<TBankInitPaymentResponse> {
+	const config = getTBankConfig()
+
+	// Параметры для токена
+	const paramsForToken: Record<string, unknown> = {
+		TerminalKey: config.terminalKey,
+		RebillId: rebillId,
+		Amount: amount,
+		OrderId: orderId,
+		Description: description,
+	}
+
+	// Генерация токена
+	const token = generateToken(paramsForToken)
+
+	// Полные параметры для отправки
+	const requestBody: Record<string, unknown> = {
+		...paramsForToken,
+		...(receipt && { Receipt: receipt }),
+		Token: token,
+	}
+
+	console.log('[T-Bank Charge] Request:', JSON.stringify({
+		orderId,
+		rebillId,
+		amount,
+		hasReceipt: !!receipt,
+	}, null, 2))
+
+	// Отправка запроса
+	const response = await fetch(`${config.apiUrl}Charge`, {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json',
+		},
+		body: JSON.stringify(requestBody),
+	})
+
+	if (!response.ok) {
+		const errorText = await response.text()
+		console.error('[T-Bank Charge] HTTP Error:', response.status, errorText)
+		throw new Error(`T-Bank Charge API error: ${response.status} ${response.statusText}`)
+	}
+
+	const data: TBankInitPaymentResponse = await response.json()
+
+	console.log('[T-Bank Charge] Response:', JSON.stringify({
+		success: data.Success,
+		status: data.Status,
+		paymentId: data.PaymentId,
+		errorCode: data.ErrorCode,
+		message: data.Message,
+	}, null, 2))
+
+	if (!data.Success) {
+		console.error('[T-Bank Charge] API Error:', {
+			ErrorCode: data.ErrorCode,
+			Message: data.Message,
+			Details: data.Details,
+		})
+		throw new Error(
+			`T-Bank Charge failed: ${data.ErrorCode} - ${data.Message}${data.Details ? ` (${data.Details})` : ''}`
+		)
+	}
+
+	return data
 }
 
 /**

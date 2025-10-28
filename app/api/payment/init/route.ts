@@ -95,6 +95,9 @@ export async function POST(request: NextRequest) {
 				userId,
 				planId,
 			},
+			// Рекуррентные платежи: сохраняем карту для автоматических списаний
+			Recurrent: 'Y' as const,
+			CustomerKey: userId, // Используем userId как уникальный ключ клиента
 			// URL-ы передаем только если это не localhost (T-Bank не может достучаться до localhost)
 			...(!isLocalhost && {
 				SuccessURL: `${siteUrl}/dashboard?payment=success`,
@@ -108,6 +111,8 @@ export async function POST(request: NextRequest) {
 			hasReceipt: !!receipt,
 			hasURLs: !isLocalhost,
 			amount: amountInKopecks,
+			recurrent: true,
+			customerKey: userId,
 		})
 
 		// Инициализируем платеж в Т-Банк
