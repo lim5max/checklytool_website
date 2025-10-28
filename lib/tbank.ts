@@ -124,7 +124,7 @@ export async function initPayment(
 
 	// Подготовка параметров для токена (без DATA - оно не участвует в подписи)
 	// ВАЖНО: Receipt (вложенный объект) НЕ участвует в генерации токена согласно документации
-	// Но SuccessURL, FailURL, NotificationURL - это простые строки, они МОГУТ участвовать
+	// Но SuccessURL, FailURL, NotificationURL, Recurrent, CustomerKey - это простые строки, они МОГУТ участвовать
 	const paramsForToken: Record<string, unknown> = {
 		TerminalKey: config.terminalKey,
 		Amount: request.Amount,
@@ -143,10 +143,18 @@ export async function initPayment(
 		paramsForToken.NotificationURL = request.NotificationURL
 	}
 
+	// Добавляем параметры рекуррентных платежей в токен
+	if (request.Recurrent) {
+		paramsForToken.Recurrent = request.Recurrent
+	}
+	if (request.CustomerKey) {
+		paramsForToken.CustomerKey = request.CustomerKey
+	}
+
 	// Генерация токена
 	const token = generateToken(paramsForToken)
 
-	// Полные параметры для отправки (включая Receipt, DATA и URLs)
+	// Полные параметры для отправки (включая Receipt, DATA, URLs и Recurrent)
 	const params: Record<string, unknown> = {
 		...paramsForToken,
 		...(request.Receipt && { Receipt: request.Receipt }),
@@ -154,6 +162,8 @@ export async function initPayment(
 		...(request.SuccessURL && { SuccessURL: request.SuccessURL }),
 		...(request.FailURL && { FailURL: request.FailURL }),
 		...(request.NotificationURL && { NotificationURL: request.NotificationURL }),
+		...(request.Recurrent && { Recurrent: request.Recurrent }),
+		...(request.CustomerKey && { CustomerKey: request.CustomerKey }),
 	}
 
 	const requestBody = {

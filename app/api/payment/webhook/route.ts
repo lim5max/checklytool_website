@@ -11,10 +11,14 @@ export async function POST(request: NextRequest) {
 		// Парсим тело запроса
 		const payload: TBankWebhookPayload = await request.json()
 
+		// ДЕТАЛЬНОЕ ЛОГИРОВАНИЕ: Весь payload от T-Bank
+		console.log('[Payment Webhook] FULL PAYLOAD:', JSON.stringify(payload, null, 2))
+
 		console.log('[Payment Webhook] Received payload:', {
 			orderId: payload.OrderId,
 			status: payload.Status,
 			success: payload.Success,
+			rebillId: payload.RebillId, // Проверяем RebillId
 		})
 
 		// Проверяем подпись webhook
