@@ -52,6 +52,61 @@ export type Database = {
           },
         ]
       }
+      check_usage_history: {
+        Row: {
+          check_id: string | null
+          check_type: string
+          created_at: string | null
+          credits_used: number
+          id: string
+          pages_count: number | null
+          submission_id: string | null
+          user_id: string
+        }
+        Insert: {
+          check_id?: string | null
+          check_type: string
+          created_at?: string | null
+          credits_used: number
+          id?: string
+          pages_count?: number | null
+          submission_id?: string | null
+          user_id: string
+        }
+        Update: {
+          check_id?: string | null
+          check_type?: string
+          created_at?: string | null
+          credits_used?: number
+          id?: string
+          pages_count?: number | null
+          submission_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "check_usage_history_check_id_fkey"
+            columns: ["check_id"]
+            isOneToOne: false
+            referencedRelation: "checks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "check_usage_history_submission_id_fkey"
+            columns: ["submission_id"]
+            isOneToOne: false
+            referencedRelation: "student_submissions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_user_profiles"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       check_variants: {
         Row: {
           check_id: string | null
@@ -98,6 +153,7 @@ export type Database = {
           description: string | null
           id: string
           subject: string | null
+          test_id: string | null
           title: string
           total_questions: number | null
           updated_at: string | null
@@ -111,6 +167,7 @@ export type Database = {
           description?: string | null
           id?: string
           subject?: string | null
+          test_id?: string | null
           title: string
           total_questions?: number | null
           updated_at?: string | null
@@ -124,13 +181,22 @@ export type Database = {
           description?: string | null
           id?: string
           subject?: string | null
+          test_id?: string | null
           title?: string
           total_questions?: number | null
           updated_at?: string | null
           user_id?: string
           variant_count?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "checks_test_id_fkey"
+            columns: ["test_id"]
+            isOneToOne: false
+            referencedRelation: "generated_tests"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       essay_grading_criteria: {
         Row: {
@@ -139,8 +205,6 @@ export type Database = {
           description: string
           grade: number
           id: string
-          max_errors: number | null
-          min_errors: number | null
           title: string
         }
         Insert: {
@@ -149,8 +213,6 @@ export type Database = {
           description: string
           grade: number
           id?: string
-          max_errors?: number | null
-          min_errors?: number | null
           title: string
         }
         Update: {
@@ -159,8 +221,6 @@ export type Database = {
           description?: string
           grade?: number
           id?: string
-          max_errors?: number | null
-          min_errors?: number | null
           title?: string
         }
         Relationships: [
@@ -175,11 +235,13 @@ export type Database = {
       }
       evaluation_results: {
         Row: {
+          additional_notes: string | null
           ai_response: Json | null
           confidence_score: number | null
           correct_answers: number
           created_at: string | null
           detailed_answers: Json | null
+          essay_analysis: Json | null
           essay_metadata: Json | null
           final_grade: number
           id: string
@@ -190,11 +252,13 @@ export type Database = {
           variant_used: number | null
         }
         Insert: {
+          additional_notes?: string | null
           ai_response?: Json | null
           confidence_score?: number | null
           correct_answers: number
           created_at?: string | null
           detailed_answers?: Json | null
+          essay_analysis?: Json | null
           essay_metadata?: Json | null
           final_grade: number
           id?: string
@@ -205,11 +269,13 @@ export type Database = {
           variant_used?: number | null
         }
         Update: {
+          additional_notes?: string | null
           ai_response?: Json | null
           confidence_score?: number | null
           correct_answers?: number
           created_at?: string | null
           detailed_answers?: Json | null
+          essay_analysis?: Json | null
           essay_metadata?: Json | null
           final_grade?: number
           id?: string
@@ -294,6 +360,96 @@ export type Database = {
           },
         ]
       }
+      password_reset_tokens: {
+        Row: {
+          created_at: string
+          expires_at: string
+          id: string
+          token: string
+          used_at: string | null
+          user_email: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at: string
+          id?: string
+          token: string
+          used_at?: string | null
+          user_email: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          token?: string
+          used_at?: string | null
+          user_email?: string
+        }
+        Relationships: []
+      }
+      payment_orders: {
+        Row: {
+          amount: number
+          created_at: string | null
+          id: string
+          is_recurrent: boolean | null
+          order_id: string
+          parent_payment_id: string | null
+          payment_id: string | null
+          payment_url: string | null
+          plan_id: string | null
+          rebill_id: string | null
+          status: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string | null
+          id?: string
+          is_recurrent?: boolean | null
+          order_id: string
+          parent_payment_id?: string | null
+          payment_id?: string | null
+          payment_url?: string | null
+          plan_id?: string | null
+          rebill_id?: string | null
+          status?: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          id?: string
+          is_recurrent?: boolean | null
+          order_id?: string
+          parent_payment_id?: string | null
+          payment_id?: string | null
+          payment_url?: string | null
+          plan_id?: string | null
+          rebill_id?: string | null
+          status?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_orders_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_orders_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       student_submissions: {
         Row: {
           check_id: string | null
@@ -350,53 +506,165 @@ export type Database = {
           },
         ]
       }
+      subscription_notifications: {
+        Row: {
+          created_at: string | null
+          id: string
+          metadata: Json | null
+          notification_type: string
+          sent_at: string | null
+          subscription_expires_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          metadata?: Json | null
+          notification_type: string
+          sent_at?: string | null
+          subscription_expires_at: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          metadata?: Json | null
+          notification_type?: string
+          sent_at?: string | null
+          subscription_expires_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscription_notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      subscription_plans: {
+        Row: {
+          check_credits: number
+          created_at: string | null
+          display_name: string
+          id: string
+          is_active: boolean | null
+          name: string
+          price: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          check_credits?: number
+          created_at?: string | null
+          display_name: string
+          id?: string
+          is_active?: boolean | null
+          name: string
+          price?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          check_credits?: number
+          created_at?: string | null
+          display_name?: string
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          price?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       user_profiles: {
         Row: {
           avatar_url: string | null
+          check_balance: number | null
           created_at: string | null
+          customer_key: string | null
           email: string
           first_login_at: string | null
           id: string
           is_active: boolean | null
           last_login_at: string | null
           name: string | null
+          password_hash: string | null
+          payment_failed_at: string | null
+          payment_retry_count: number | null
           provider: string | null
+          rebill_id: string | null
           role: string | null
+          subscription_auto_renew: boolean | null
+          subscription_expires_at: string | null
+          subscription_plan_id: string | null
+          subscription_started_at: string | null
+          subscription_status: string | null
           total_checks: number | null
           updated_at: string | null
           user_id: string
         }
         Insert: {
           avatar_url?: string | null
+          check_balance?: number | null
           created_at?: string | null
+          customer_key?: string | null
           email: string
           first_login_at?: string | null
           id?: string
           is_active?: boolean | null
           last_login_at?: string | null
           name?: string | null
+          password_hash?: string | null
+          payment_failed_at?: string | null
+          payment_retry_count?: number | null
           provider?: string | null
+          rebill_id?: string | null
           role?: string | null
+          subscription_auto_renew?: boolean | null
+          subscription_expires_at?: string | null
+          subscription_plan_id?: string | null
+          subscription_started_at?: string | null
+          subscription_status?: string | null
           total_checks?: number | null
           updated_at?: string | null
           user_id: string
         }
         Update: {
           avatar_url?: string | null
+          check_balance?: number | null
           created_at?: string | null
+          customer_key?: string | null
           email?: string
           first_login_at?: string | null
           id?: string
           is_active?: boolean | null
           last_login_at?: string | null
           name?: string | null
+          password_hash?: string | null
+          payment_failed_at?: string | null
+          payment_retry_count?: number | null
           provider?: string | null
+          rebill_id?: string | null
           role?: string | null
+          subscription_auto_renew?: boolean | null
+          subscription_expires_at?: string | null
+          subscription_plan_id?: string | null
+          subscription_started_at?: string | null
+          subscription_status?: string | null
           total_checks?: number | null
           updated_at?: string | null
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "user_profiles_subscription_plan_id_fkey"
+            columns: ["subscription_plan_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_plans"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       variant_answers: {
         Row: {
@@ -438,23 +706,51 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      add_check_variant: {
-        Args: { check_uuid: string; variant_name?: string }
-        Returns: string
-      }
-      get_check_variants_with_answers: {
-        Args: { check_uuid: string }
-        Returns: {
-          answers: Json
-          variant_id: string
-          variant_name: string
-          variant_number: number
-        }[]
-      }
-      remove_check_variant: {
-        Args: { variant_uuid: string }
+      add_check_variant:
+        | {
+            Args: { check_uuid: string; variant_name?: string }
+            Returns: string
+          }
+        | {
+            Args: { p_check_id: string; p_variant_number: number }
+            Returns: string
+          }
+      add_subscription:
+        | { Args: { p_plan_name: string; p_user_id: string }; Returns: Json }
+        | {
+            Args: {
+              p_duration_days: number
+              p_plan_id: string
+              p_user_id: string
+            }
+            Returns: undefined
+          }
+      auto_expire_subscriptions: { Args: never; Returns: undefined }
+      charge_subscription: {
+        Args: { p_api_key: string; p_api_url: string; p_user_id: string }
         Returns: boolean
       }
+      deduct_check_credits:
+        | {
+            Args: {
+              p_check_id: string
+              p_check_type: string
+              p_pages_count: number
+              p_submission_id: string
+              p_user_id: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: { p_credits_to_deduct: number; p_user_id: string }
+            Returns: boolean
+          }
+      get_check_variants_with_answers: {
+        Args: { p_check_id: string }
+        Returns: Json
+      }
+      get_dashboard_stats: { Args: { p_user_id: string }; Returns: Json }
+      remove_check_variant: { Args: { p_variant_id: string }; Returns: boolean }
       set_config: {
         Args: { parameter: string; value: string }
         Returns: string

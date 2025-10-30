@@ -346,7 +346,9 @@ export default function CheckPage({ params }: CheckPageProps) {
 		try {
 			setIsProcessing(true)
 
-			const { items } = await submitStudents(checkId, draft?.students || [])
+			const { items } = await submitStudents(checkId, draft?.students || [], {
+				checkType
+			})
 
 			// Очищаем черновики ТОЛЬКО после успешной отправки
 			clearDraft(checkId)
