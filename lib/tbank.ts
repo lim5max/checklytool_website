@@ -56,6 +56,18 @@ export interface TBankPaymentStatus {
 	Amount: number
 }
 
+export interface TBankChargeResponse {
+	Success: boolean
+	ErrorCode?: string
+	Message?: string
+	Details?: string
+	TerminalKey: string
+	Status: string
+	PaymentId: string
+	OrderId: string
+	Amount: number
+}
+
 export interface TBankWebhookPayload {
 	TerminalKey: string
 	OrderId: string
@@ -301,46 +313,37 @@ export function verifyWebhookToken(payload: TBankWebhookPayload): boolean {
  * Автоматическое списание средств с сохраненной карты (рекуррентный платеж)
  * POST /Charge
  *
- * @param rebillId - ID рекуррентного платежа (получен при первом платеже)
- * @param orderId - Уникальный ID заказа
- * @param amount - Сумма в копейках
- * @param description - Описание платежа
- * @param receipt - Чек для ФЗ-54 (опционально)
+ * Правильная последовательность для рекуррентных платежей:
+ * 1. Создать COF-платеж через initPayment() БЕЗ параметров Recurrent и CustomerKey
+ * 2. Получить PaymentId из ответа COF-платежа
+ * 3. Вызвать chargeWithRebillId() с PaymentId (из COF) и RebillId (из CC-платежа)
+ *
+ * @param paymentId - PaymentId из COF-платежа (дочернего Init без Recurrent/CustomerKey)
+ * @param rebillId - RebillId из родительского CC-платежа (с Recurrent=Y и CustomerKey)
  */
-export async function chargeRecurrent(
-	rebillId: string,
-	orderId: string,
-	amount: number,
-	description: string,
-	receipt?: TBankReceipt
-): Promise<TBankInitPaymentResponse> {
+export async function chargeWithRebillId(
+	paymentId: string,
+	rebillId: string
+): Promise<TBankChargeResponse> {
 	const config = getTBankConfig()
 
-	// Параметры для токена
+	// Параметры для токена - ТОЛЬКО эти три параметра!
 	const paramsForToken: Record<string, unknown> = {
 		TerminalKey: config.terminalKey,
+		PaymentId: paymentId,
 		RebillId: rebillId,
-		Amount: amount,
-		OrderId: orderId,
-		Description: description,
 	}
 
 	// Генерация токена
 	const token = generateToken(paramsForToken)
 
-	// Полные параметры для отправки
-	const requestBody: Record<string, unknown> = {
+	// Тело запроса
+	const requestBody = {
 		...paramsForToken,
-		...(receipt && { Receipt: receipt }),
 		Token: token,
 	}
 
-	console.log('[T-Bank Charge] Request:', JSON.stringify({
-		orderId,
-		rebillId,
-		amount,
-		hasReceipt: !!receipt,
-	}, null, 2))
+	console.log('[T-Bank Charge] Request:', JSON.stringify(requestBody, null, 2))
 
 	// Отправка запроса
 	const response = await fetch(`${config.apiUrl}Charge`, {
@@ -357,15 +360,9 @@ export async function chargeRecurrent(
 		throw new Error(`T-Bank Charge API error: ${response.status} ${response.statusText}`)
 	}
 
-	const data: TBankInitPaymentResponse = await response.json()
+	const data: TBankChargeResponse = await response.json()
 
-	console.log('[T-Bank Charge] Response:', JSON.stringify({
-		success: data.Success,
-		status: data.Status,
-		paymentId: data.PaymentId,
-		errorCode: data.ErrorCode,
-		message: data.Message,
-	}, null, 2))
+	console.log('[T-Bank Charge] Response:', JSON.stringify(data, null, 2))
 
 	if (!data.Success) {
 		console.error('[T-Bank Charge] API Error:', {

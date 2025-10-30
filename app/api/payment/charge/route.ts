@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { chargeRecurrent, createReceipt } from '@/lib/tbank'
+import { initPayment, chargeWithRebillId, createReceipt } from '@/lib/tbank'
 import { z } from 'zod'
 
 // Валидация входных данных
@@ -116,16 +116,38 @@ export async function POST(request: NextRequest) {
 			planName: plan.display_name,
 		})
 
-		// Пытаемся списать средства
+		// Пытаемся списать средства через правильную последовательность:
+		// 1. Создать COF-платеж (БЕЗ Recurrent и CustomerKey)
+		// 2. Вызвать Charge с PaymentId из COF и RebillId из БД
 		let chargeResult
+		let cofPaymentData
 		try {
-			chargeResult = await chargeRecurrent(
-				userProfile.rebill_id,
-				orderId,
-				amountInKopecks,
-				`Продление подписки ${plan.display_name} - ChecklyTool`,
-				receipt
+			// Шаг 1: Создаем COF-платеж через Init (БЕЗ Recurrent и CustomerKey)
+			console.log('[Payment Charge] Creating COF payment (Init without Recurrent/CustomerKey)')
+			cofPaymentData = await initPayment({
+				Amount: amountInKopecks,
+				OrderId: orderId,
+				Description: `Продление подписки ${plan.display_name} - ChecklyTool`,
+				// Не передаем Recurrent и CustomerKey - это COF-платеж
+				...(receipt && { Receipt: receipt }),
+			})
+
+			console.log('[Payment Charge] COF payment created:', {
+				paymentId: cofPaymentData.PaymentId,
+				orderId: cofPaymentData.OrderId,
+			})
+
+			// Шаг 2: Вызываем Charge с PaymentId из COF и RebillId из БД
+			console.log('[Payment Charge] Calling Charge with PaymentId and RebillId')
+			chargeResult = await chargeWithRebillId(
+				cofPaymentData.PaymentId,
+				userProfile.rebill_id
 			)
+
+			console.log('[Payment Charge] Charge successful:', {
+				status: chargeResult.Status,
+				paymentId: chargeResult.PaymentId,
+			})
 		} catch (chargeError) {
 			console.error('[Payment Charge] Charge failed:', chargeError)
 
