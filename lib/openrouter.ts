@@ -279,16 +279,12 @@ ${essayCriteria?.map(c => `${c.grade} баллов — ${c.description}`).join('
 	}
 
 	try {
-		console.log('Sending request to OpenRouter with', submissionImages.length, 'images')
-		console.log('Image URLs:', submissionImages)
-
 		// Validate images
 		if (submissionImages.length === 0) {
 			throw new Error('No images provided for analysis')
 		}
 
 		if (submissionImages.length > 5) {
-			console.warn('Too many images, taking first 5')
 			submissionImages = submissionImages.slice(0, 5)
 		}
 
@@ -308,28 +304,20 @@ ${essayCriteria?.map(c => `${c.grade} баллов — ${c.description}`).join('
 
 		if (!response.ok) {
 			const errorText = await response.text()
-			console.error('OpenRouter API error:', response.status, errorText)
-			console.error('Request that failed:', JSON.stringify(requestBody, null, 2))
 			throw new Error(`OpenRouter API error: ${response.status} - ${errorText}`)
 		}
 
 		const data: OpenRouterResponse = await response.json()
-		console.log('OpenRouter response received:', JSON.stringify(data, null, 2))
 
 		if (!data.choices?.[0]?.message?.content) {
-			console.error('Invalid OpenRouter response structure:', data)
 			throw new Error('Invalid response from OpenRouter API - no content')
 		}
 
 		// Parse the AI response
 		const aiResponseText = data.choices[0].message.content
-		console.log('AI response text:', aiResponseText)
 
 		// Check if response was truncated
 		const finishReason = data.choices[0].finish_reason
-		if (finishReason === 'length') {
-			console.warn('AI response was truncated due to max_tokens limit')
-		}
 
 		let parsedResponse: AIAnalysisResponse
 
@@ -337,12 +325,10 @@ ${essayCriteria?.map(c => `${c.grade} баллов — ${c.description}`).join('
 			// Try to extract JSON from the response (AI might add extra text)
 			const jsonMatch = aiResponseText.match(/\{[\s\S]*\}/)
 			if (jsonMatch) {
-				console.log('JSON extracted from response:', jsonMatch[0])
 				let jsonStr = jsonMatch[0]
 
 				// If response was truncated, try to fix incomplete JSON
 				if (finishReason === 'length' && !jsonStr.endsWith('}')) {
-					console.log('Attempting to fix truncated JSON...')
 
 					// Try to complete common incomplete patterns
 					if (jsonStr.includes('"content_quality"') && !jsonStr.includes('"final_grade"')) {
@@ -370,14 +356,12 @@ ${essayCriteria?.map(c => `${c.grade} баллов — ${c.description}`).join('
 							jsonStr += '}'.repeat(missingBraces)
 						}
 					}
-					console.log('Fixed JSON:', jsonStr)
 				}
 
 				// First parsing attempt
 				try {
 					parsedResponse = JSON.parse(jsonStr)
 				} catch (firstParseError) {
-					console.warn('First parse attempt failed, trying to sanitize JSON...')
 
 					// Try to fix common JSON issues
 					// 1. Remove control characters and invalid escapes
@@ -401,26 +385,19 @@ ${essayCriteria?.map(c => `${c.grade} баллов — ${c.description}`).join('
 						jsonStr = betterJsonMatch[0]
 					}
 
-					console.log('Sanitized JSON:', jsonStr.substring(0, 500) + '...')
-
 					// Second parsing attempt with sanitized string
 					try {
 						parsedResponse = JSON.parse(jsonStr)
-					} catch (secondParseError) {
-						console.error('Second parse attempt also failed')
-						console.error('Parse error details:', secondParseError)
+					} catch {
 
 						// Last resort: try to parse with JSON5 or create minimal valid response
 						throw new Error(`Failed to parse AI analysis result: ${firstParseError instanceof Error ? firstParseError.message : 'Invalid JSON format'}`)
 					}
 				}
 			} else {
-				console.error('No JSON pattern found in AI response:', aiResponseText)
 				throw new Error('No JSON found in AI response')
 			}
 		} catch (parseError) {
-			console.error('Failed to parse AI response:', aiResponseText)
-			console.error('Parse error:', parseError)
 			throw new Error(`Failed to parse AI analysis result: ${parseError instanceof Error ? parseError.message : 'Unknown parse error'}`)
 		}
 
@@ -431,7 +408,6 @@ ${essayCriteria?.map(c => `${c.grade} баллов — ${c.description}`).join('
 
 		// Проверяем, есть ли ошибка неподходящего контента
 		if (parsedResponse.error === 'inappropriate_content') {
-			console.log('[AI] Inappropriate content detected:', parsedResponse.error_message)
 			// Возвращаем ошибку как часть ответа, а не выбрасываем исключение
 			return parsedResponse
 		}
@@ -453,7 +429,6 @@ ${essayCriteria?.map(c => `${c.grade} баллов — ${c.description}`).join('
 		return parsedResponse
 
 	} catch (error) {
-		console.error('Error calling OpenRouter API:', error)
 		throw error
 	}
 }
@@ -472,11 +447,9 @@ export async function analyzeWithRetry(
 
 	for (let attempt = 1; attempt <= maxRetries; attempt++) {
 		try {
-			console.log(`AI Analysis attempt ${attempt}/${maxRetries}`)
 			return await analyzeStudentWork(submissionImages, referenceAnswers, referenceImages, variantCount, checkType, essayCriteria)
 		} catch (error) {
 			lastError = error as Error
-			console.error(`Analysis attempt ${attempt} failed:`, error)
 
 			if (attempt < maxRetries) {
 				// Wait before retrying (exponential backoff)
@@ -540,5 +513,370 @@ export function calculateEssayGrade(
 	return {
 		grade: lowestGrade,
 		percentage: (lowestGrade / 5) * 100
+	}
+}
+
+/**
+ * Двухэтапная проверка сочинений с использованием Gemini Pro и Flash
+ * ЭТАП 1: Gemini 2.5 Pro читает и расшифровывает текст дословно
+ * ЭТАП 2: Gemini 2.5 Flash проверяет текст на ошибки и оценивает
+ */
+export async function analyzeEssayTwoStage(
+	submissionImages: string[],
+	essayCriteria?: Array<{ grade: number; title: string; description: string; min_errors?: number; max_errors?: number }>
+): Promise<AIAnalysisResponse> {
+
+	const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY
+	if (!OPENROUTER_API_KEY) {
+		throw new Error('OPENROUTER_API_KEY is required')
+	}
+
+	const analysisId = `essay_twostage_${Date.now()}_${Math.random().toString(36).substring(7)}`
+
+	// Validate images
+	if (submissionImages.length === 0) {
+		throw new Error('No images provided for analysis')
+	}
+
+	if (submissionImages.length > 5) {
+		submissionImages = submissionImages.slice(0, 5)
+	}
+
+	try {
+		// ========================================
+		// ЭТАП 1: Gemini 2.5 Flash - Чтение текста
+		// ========================================
+
+		const proSystemPrompt = `Ты - эксперт по распознаванию рукописного текста. Твоя задача - прочитать рукописный текст и расшифровать его в ЧИТАЕМЫЙ вид.
+
+ВАЖНО: Проверь, подходят ли изображения:
+- ✅ ПОДХОДЯЩИЙ КОНТЕНТ: письменные сочинения, рукописный текст, тетради с работами
+- ❌ НЕПОДХОДЯЩИЙ КОНТЕНТ: фотографии лиц людей, селфи, случайные предметы, пустые страницы
+
+Если изображения содержат НЕПОДХОДЯЩИЙ КОНТЕНТ, верни JSON с ошибкой:
+{
+  "error": "inappropriate_content",
+  "error_message": "Загружены неподходящие изображения. Пожалуйста, сфотографируйте именно сочинение ученика - рукописный текст, тетрадь с работой.",
+  "content_type_detected": "лица людей/селфи/прочее"
+}
+
+Если изображения ПОДХОДЯЩИЕ, прочитай текст сочинения и верни JSON:
+{
+  "raw_text": "Расшифрованный текст сочинения в читаемом виде",
+  "confidence": 0.95,
+  "student_name": null
+}
+
+КРИТИЧЕСКИ ВАЖНО - ПРАВИЛА РАСШИФРОВКИ НЕРАЗБОРЧИВОГО ПОЧЕРКА:
+
+1. ИСПРАВЛЯЙ неразборчивый почерк, используя контекст:
+   ✅ ПРАВИЛЬНО: Видишь "че-ловек" (написано неразборчиво) → пишешь "человек"
+   ✅ ПРАВИЛЬНО: Видишь "неочастные" (неразборчиво) → угадываешь "несчастные" по контексту
+   ✅ ПРАВИЛЬНО: Видишь слитное слово → разделяешь правильно
+
+2. Используй КОНТЕКСТ предложения для расшифровки:
+   - Читай всё предложение целиком
+   - Понимай о чем речь в абзаце
+   - Угадывай правильное слово по смыслу
+
+3. Сохраняй РЕАЛЬНЫЕ орфографические и грамматические ошибки:
+   ✅ Если ученик ЧЕТКО написал "корова" вместо "карова" - сохраняй ошибку
+   ✅ Если ученик пропустил запятую - не добавляй её
+   ❌ НО если это просто неразборчивый почерк (слипшиеся буквы, неровный текст) - исправляй на читаемый вариант
+
+4. Если слово СОВСЕМ невозможно распознать:
+   ✅ Пиши: [неразборчиво]
+   ✅ Или попробуй угадать по контексту: "по контексту скорее всего: слово"
+
+5. Твоя задача - сделать текст ЧИТАЕМЫМ, чтобы второй AI мог проверить его на ошибки!
+   - Исправляй неразборчивый почерк
+   - Разделяй слипшиеся слова
+   - Убирай лишние пробелы и дефисы от плохого почерка
+   - НО сохраняй НАСТОЯЩИЕ ошибки ученика (орфография, грамматика, пунктуация)
+
+ТРЕБОВАНИЯ К JSON:
+- Верни ТОЛЬКО валидный JSON без лишнего текста
+- В строковых значениях НЕ используй двойные кавычки - замени их на одинарные
+- Сохраняй структуру абзацев через \n`
+
+		const proMessages: OpenRouterRequest['messages'] = [
+			{
+				role: 'system',
+				content: proSystemPrompt
+			},
+			{
+				role: 'user',
+				content: [
+					{
+						type: 'text',
+						text: `Анализ ${analysisId}. Прочитай текст сочинения ДОСЛОВНО.`
+					},
+					...submissionImages.map(imageUrl => ({
+						type: 'image_url' as const,
+						image_url: { url: imageUrl }
+					}))
+				]
+			}
+		]
+
+		const proRequest: OpenRouterRequest = {
+			model: 'google/gemini-2.5-flash',
+			messages: proMessages,
+			max_tokens: 4000,
+			temperature: 0.1, // Низкая температура для точного чтения
+			metadata: {
+				analysis_id: `${analysisId}_stage1_flash`,
+				timestamp: Date.now(),
+				stage: 'text_extraction'
+			}
+		}
+
+		const proResponse = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
+			method: 'POST',
+			headers: {
+				'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+				'Content-Type': 'application/json',
+				'HTTP-Referer': 'https://checklytool.com',
+				'X-Title': 'ChecklyTool',
+				'Cache-Control': 'no-cache, no-store, must-revalidate',
+				'Pragma': 'no-cache',
+				'X-Request-ID': `${analysisId}_flash1`
+			},
+			body: JSON.stringify(proRequest)
+		})
+
+		if (!proResponse.ok) {
+			const errorText = await proResponse.text()
+			throw new Error(`Gemini Flash API error: ${proResponse.status} - ${errorText}`)
+		}
+
+		const proData: OpenRouterResponse = await proResponse.json()
+
+		if (!proData.choices?.[0]?.message?.content) {
+			throw new Error('Invalid response from Gemini Pro - no content')
+		}
+
+		const proResponseText = proData.choices[0].message.content
+
+		// Parse Pro response
+		let proResult: { raw_text?: string; confidence?: number; error?: string; error_message?: string; content_type_detected?: string }
+
+		try {
+			const jsonMatch = proResponseText.match(/\{[\s\S]*\}/)
+			if (!jsonMatch) {
+				throw new Error('No JSON found in Pro response')
+			}
+			proResult = JSON.parse(jsonMatch[0])
+		} catch (parseError) {
+			throw new Error(`Failed to parse Pro response: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`)
+		}
+
+		// Проверяем на неподходящий контент
+		if (proResult.error === 'inappropriate_content') {
+			return {
+				error: 'inappropriate_content',
+				error_message: proResult.error_message || 'Загружены неподходящие изображения',
+				content_type_detected: proResult.content_type_detected
+			}
+		}
+
+		if (!proResult.raw_text) {
+			throw new Error('Pro did not return raw_text')
+		}
+
+		const extractedText = proResult.raw_text
+		const textConfidence = proResult.confidence || 0.9
+
+		// ========================================
+		// ЭТАП 2: Gemini 2.5 Flash - Проверка ошибок
+		// ========================================
+
+		const flashSystemPrompt = `Ты - преподаватель, проверяешь сочинения учеников (на русском или английском языке).
+
+Тебе предоставлен ДОСЛОВНО расшифрованный текст сочинения ученика.
+Твоя задача - ПРОВЕРИТЬ этот текст на ошибки и ОЦЕНИТЬ по критериям.
+
+ОПРЕДЕЛИ ЯЗЫК текста (русский или английский) и проверяй согласно правилам этого языка.
+
+Верни JSON:
+{
+  "variant_detected": 1,
+  "confidence_score": 0.95,
+  "student_name": null,
+  "total_questions": 1,
+  "essay_analysis": {
+    "structure": {"has_introduction": true, "has_body": true, "has_conclusion": true, "score": 0.9},
+    "logic": {"coherent": true, "clear_arguments": true, "score": 0.8},
+    "errors": {
+      "spelling_errors": 2,
+      "punctuation_errors": 1,
+      "grammar_errors": 0,
+      "speech_errors": 0,
+      "syntax_errors": 0,
+      "total_errors": 3,
+      "examples": [
+        "орфографическая - несмотря вместо не смотря",
+        "пунктуационная - отсутствует запятая перед союзом что"
+      ]
+    },
+    "content_quality": "хорошее раскрытие темы примеры уместны",
+    "final_grade": 4
+  },
+  "answers": {
+    "1": {"detected_answer": "ПОЛНЫЙ ТЕКСТ СОЧИНЕНИЯ который был предоставлен выше - перепиши его ДОСЛОВНО сюда", "confidence": 0.95}
+  },
+  "additional_notes": "комментарии к работе"
+}
+
+КРИТИЧЕСКИ ВАЖНО для поля answers:
+- В поле answers.1.detected_answer ОБЯЗАТЕЛЬНО помести ВЕСЬ текст сочинения ДОСЛОВНО
+- Это нужно для отображения текста пользователю
+- НЕ сокращай текст, НЕ пиши "текст сочинения" - пиши РЕАЛЬНЫЙ полный текст
+
+КРИТЕРИИ ОЦЕНКИ СОЧИНЕНИЙ:
+${essayCriteria?.map(c => `${c.grade} баллов — ${c.description}`).join('\n') ||
+'5 баллов — структура соблюдена, логика ясная, ошибок мало или совсем нет (не более двух грамматических ошибок)\n4 балла — структура есть, логика в целом понятна, ошибок немного (от 3 до 6 грамматических и синтаксических)\n3 балла — структура нарушена, логика местами сбивается, ошибок достаточно много (более 6 ошибок)\n2 балла — структура отсутствует, логики почти нет, ошибок очень много, текст трудно читать'}
+
+КРИТИЧЕСКИ ВАЖНО - ТРЕБОВАНИЯ К JSON:
+- Верни ТОЛЬКО валидный JSON без лишнего текста
+- В строковых значениях НЕ используй двойные кавычки - замени их на одинарные
+- В строковых значениях НЕ используй символы скобок () [] {} - замени их на тире или запятые
+
+Требования к анализу:
+- Оцени структуру: есть ли вступление, основная часть, заключение
+- Оцени логику изложения и связность текста
+- Найди ТОЛЬКО реальные ошибки, классифицируй их по типам:
+
+  ДЛЯ РУССКОГО ЯЗЫКА:
+
+  ОРФОГРАФИЧЕСКИЕ ошибки - неправильное написание слов:
+  * Примеры: "корова" вместо "карова", "несмотря" вместо "не смотря", "в течение" вместо "в течении"
+
+  ПУНКТУАЦИОННЫЕ ошибки - неправильная постановка знаков препинания:
+  * Примеры: отсутствие запятой перед союзом, лишняя запятая, отсутствие точки
+
+  ГРАММАТИЧЕСКИЕ ошибки - нарушение грамматических норм:
+  * Примеры: неправильное согласование "красивый девочка", неправильное управление "гордиться за успехи"
+  * Примеры: неправильная форма слова "ляжь" вместо "ляг", "ехай" вместо "поезжай"
+
+  РЕЧЕВЫЕ ошибки - неправильное употребление слов и выражений:
+  * Примеры: плеоназм "главная суть", тавтология "спросить вопрос"
+
+  СИНТАКСИЧЕСКИЕ ошибки - нарушение структуры предложения:
+  * Примеры: неправильный порядок слов, нарушение границ предложения
+
+  ДЛЯ АНГЛИЙСКОГО ЯЗЫКА:
+
+  SPELLING ERRORS - incorrect word spelling:
+  * Examples: "recieve" instead of "receive", "definately" instead of "definitely"
+
+  PUNCTUATION ERRORS - incorrect punctuation:
+  * Examples: missing comma, missing apostrophe in contractions, run-on sentences
+
+  GRAMMAR ERRORS - grammatical mistakes:
+  * Examples: subject-verb agreement "he go" instead of "he goes", wrong tense usage
+  * Examples: article errors "a apple" instead of "an apple"
+
+  WORD CHOICE ERRORS - incorrect word usage:
+  * Examples: "affect" vs "effect", "then" vs "than"
+
+  SYNTAX ERRORS - sentence structure problems:
+  * Examples: wrong word order, sentence fragments
+
+КРИТИЧЕСКИ ВАЖНО - НЕ СЧИТАЙ ОШИБКАМИ:
+- Стилистические варианты выражений если они не содержат языковых ошибок
+- Разные способы формулировки если они грамматически корректны
+- Сокращенные формы если они допустимы в речи (don't, can't для английского)
+
+- Выбери подходящую оценку согласно критериям на основе РЕАЛЬНЫХ ошибок`
+
+		const flashMessages: OpenRouterRequest['messages'] = [
+			{
+				role: 'system',
+				content: flashSystemPrompt
+			},
+			{
+				role: 'user',
+				content: `Анализ ${analysisId}. Проверь следующий текст сочинения на ошибки:\n\n${extractedText}`
+			}
+		]
+
+		const flashRequest: OpenRouterRequest = {
+			model: 'google/gemini-2.5-flash',
+			messages: flashMessages,
+			max_tokens: 4000,
+			temperature: 0.15,
+			metadata: {
+				analysis_id: `${analysisId}_stage2_flash`,
+				timestamp: Date.now(),
+				stage: 'error_checking'
+			}
+		}
+
+		const flashResponse = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
+			method: 'POST',
+			headers: {
+				'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+				'Content-Type': 'application/json',
+				'HTTP-Referer': 'https://checklytool.com',
+				'X-Title': 'ChecklyTool',
+				'Cache-Control': 'no-cache, no-store, must-revalidate',
+				'Pragma': 'no-cache',
+				'X-Request-ID': `${analysisId}_flash`
+			},
+			body: JSON.stringify(flashRequest)
+		})
+
+		if (!flashResponse.ok) {
+			const errorText = await flashResponse.text()
+			throw new Error(`Gemini Flash API error: ${flashResponse.status} - ${errorText}`)
+		}
+
+		const flashData: OpenRouterResponse = await flashResponse.json()
+
+		if (!flashData.choices?.[0]?.message?.content) {
+			throw new Error('Invalid response from Gemini Flash - no content')
+		}
+
+		const flashResponseText = flashData.choices[0].message.content
+
+		// Parse Flash response
+		let flashResult: AIAnalysisResponse
+
+		try {
+			const jsonMatch = flashResponseText.match(/\{[\s\S]*\}/)
+			if (!jsonMatch) {
+				throw new Error('No JSON found in Flash response')
+			}
+			flashResult = JSON.parse(jsonMatch[0])
+		} catch (parseError) {
+			throw new Error(`Failed to parse Flash response: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`)
+		}
+
+		// Validate Flash result
+		if (!flashResult.answers || !flashResult.essay_analysis) {
+			throw new Error('Flash response missing required fields (answers or essay_analysis)')
+		}
+
+		// ВАЖНО: Убеждаемся, что текст сочинения есть в answers для отображения пользователю
+		// Если Flash не вернул текст или вернул заглушку, подставляем текст от Pro
+		if (!flashResult.answers['1']?.detected_answer ||
+		    flashResult.answers['1'].detected_answer.length < 100 ||
+		    flashResult.answers['1'].detected_answer.includes('ПОЛНЫЙ ТЕКСТ')) {
+			flashResult.answers['1'] = {
+				detected_answer: extractedText,
+				confidence: textConfidence
+			}
+		}
+
+		// Возвращаем финальный результат с данными от Pro для отладки
+		return {
+			...flashResult,
+			// Добавляем текст от Pro в additional_notes для отладки (опционально)
+			additional_notes: `${flashResult.additional_notes || ''}\n\n[DEBUG] Extracted text length: ${extractedText.length} chars, confidence: ${textConfidence}`.trim()
+		}
+
+	} catch (error) {
+		throw error
 	}
 }

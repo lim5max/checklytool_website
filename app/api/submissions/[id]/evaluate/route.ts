@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAuthenticatedSupabase } from '@/lib/database'
-import { analyzeWithRetry, calculateGrade, calculateEssayGrade } from '@/lib/openrouter'
+import { analyzeWithRetry, calculateGrade, calculateEssayGrade, analyzeEssayTwoStage } from '@/lib/openrouter'
 import { deductCheckCredits } from '@/lib/subscription'
 import { withErrorHandler, ValidationError, DatabaseError, type ApiHandler } from '@/lib/api/error-handler'
 import { submissionIdSchema } from '@/lib/validations/api'
 
 // Увеличиваем таймаут до 60 секунд для обработки больших изображений
+// Для двухэтапной проверки сочинений может потребоваться больше времени
 export const maxDuration = 60
 
 interface RouteParams {
@@ -336,7 +337,6 @@ const postHandler = async (
 						.createSignedUrl(filePath, 86400) // 24 hours
 
 					if (signError) {
-						console.error('Error creating signed URL:', signError)
 						refreshedImageUrls.push(imageUrl) // Keep original
 					} else {
 						refreshedImageUrls.push(urlData.signedUrl)
@@ -393,20 +393,27 @@ const postHandler = async (
 
 
 			// Call OpenRouter API with retry mechanism using refreshed URLs
-			const aiResult = await analyzeWithRetry(
-				refreshedImageUrls,
-				referenceAnswers || null,
-				referenceImages || null,
-				checkData.variant_count,
-				3, // maxRetries
-				(checkData.check_type || 'test') as 'test' | 'essay',
-				checkData.essay_grading_criteria || undefined
-			)
+			// Для сочинений используем двухэтапную проверку (Pro + Flash)
+			// Для тестов - обычную проверку с одним вызовом
+			const checkType = (checkData.check_type || 'test') as 'test' | 'essay'
+
+			const aiResult = checkType === 'essay'
+				? await analyzeEssayTwoStage(
+					refreshedImageUrls,
+					checkData.essay_grading_criteria || undefined
+				)
+				: await analyzeWithRetry(
+					refreshedImageUrls,
+					referenceAnswers || null,
+					referenceImages || null,
+					checkData.variant_count,
+					3, // maxRetries
+					checkType,
+					undefined
+				)
 
 			// Проверяем, не обнаружил ли AI неподходящий контент
 			if (aiResult.error === 'inappropriate_content') {
-				console.warn('[EVALUATE] Inappropriate content detected:', aiResult.content_type_detected)
-
 				// Обновляем статус submission как failed
 				const updateData = {
 					status: 'failed',
@@ -460,7 +467,6 @@ const postHandler = async (
 					.single()
 
 				if (testError) {
-					console.error('Error loading generated test:', testError)
 					throw new Error(`Не удалось найти тест с ID ${checkData.test_id}`)
 				}
 
@@ -693,7 +699,6 @@ const postHandler = async (
 				.single()
 
 			if (evaluationError) {
-				console.error('Error saving evaluation results:', evaluationError)
 				throw new Error('Failed to save evaluation results')
 			}
 
@@ -715,11 +720,6 @@ const postHandler = async (
 			})
 
 		} catch (evaluationError) {
-			console.error('Evaluation failed for submission:', submissionId)
-			console.error('Error details:', evaluationError)
-			console.error('Error message:', evaluationError instanceof Error ? evaluationError.message : 'No error message')
-			console.error('Error stack:', evaluationError instanceof Error ? evaluationError.stack : 'No stack')
-
 			// Update submission status to failed
 			const updateData = {
 				status: 'failed',
@@ -801,14 +801,6 @@ export async function GET(
 				{ status: 401 }
 			)
 		}
-
-		const resolvedParams = await params
-		console.error('Unexpected error in evaluate route:', error)
-		console.error('Error details:', {
-			message: error instanceof Error ? error.message : 'Unknown error',
-			stack: error instanceof Error ? error.stack : undefined,
-			submissionId: resolvedParams.id
-		})
 
 		return NextResponse.json(
 			{ error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' },

@@ -71,6 +71,17 @@ function areNamesSimilar(name1: string, name2: string): boolean {
 		return true
 	}
 
+	// ИСКЛЮЧЕНИЕ: Шаблонные имена (Ученик N, Студент N) НЕ считаем похожими
+	// Паттерн: "ученик 123", "студент 5", "student 10" и т.д.
+	const templatePattern = /^(ученик|студент|student|учащийся)\s*\d+$/i
+	const isTemplate1 = templatePattern.test(normalized1)
+	const isTemplate2 = templatePattern.test(normalized2)
+
+	if (isTemplate1 || isTemplate2) {
+		// Шаблонные имена объединяем только если полностью идентичны
+		return false
+	}
+
 	// Вычисляем расстояние Левенштейна
 	const distance = levenshteinDistance(normalized1, normalized2)
 	const maxLength = Math.max(normalized1.length, normalized2.length)
@@ -94,7 +105,10 @@ function deduplicateStudents(students: DraftStudent[]): {
 
 	for (const student of students) {
 		// Ищем, есть ли уже похожий студент в deduplicated
-		const existingIndex = deduplicated.findIndex(s => areNamesSimilar(s.name, student.name))
+		const existingIndex = deduplicated.findIndex(s => {
+			const isSimilar = areNamesSimilar(s.name, student.name)
+			return isSimilar
+		})
 
 		if (existingIndex !== -1) {
 			// Нашли похожего студента - объединяем их фотографии
@@ -127,14 +141,95 @@ function deduplicateStudents(students: DraftStudent[]): {
 }
 
 /**
- * Convert a data URL to a File (image/jpeg by default).
+ * Конвертирует изображение в черно-белое (grayscale) для улучшения распознавания AI
+ * Использует Canvas API для быстрой обработки на клиенте
  */
-export async function dataUrlToFile(dataUrl: string, filename: string): Promise<File> {
-  const res = await fetch(dataUrl)
-  const blob = await res.blob()
-  // Try to preserve mime type from blob if possible
-  const type = blob.type || 'image/jpeg'
-  return new File([blob], filename, { type })
+export async function convertToBlackAndWhite(dataUrl: string): Promise<string> {
+	return new Promise((resolve, reject) => {
+		const img = new Image()
+
+		img.onload = () => {
+			try {
+				// Создаем canvas для обработки
+				const canvas = document.createElement('canvas')
+				canvas.width = img.width
+				canvas.height = img.height
+				const ctx = canvas.getContext('2d')
+
+				if (!ctx) {
+					reject(new Error('Failed to get canvas context'))
+					return
+				}
+
+				// Рисуем изображение на canvas
+				ctx.drawImage(img, 0, 0)
+
+				// Получаем пиксели изображения
+				const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+				const data = imageData.data
+
+				// Конвертируем каждый пиксель в grayscale
+				// Используем weighted average для лучшего результата
+				for (let i = 0; i < data.length; i += 4) {
+					// Weighted average: 0.299R + 0.587G + 0.114B
+					// Этот метод учитывает особенности восприятия цветов человеческим глазом
+					const gray = Math.round(
+						data[i] * 0.299 +     // R
+						data[i + 1] * 0.587 + // G
+						data[i + 2] * 0.114   // B
+					)
+
+					data[i] = gray     // R
+					data[i + 1] = gray // G
+					data[i + 2] = gray // B
+					// data[i + 3] - alpha остается без изменений
+				}
+
+				// Применяем обработанные пиксели обратно на canvas
+				ctx.putImageData(imageData, 0, 0)
+
+				// Конвертируем canvas в data URL
+				const blackAndWhiteDataUrl = canvas.toDataURL('image/jpeg', 0.5)
+				resolve(blackAndWhiteDataUrl)
+			} catch (error) {
+				reject(error)
+			}
+		}
+
+		img.onerror = () => {
+			reject(new Error('Failed to load image for black and white conversion'))
+		}
+
+		img.src = dataUrl
+	})
+}
+
+/**
+ * Convert a data URL to a File (image/jpeg by default).
+ * Optionally converts to black and white for better AI recognition (for essays only).
+ */
+export async function dataUrlToFile(
+	dataUrl: string,
+	filename: string,
+	options?: { convertToBlackAndWhite?: boolean }
+): Promise<File> {
+	let processedDataUrl = dataUrl
+
+	// Применяем ЧБ конвертацию если запрошено
+	if (options?.convertToBlackAndWhite) {
+		try {
+			processedDataUrl = await convertToBlackAndWhite(dataUrl)
+		} catch {
+			// Fallback to original image if conversion fails
+			processedDataUrl = dataUrl
+		}
+	}
+
+	const res = await fetch(processedDataUrl)
+	const blob = await res.blob()
+	// Try to preserve mime type from blob if possible
+	const type = blob.type || 'image/jpeg'
+	return new File([blob], filename, { type })
 }
 
 /**
@@ -144,7 +239,7 @@ export async function dataUrlToFile(dataUrl: string, filename: string): Promise<
 export async function submitStudents(
   checkId: string,
   students: DraftStudent[],
-  opts?: { studentClass?: string }
+  opts?: { studentClass?: string; checkType?: 'test' | 'essay' }
 ): Promise<SubmitAllResult> {
   const items: SubmitResultItem[] = []
   const failedNames: string[] = []
@@ -153,11 +248,10 @@ export async function submitStudents(
   const validStudents = students.filter((s) => s.photos.length > 0)
 
   // Дедупликация студентов перед отправкой
-  const { deduplicated, duplicatesFound } = deduplicateStudents(validStudents)
+  const { deduplicated } = deduplicateStudents(validStudents)
 
-  if (duplicatesFound.length > 0) {
-    console.warn('[SUBMIT] Duplicates merged:', duplicatesFound.length, 'cases')
-  }
+  // Определяем нужна ли ЧБ конвертация (только для сочинений)
+  const shouldConvertToBlackAndWhite = opts?.checkType === 'essay'
 
   // Используем дедуплицированный список для отправки
   for (const student of deduplicated) {
@@ -172,7 +266,9 @@ export async function submitStudents(
       let index = 0
       for (const photo of student.photos) {
         index += 1
-        const file = await dataUrlToFile(photo.dataUrl, `photo_${index}.jpg`)
+        const file = await dataUrlToFile(photo.dataUrl, `photo_${index}.jpg`, {
+          convertToBlackAndWhite: shouldConvertToBlackAndWhite
+        })
         formData.append('images', file)
       }
 
@@ -193,15 +289,9 @@ export async function submitStudents(
         // mark this student as failed locally and continue
         try {
           const { addTempFailedName } = await import('./drafts-idb')
-          console.log('[UPLOAD] Adding temp failed name to localStorage:', {
-            checkId,
-            studentName: student.name,
-            responseStatus: response.status,
-            errorMessage: message
-          })
           addTempFailedName(checkId, student.name)
-        } catch (e) {
-          console.error('[UPLOAD] Failed to add temp failed name:', e)
+        } catch {
+          // ignore
         }
         failedNames.push(student.name)
         continue
@@ -221,8 +311,8 @@ export async function submitStudents(
         try {
           const { addTempFailedName } = await import('./drafts-idb')
           addTempFailedName(checkId, student.name)
-        } catch (e) {
-          console.error('[UPLOAD] Failed to add temp failed name (no ID):', e)
+        } catch {
+          // ignore
         }
         failedNames.push(student.name)
         continue
@@ -234,8 +324,8 @@ export async function submitStudents(
       try {
         const { addTempFailedName } = await import('./drafts-idb')
         addTempFailedName(checkId, student.name)
-      } catch (e) {
-        console.error('[UPLOAD] Failed to add temp failed name (network error):', e)
+      } catch {
+        // ignore
       }
       failedNames.push(student.name)
     }
@@ -292,11 +382,8 @@ export async function evaluateAll(submissions: Array<{ submissionId: string }>):
   // Filter submissions that need evaluation
   const submissionsToEvaluate = statusChecks.filter(s => s.shouldEvaluate)
 
-  console.log(`[EVALUATE_ALL] Total submissions: ${submissions.length}, Need evaluation: ${submissionsToEvaluate.length}`)
-
   // If no submissions need evaluation, just dispatch completion event
   if (submissionsToEvaluate.length === 0) {
-    console.log('[EVALUATE_ALL] All submissions already completed or processing')
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('evaluation:complete', {
         detail: {
