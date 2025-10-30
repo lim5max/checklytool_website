@@ -142,6 +142,7 @@ function deduplicateStudents(students: DraftStudent[]): {
 
 /**
  * Конвертирует изображение в черно-белое (grayscale) для улучшения распознавания AI
+ * Применяет увеличение контраста и highlights для лучшей читаемости текста
  * Использует Canvas API для быстрой обработки на клиенте
  */
 export async function convertToBlackAndWhite(dataUrl: string): Promise<string> {
@@ -168,16 +169,40 @@ export async function convertToBlackAndWhite(dataUrl: string): Promise<string> {
 				const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
 				const data = imageData.data
 
-				// Конвертируем каждый пиксель в grayscale
-				// Используем weighted average для лучшего результата
+				// Параметры для улучшения читаемости текста
+				const contrastFactor = 2.0 // Увеличение контраста (1.0 = без изменений, >1.0 = больше контраста)
+				const highlightBoost = 1.4 // Усиление светлых участков (1.0 = без изменений)
+				const highlightThreshold = 120 // Порог для определения светлых участков (0-255)
+
+				// Конвертируем каждый пиксель в grayscale с улучшениями
 				for (let i = 0; i < data.length; i += 4) {
 					// Weighted average: 0.299R + 0.587G + 0.114B
 					// Этот метод учитывает особенности восприятия цветов человеческим глазом
-					const gray = Math.round(
+					let gray = Math.round(
 						data[i] * 0.299 +     // R
 						data[i + 1] * 0.587 + // G
 						data[i + 2] * 0.114   // B
 					)
+
+					// Убираем белый шум (очень светлые пиксели) -> чистый белый
+					if (gray > 250) {
+						data[i] = 255
+						data[i + 1] = 255
+						data[i + 2] = 255
+						continue
+					}
+
+					// Применяем контраст: ((value - 128) * contrast) + 128
+					gray = ((gray - 128) * contrastFactor) + 128
+
+					// Усиливаем светлые участки (highlights) для лучшей читаемости бумаги
+					if (gray > highlightThreshold) {
+						const excess = gray - highlightThreshold
+						gray = highlightThreshold + (excess * highlightBoost)
+					}
+
+					// Ограничиваем значения в диапазоне 0-255
+					gray = Math.max(0, Math.min(255, Math.round(gray)))
 
 					data[i] = gray     // R
 					data[i + 1] = gray // G
@@ -189,7 +214,8 @@ export async function convertToBlackAndWhite(dataUrl: string): Promise<string> {
 				ctx.putImageData(imageData, 0, 0)
 
 				// Конвертируем canvas в data URL
-				const blackAndWhiteDataUrl = canvas.toDataURL('image/jpeg', 0.5)
+				// Используем качество 0.9 для сохранения деталей после обработки
+				const blackAndWhiteDataUrl = canvas.toDataURL('image/jpeg', 0.9)
 				resolve(blackAndWhiteDataUrl)
 			} catch (error) {
 				reject(error)

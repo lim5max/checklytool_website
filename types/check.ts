@@ -194,9 +194,12 @@ export interface OpenRouterRequest {
   }>
   max_tokens?: number
   temperature?: number
+  top_p?: number // Nucleus sampling parameter
+  top_k?: number // Top-k sampling parameter
   metadata?: {
     analysis_id?: string
     timestamp?: number
+    stage?: string
     [key: string]: unknown
   }
 }
