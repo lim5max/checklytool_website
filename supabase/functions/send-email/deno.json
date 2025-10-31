@@ -1,0 +1,8 @@
+{
+	"imports": {
+		"nodemailer": "npm:nodemailer@6.9.7"
+	},
+	"tasks": {
+		"test": "deno test --allow-all"
+	}
+}
